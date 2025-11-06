@@ -236,7 +236,10 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                 return;
             }
 
-            showResult('patternResult', 'Analyzing...', false);
+            const resultEl = document.getElementById('patternResult');
+            resultEl.classList.remove('show', 'error', 'success');
+            resultEl.innerHTML = 'Analyzing...';
+            resultEl.classList.add('show');
 
             try {
                 const response = await fetch(API_BASE + '/api/patterns/detect', {
@@ -258,7 +261,15 @@ Target: $${d.target.toFixed(2)}
 R:R Ratio: ${d.risk_reward.toFixed(2)}:1
 Current Price: $${d.current_price.toFixed(2)}
 RS Rating: ${d.rs_rating.toFixed(0)}`;
-                    showResult('patternResult', msg, false);
+
+                    // Display results with optional chart
+                    let html = '<pre>' + msg + '</pre>';
+                    if (d.chart_url) {
+                        html += '<br><img src="' + d.chart_url + '" style="max-width: 100%; margin-top: 20px; border-radius: 6px;">';
+                    }
+
+                    resultEl.innerHTML = html;
+                    resultEl.classList.add('success');
                 } else {
                     showResult('patternResult', 'Error: ' + (data.detail || 'Analysis failed'), true);
                 }

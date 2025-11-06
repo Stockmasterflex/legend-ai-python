@@ -290,36 +290,76 @@ class PatternDetector:
 
     def _detect_cup_handle(self, closes: List[float], highs: List[float],
                           lows: List[float], volumes: List[float]) -> Dict[str, Any]:
-        """Detect Cup & Handle pattern"""
+        """Detect Cup & Handle pattern - improved with stricter criteria"""
         n = len(closes)
         if n < 150:
             return {"hit": False, "score": 0, "info": "Need 150+ days data"}
 
-        # Look at last 180 days
-        window = closes[-180:]
-        left_rim = max(window[:60])
-        bottom = min(window[30:120])
-        right_rim = max(window[100:])
+        # Analyze last 200 days for cup formation
+        window = closes[-200:]
+        window_highs = highs[-200:]
+        window_lows = lows[-200:]
 
+        # Left rim (first 1/4 of window)
+        left_quarter = window[:50]
+        left_rim = max(left_quarter)
+
+        # Bottom (middle section, 40-120 days back)
+        middle_section = window[40:120]
+        bottom = min(middle_section)
+        bottom_idx = 40 + middle_section.index(bottom)
+
+        # Right rim (last 1/4 of window, but should be before handle)
+        right_section = window[100:160]
+        right_rim = max(right_section) if right_section else closes[-1]
+
+        # Cup depth check
         cup_depth = ((left_rim - bottom) / left_rim) * 100
-        if cup_depth < 12 or cup_depth > 40:
-            return {"hit": False, "score": 0, "info": f"Cup depth {cup_depth:.1f}% invalid"}
 
-        # Check handle (last 20 days)
-        handle = closes[-20:]
-        handle_high = max(handle)
-        handle_low = min(handle)
+        # Strict criteria for cup & handle
+        # 1. Cup depth must be significant (15-35%)
+        if cup_depth < 15 or cup_depth > 35:
+            return {"hit": False, "score": 0, "info": f"Cup depth {cup_depth:.1f}% out of range"}
+
+        # 2. Left and right rims should be similar (within 10%)
+        rim_difference = abs(left_rim - right_rim) / left_rim * 100
+        if rim_difference > 10:
+            return {"hit": False, "score": 0, "info": f"Rims differ by {rim_difference:.1f}%"}
+
+        # 3. Check handle formation (last 25 days)
+        handle_window = closes[-25:]
+        handle_high = max(handle_window)
+        handle_low = min(handle_window)
         handle_depth = ((handle_high - handle_low) / handle_high) * 100
 
-        if handle_depth < 4 or handle_depth > 15:
+        # Handle must be tight (less than 10% range) and shallow
+        if handle_depth < 2 or handle_depth > 10:
             return {"hit": False, "score": 0, "info": f"Handle depth {handle_depth:.1f}% invalid"}
 
-        score = min(10, 10 - abs(20 - cup_depth) / 2)
+        # 4. Handle should be above the cup bottom
+        if handle_low < bottom * 1.01:  # Allow 1% tolerance
+            return {"hit": False, "score": 0, "info": "Handle below cup bottom"}
+
+        # 5. Recent price should be above the handle high (breakout)
+        if closes[-1] < handle_high * 0.98:
+            return {"hit": False, "score": 0, "info": "No breakout above handle"}
+
+        # 6. Volume should increase on breakout
+        volume_increasing = volumes[-5:] and volumes[-1] > statistics.mean(volumes[-20:-5])
+        if not volume_increasing:
+            return {"hit": False, "score": 0, "info": "No volume confirmation"}
+
+        # All criteria met - calculate score
+        # Deduct points for rim difference and handle sharpness
+        score = 9.0
+        score -= (rim_difference / 10) * 1.5  # Penalize for different rims
+        score -= (handle_depth / 10) * 1.0   # Penalize for loose handle
+        score = max(5.0, min(10.0, score))
 
         return {
             "hit": True,
             "score": score,
-            "info": f"Cup depth {cup_depth:.1f}%, handle {handle_depth:.1f}%",
+            "info": f"Cup {cup_depth:.1f}%, handle {handle_depth:.1f}%, vol↑",
             "name": "Cup & Handle"
         }
 
