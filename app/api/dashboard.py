@@ -155,10 +155,10 @@ HTML_DASHBOARD = """<!DOCTYPE html>
         <h1>🚀 Legend AI Trading Dashboard</h1>
 
         <div class="tab-buttons">
-            <button class="tab-btn active" onclick="showTab('pattern')">📊 Pattern Scanner</button>
-            <button class="tab-btn" onclick="showTab('universe')">🔍 Universe Scan</button>
-            <button class="tab-btn" onclick="showTab('watchlist')">📋 Watchlist</button>
-            <button class="tab-btn" onclick="showTab('market')">📈 Market</button>
+            <button class="tab-btn active" onclick="showTab('pattern', event)">📊 Pattern Scanner</button>
+            <button class="tab-btn" onclick="showTab('universe', event)">🔍 Universe Scan</button>
+            <button class="tab-btn" onclick="showTab('watchlist', event)">📋 Watchlist</button>
+            <button class="tab-btn" onclick="showTab('market', event)">📈 Market</button>
         </div>
 
         <!-- Pattern Scanner Tab -->
@@ -212,11 +212,13 @@ HTML_DASHBOARD = """<!DOCTYPE html>
     <script>
         const API_BASE = window.location.protocol + '//' + window.location.host;
 
-        function showTab(tabName) {
+        function showTab(tabName, event) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
 
         function showResult(elementId, message, isError = false) {
