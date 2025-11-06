@@ -26,6 +26,7 @@ class PatternResult:
     support_end: Optional[float] = None
     volume_increasing: Optional[bool] = None
     consolidation_days: Optional[int] = None
+    chart_url: Optional[str] = None  # URL to chart image
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
@@ -46,6 +47,7 @@ class PatternResult:
             "support_end": self.support_end,
             "volume_increasing": self.volume_increasing,
             "consolidation_days": self.consolidation_days,
+            "chart_url": self.chart_url,
         }
 
 
