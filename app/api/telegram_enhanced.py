@@ -530,7 +530,7 @@ Type /help for full command list."""
 telegram_service = TelegramService()
 
 
-@router.post("/api/webhook/telegram")
+@router.post("/webhook/telegram")
 async def telegram_webhook(update: TelegramUpdate):
     """Handle incoming Telegram webhook updates"""
     try:

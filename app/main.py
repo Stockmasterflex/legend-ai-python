@@ -48,7 +48,7 @@ async def setup_telegram_webhook():
 
         # Get webhook URL (auto-detect from Railway or use configured)
         webhook_base = settings.auto_webhook_url
-        webhook_url = f"{webhook_base}/api/webhook/telegram"
+        webhook_url = f"{webhook_base}/api/webhook/telegram"  # /api prefix added by router registration
 
         logger.info(f"📡 Setting Telegram webhook to: {webhook_url}")
 
