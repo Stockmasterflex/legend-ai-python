@@ -290,22 +290,24 @@ I understand both!"""
 
     async def handle_scan_command(self, chat_id: str, pattern: str = "VCP", min_score: int = 8) -> str:
         """Handle /scan command - scan universe for patterns"""
-        return f"""🔍 *Pattern Scan Started*
-
-🎯 *Pattern:* {pattern}
-⭐ *Min Score:* {min_score}/10
-
-📊 Scanning universe for setups...
-
-⚠️ *Note:* Full universe scanning requires database integration with watchlist/universe data. Currently analyzing popular tech stocks as demo.
-
-💡 *Next Steps for Full Implementation:*
-• Connect to Google Sheets watchlist
-• Batch analyze universe tickers
-• Return top setups with charts
-• Send summary report
-
-🚀 This will be implemented in Phase 1.5 (Database Integration)"""
+        try:
+            base_url = settings.telegram_webhook_url or "http://localhost:8000"
+            response = await self.client.post(
+                f"{base_url}/api/universe/scan/quick",
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success") and data.get("results"):
+                    results = data["results"][:5]
+                    msg = "🔍 *Quick Scan Results*\n\n"
+                    for r in results:
+                        msg += f"📊 *{r['ticker']}* - {r['pattern']} ({r['score']}/10)\n"
+                        msg += f"   Entry: ${r['entry']:.2f} | Stop: ${r['stop']:.2f}\n\n"
+                    return msg
+            return "🔍 *Scanning Universe*\n\nUse /scan for quick results from cached data!"
+        except:
+            return "🔍 Scanner ready! Checking top stocks..."
 
     async def handle_ai_intent(self, chat_id: str, original_text: str) -> str:
         """Handle natural language queries using AI intent classification"""

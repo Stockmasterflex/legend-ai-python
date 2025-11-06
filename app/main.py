@@ -9,6 +9,8 @@ from app.api.telegram import router as telegram_router
 from app.api.patterns import router as patterns_router
 from app.api.charts import router as charts_router
 from app.api.universe import router as universe_router
+from app.api.watchlist import router as watchlist_router
+from app.api.trade_plan import router as trade_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -75,6 +77,8 @@ app.include_router(telegram_router, prefix="/api", tags=["telegram"])
 app.include_router(patterns_router)
 app.include_router(charts_router)
 app.include_router(universe_router)
+app.include_router(watchlist_router)
+app.include_router(trade_router)
 
 @app.get("/")
 async def root():
