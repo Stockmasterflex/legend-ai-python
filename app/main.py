@@ -11,6 +11,8 @@ from app.api.charts import router as charts_router
 from app.api.universe import router as universe_router
 from app.api.watchlist import router as watchlist_router
 from app.api.trade_plan import router as trade_router
+from app.api.analytics import router as analytics_router
+from app.api.market import router as market_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -79,6 +81,8 @@ app.include_router(charts_router)
 app.include_router(universe_router)
 app.include_router(watchlist_router)
 app.include_router(trade_router)
+app.include_router(analytics_router)
+app.include_router(market_router)
 
 @app.get("/")
 async def root():

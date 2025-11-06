@@ -60,9 +60,8 @@ class ChartGenerator:
                 "width": 1280,
                 "height": 720,
                 "theme": "dark",
-                "studies": self._build_studies(config)
-                # Removed drawings to stay under API parameter limit
-                # Removed override settings to stay under API parameter limit
+                "studies": self._build_studies(config),
+                "drawings": self._build_drawings(config) if (config.entry or config.stop or config.target) else []
             }
 
             logger.info(f"🎨 Generating chart for {config.ticker} -> {symbol}")
@@ -129,73 +128,22 @@ class ChartGenerator:
         return studies
 
     def _build_drawings(self, config: ChartConfig) -> List[Dict[str, Any]]:
-        """Build entry/stop/target line drawings"""
+        """Build entry/stop/target line drawings (max 2 to stay under limits)"""
         drawings = []
-
-        # Entry line - yellow, solid, 3px
-        if config.entry:
+        
+        if config.entry and config.stop:
             drawings.append({
                 "name": "Horizontal Line",
-                "input": {
-                    "price": config.entry,
-                    "text": f"ENTRY: ${config.entry:.2f}"
-                },
-                "override": {
-                    "fontSize": 14,
-                    "lineStyle": 0,  # Solid
-                    "lineWidth": 3,
-                    "lineColor": "rgb(255,193,7)",  # Yellow
-                    "textColor": "rgb(255,193,7)",
-                    "horzLabelAlign": "right",
-                    "showPrice": True,
-                    "fontBold": True
-                },
-                "zOrder": "top"
+                "input": {"price": config.entry, "text": f"Entry ${config.entry:.2f}"},
+                "override": {"lineColor": "rgb(255,193,7)", "lineWidth": 2, "showPrice": True}
             })
-
-        # Stop line - red, solid, 3px
-        if config.stop:
             drawings.append({
-                "name": "Horizontal Line",
-                "input": {
-                    "price": config.stop,
-                    "text": f"STOP: ${config.stop:.2f}"
-                },
-                "override": {
-                    "fontSize": 14,
-                    "lineStyle": 0,  # Solid
-                    "lineWidth": 3,
-                    "lineColor": "rgb(255,82,82)",  # Red
-                    "textColor": "rgb(255,82,82)",
-                    "horzLabelAlign": "right",
-                    "showPrice": True,
-                    "fontBold": True
-                },
-                "zOrder": "top"
+                "name": "Horizontal Line", 
+                "input": {"price": config.stop, "text": f"Stop ${config.stop:.2f}"},
+                "override": {"lineColor": "rgb(255,82,82)", "lineWidth": 2, "lineStyle": 2}
             })
-
-        # Target line - green, solid, 3px
-        if config.target:
-            drawings.append({
-                "name": "Horizontal Line",
-                "input": {
-                    "price": config.target,
-                    "text": f"TARGET: ${config.target:.2f}"
-                },
-                "override": {
-                    "fontSize": 14,
-                    "lineStyle": 0,  # Solid
-                    "lineWidth": 3,
-                    "lineColor": "rgb(0,200,83)",  # Green
-                    "textColor": "rgb(0,200,83)",
-                    "horzLabelAlign": "right",
-                    "showPrice": True,
-                    "fontBold": True
-                },
-                "zOrder": "top"
-            })
-
-        return drawings
+        
+        return drawings[:2]
 
     def _normalize_symbol(self, ticker: str) -> str:
         """Normalize ticker symbol to Chart-IMG format (matches n8n logic)"""
