@@ -88,17 +88,24 @@ app.include_router(market_router)
 # Mount Gradio dashboard for online access
 try:
     import gradio as gr
-    # Set API_BASE environment variable for dashboard to use
-    os.environ["API_BASE"] = os.getenv("RAILWAY_PUBLIC_DOMAIN", "http://localhost:8000")
-    if not os.environ["API_BASE"].startswith("http"):
-        os.environ["API_BASE"] = f"https://{os.environ['API_BASE']}"
+
+    # Set API_BASE environment variable BEFORE importing dashboard
+    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+    if railway_domain:
+        os.environ["API_BASE"] = f"https://{railway_domain}" if not railway_domain.startswith("http") else railway_domain
+    else:
+        os.environ["API_BASE"] = "http://localhost:8000"
+
+    logger.info(f"Dashboard will use API_BASE: {os.environ['API_BASE']}")
 
     # Import and mount dashboard
     from dashboard_pro import app as dashboard_app
     app = gr.mount_gradio_app(app, dashboard_app, path="/dashboard")
     logger.info("✅ Dashboard mounted at /dashboard")
 except Exception as e:
-    logger.warning(f"⚠️ Could not mount dashboard: {e}")
+    logger.warning(f"⚠️ Could not mount dashboard (non-critical): {e}")
+    import traceback
+    logger.debug(traceback.format_exc())
 
 @app.get("/")
 async def root():
