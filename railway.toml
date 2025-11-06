@@ -1,0 +1,53 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[services]]
+id = "legend-ai-api"
+name = "Legend AI API"
+
+  [services.source]
+  repo = "legend-ai-python"
+
+  [services.build]
+  builder = "dockerfile"
+
+  [services.deploy]
+  healthcheckPath = "/health"
+  healthcheckTimeout = 300
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 10
+
+  [[services.variables]]
+  key = "DEBUG"
+  value = "false"
+
+  [[services.variables]]
+  key = "REDIS_URL"
+  value = "{{ REDIS_URL }}"
+
+  [[services.variables]]
+  key = "DATABASE_URL"
+  value = "{{ DATABASE_URL }}"
+
+  # API Keys (set these in Railway dashboard)
+  [[services.variables]]
+  key = "TELEGRAM_BOT_TOKEN"
+  value = "{{ TELEGRAM_BOT_TOKEN }}"
+
+  [[services.variables]]
+  key = "OPENROUTER_API_KEY"
+  value = "{{ OPENROUTER_API_KEY }}"
+
+  [[services.variables]]
+  key = "TWELVEDATA_API_KEY"
+  value = "{{ TWELVEDATA_API_KEY }}"
+
+  [[services.variables]]
+  key = "CHARTIMG_API_KEY"
+  value = "{{ CHARTIMG_API_KEY }}"
