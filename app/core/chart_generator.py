@@ -60,18 +60,12 @@ class ChartGenerator:
                 "width": 1280,
                 "height": 720,
                 "theme": "dark",
-                "studies": self._build_studies(config),
-                "drawings": self._build_drawings(config),
-                "override": {
-                    "showLegendValues": True,
-                    "showSeriesLastValue": True,
-                    "showPriceLine": True,
-                    "showSeriesOHLC": True,
-                    "showBarChange": True
-                }
+                "studies": self._build_studies(config)
+                # Removed drawings to stay under API parameter limit
+                # Removed override settings to stay under API parameter limit
             }
 
-            logger.info(f"🎨 Generating chart for {config.ticker} -> {symbol} with {len(request_body['drawings'])} annotations")
+            logger.info(f"🎨 Generating chart for {config.ticker} -> {symbol}")
 
             response = await self.client.post(
                 self.base_url,
@@ -116,49 +110,20 @@ class ChartGenerator:
             }
 
     def _build_studies(self, config: ChartConfig) -> List[Dict[str, Any]]:
-        """Build indicator studies for Chart-IMG API"""
+        """Build indicator studies for Chart-IMG API (simplified to avoid parameter limit)"""
         studies = []
 
-        # Volume - always included (matching n8n Chart_Generator_V2_Complete)
-        studies.append({
-            "name": "Volume",
-            "forceOverlay": False,
-            "override": {
-                "volume.volume.color.0": "rgb(242,54,69)",  # Red for down
-                "volume.volume.color.1": "rgb(8,153,129)",   # Green for up
-                "volume.volume.transparency": 65
-            }
-        })
-
-        # EMA 50 - orange (matching n8n)
+        # Just 2 key moving averages to stay under API limits
+        # EMA 50
         studies.append({
             "name": "Moving Average Exponential",
-            "input": {"length": 50},
-            "override": {
-                "Plot.linewidth": 2,
-                "Plot.color": "rgb(255,165,0)"  # Orange
-            }
+            "input": {"length": 50}
         })
 
-        # EMA 200 - magenta (matching n8n)
+        # EMA 200
         studies.append({
             "name": "Moving Average Exponential",
-            "input": {"length": 200},
-            "override": {
-                "Plot.linewidth": 2,
-                "Plot.color": "rgb(255,0,255)"  # Magenta
-            }
-        })
-
-        # RSI 14 - orange (matching n8n)
-        studies.append({
-            "name": "Relative Strength Index",
-            "forceOverlay": False,
-            "input": {"length": 14},
-            "override": {
-                "Plot.linewidth": 2,
-                "Plot.color": "rgb(255,152,0)"  # Orange
-            }
+            "input": {"length": 200}
         })
 
         return studies

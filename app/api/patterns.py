@@ -60,6 +60,11 @@ async def detect_pattern(request: PatternRequest):
         cached_result = await cache.get_pattern(ticker=ticker, interval=request.interval)
         if cached_result:
             # Convert cached dict back to PatternResult
+            # Convert ISO timestamp string back to datetime
+            from datetime import datetime
+            if isinstance(cached_result.get("timestamp"), str):
+                cached_result["timestamp"] = datetime.fromisoformat(cached_result["timestamp"])
+            
             result = PatternResult(**cached_result)
             processing_time = time.time() - start_time
 
