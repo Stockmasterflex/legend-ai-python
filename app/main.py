@@ -14,6 +14,7 @@ from app.api.watchlist import router as watchlist_router
 from app.api.trade_plan import router as trade_router
 from app.api.analytics import router as analytics_router
 from app.api.market import router as market_router
+from app.api.dashboard import router as dashboard_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -85,28 +86,7 @@ app.include_router(watchlist_router)
 app.include_router(trade_router)
 app.include_router(analytics_router)
 app.include_router(market_router)
-
-# Mount Gradio dashboard for online access
-try:
-    import gradio as gr
-
-    # Set API_BASE environment variable BEFORE importing dashboard
-    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-    if railway_domain:
-        os.environ["API_BASE"] = f"https://{railway_domain}" if not railway_domain.startswith("http") else railway_domain
-    else:
-        os.environ["API_BASE"] = "http://localhost:8000"
-
-    logger.info(f"Dashboard will use API_BASE: {os.environ['API_BASE']}")
-
-    # Import and mount dashboard
-    from dashboard_pro import app as dashboard_app
-    app = gr.mount_gradio_app(app, dashboard_app, path="/dashboard")
-    logger.info("✅ Dashboard mounted at /dashboard")
-except Exception as e:
-    logger.warning(f"⚠️ Could not mount dashboard (non-critical): {e}")
-    import traceback
-    logger.debug(traceback.format_exc())
+app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 
 @app.get("/")
 async def root():
