@@ -46,7 +46,7 @@
 
 ### ❌ Blockers
 
-- Waiting for Railway redeploy to finish using latest commit (`c5ca8e9`) before final validation
+- Waiting for Railway redeploy to finish using latest commit (`18c0782`) before final validation
 
 ### 🔜 Next Up
 
