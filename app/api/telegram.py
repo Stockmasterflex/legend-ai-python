@@ -29,7 +29,11 @@ class TelegramService:
     """Service for handling Telegram operations"""
 
     def __init__(self):
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(
+            timeout=30.0,
+            follow_redirects=True,
+            verify=True
+        )
 
     async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
         """Send message to Telegram chat"""
@@ -99,7 +103,9 @@ Response:"""
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {settings.openrouter_api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://legend-ai-python-production.up.railway.app",
+                    "X-Title": "Legend AI Bot"
                 },
                 json={
                     "model": "openai/gpt-4o-mini",
@@ -178,7 +184,7 @@ I understand both!"""
 
     async def handle_help_command(self, chat_id: str) -> str:
         """Handle /help command"""
-        return self.handle_start_command(chat_id)
+        return await self.handle_start_command(chat_id)
 
     async def handle_pattern_command(self, chat_id: str, ticker: str) -> str:
         """Handle /pattern command - single ticker analysis"""
@@ -186,9 +192,10 @@ I understand both!"""
             return "❌ Usage: /pattern TICKER\n\nExample: /pattern NVDA"
 
         try:
-            # Call pattern detection endpoint
+            # Call pattern detection endpoint using internal service
+            base_url = settings.telegram_webhook_url or "http://localhost:8000"
             response = await self.client.post(
-                "http://localhost:8000/api/patterns/detect",
+                f"{base_url}/api/patterns/detect",
                 json={"ticker": ticker, "interval": "1day"}
             )
 
@@ -240,9 +247,10 @@ I understand both!"""
             return {"text": "❌ Usage: /chart TICKER\n\nExample: /chart AAPL", "chart_url": None}
 
         try:
-            # Call chart generation endpoint
+            # Call chart generation endpoint using internal service
+            base_url = settings.telegram_webhook_url or "http://localhost:8000"
             response = await self.client.post(
-                "http://localhost:8000/api/charts/generate",
+                f"{base_url}/api/charts/generate",
                 json={"ticker": ticker, "interval": "1D"}
             )
 
