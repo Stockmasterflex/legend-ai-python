@@ -129,9 +129,9 @@ async def detect_pattern(request: PatternRequest):
         # Get SPY data for RS calculation
         spy_data = await cache.get_price_data("SPY")
         if not spy_data:
-            spy_data = await twelve_data_client.get_time_series("SPY", "1day", 500)
-            if not spy_data and request.use_yahoo_fallback:
-                spy_data = await yahoo_client.get_time_series("SPY", "1d", "5y")
+        spy_data = await twelve_data_client.get_time_series("SPY", "1day", 500)
+        if not spy_data and request.use_yahoo_fallback:
+            spy_data = await yahoo_client.get_time_series("SPY", "1d", "5y")
             if spy_data:
                 await cache.set_price_data("SPY", spy_data)
 
@@ -233,4 +233,4 @@ async def cache_stats():
         return {
             "status": "error",
             "error": str(e)
-        }
+    }
