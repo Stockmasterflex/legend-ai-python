@@ -8,9 +8,10 @@ import os
 
 router = APIRouter(tags=["dashboard"])
 
+# Auto-detect API_BASE - on production it should use same domain
 API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
-HTML_DASHBOARD = f"""
+HTML_DASHBOARD = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -172,7 +173,9 @@ HTML_DASHBOARD = f"""
     </div>
 
     <script>
-        const API_BASE = "{API_BASE}";
+        // Auto-detect API base from current URL
+        // If on https://example.com/dashboard/, API should be https://example.com
+        const API_BASE = window.location.protocol + '//' + window.location.host;
 
         function switchTab(tabName) {{
             document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
