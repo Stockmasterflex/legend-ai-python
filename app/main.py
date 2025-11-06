@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 import httpx
@@ -75,6 +76,15 @@ app = FastAPI(
     description="Professional Trading Pattern Scanner",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# Add CORS middleware to allow dashboard JavaScript to call APIs
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for dashboard
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include API routers
