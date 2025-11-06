@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 import logging
-import asyncio
 
 from app.core.pattern_detector import PatternDetector, PatternResult
 from app.services.market_data import market_data_service
@@ -120,18 +119,16 @@ async def detect_pattern(request: PatternRequest):
                 detail=f"Pattern analysis failed for {ticker}"
             )
 
-        # Generate chart (non-blocking, with timeout)
+        # Generate chart (with fallback)
         try:
             charting = get_charting_service()
-            chart_url = await asyncio.wait_for(
-                charting.generate_chart(ticker, request.interval),
-                timeout=5.0
-            )
-            result.chart_url = chart_url
-            logger.info(f"📊 Chart generated for {ticker}")
-        except asyncio.TimeoutError:
-            logger.warning(f"⏱️ Chart generation timeout for {ticker}")
-            result.chart_url = None
+            chart_url = await charting.generate_chart(ticker, request.interval)
+            if chart_url:
+                result.chart_url = chart_url
+                logger.info(f"📊 Chart generated for {ticker}: {chart_url[:60]}...")
+            else:
+                logger.warning(f"⚠️ Chart service returned None for {ticker}")
+                result.chart_url = None
         except Exception as e:
             logger.warning(f"⚠️ Chart generation failed for {ticker}: {e}")
             result.chart_url = None
