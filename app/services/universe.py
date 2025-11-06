@@ -196,14 +196,14 @@ class UniverseService:
             
             # Scan in batches to avoid overwhelming APIs
             from app.core.pattern_detector import PatternDetector
-            from app.services.api_clients import twelve_data_client
-            
+            from app.services.market_data import market_data_service
+
             detector = PatternDetector()
             results = []
             batch_size = 10
             delay_between_batches = 2  # seconds
-            
-            for i in range(0, min(len(universe), 200), batch_size):  # Limit to 200 tickers max
+
+            for i in range(0, min(len(universe), 100), batch_size):  # Limit to 100 tickers for API limits
                 batch = universe[i:i+batch_size]
                 logger.info(f"📊 Scanning batch {i//batch_size + 1} ({len(batch)} tickers)...")
                 
@@ -224,22 +224,18 @@ class UniverseService:
                             
                             pattern_result = PatternResult(**cached_pattern)
                         else:
-                            # Fetch and analyze
-                            price_data = await twelve_data_client.get_time_series(
+                            # Fetch and analyze (uses smart fallback)
+                            price_data = await market_data_service.get_time_series(
                                 ticker=ticker,
                                 interval="1day",
                                 outputsize=500
                             )
-                            
+
                             if not price_data:
                                 continue
-                            
-                            # Get SPY for RS calculation (cached)
-                            spy_data = await self.cache.get_price_data("SPY")
-                            if not spy_data:
-                                spy_data = await twelve_data_client.get_time_series("SPY", "1day", 500)
-                                if spy_data:
-                                    await self.cache.set_price_data("SPY", spy_data)
+
+                            # Get SPY for RS calculation (uses smart fallback)
+                            spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
                             
                             # Analyze
                             pattern_result = await detector.analyze_ticker(ticker, price_data, spy_data)

@@ -4,7 +4,7 @@ from typing import Optional
 import logging
 
 from app.core.pattern_detector import PatternDetector, PatternResult
-from app.services.api_clients import twelve_data_client, yahoo_client
+from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
 
 logger = logging.getLogger(__name__)
@@ -79,27 +79,15 @@ async def detect_pattern(request: PatternRequest):
                 processing_time=round(processing_time, 2)
             )
 
-        # 2. Cache miss - fetch from API
+        # 2. Cache miss - fetch from API (uses smart multi-source fallback)
         logger.info(f"📡 Cache miss for {ticker}, fetching from API")
 
-        # Try TwelveData first
-        price_data = await twelve_data_client.get_time_series(
+        # Get price data (tries TwelveData → Finnhub → AlphaVantage → Yahoo)
+        price_data = await market_data_service.get_time_series(
             ticker=ticker,
             interval=request.interval,
-            outputsize=500  # Get plenty of data for analysis
+            outputsize=500
         )
-
-        api_used = "twelvedata"
-
-        # Fallback to Yahoo Finance if TwelveData fails
-        if not price_data and request.use_yahoo_fallback:
-            logger.info(f"⚠️ TwelveData failed for {ticker}, trying Yahoo Finance")
-            price_data = await yahoo_client.get_time_series(
-                ticker=ticker,
-                interval="1d",  # Yahoo uses different interval format
-                range_param="5y"
-            )
-            api_used = "yahoo_finance"
 
         if not price_data:
             raise HTTPException(
@@ -107,24 +95,14 @@ async def detect_pattern(request: PatternRequest):
                 detail=f"No price data available for {ticker}"
             )
 
-        # Cache the price data (15 min TTL)
-        await cache.set_price_data(ticker, price_data)
+        api_used = price_data.get("source", "unknown")
 
-        # Get SPY data for RS calculation (tries cache → TwelveData → Yahoo)
-        spy_data = await cache.get_price_data("SPY")
-        if not spy_data:
-            spy_data = await twelve_data_client.get_time_series(
-                ticker="SPY",
-                interval="1day",
-                outputsize=500
-            )
-            if spy_data:
-                await cache.set_price_data("SPY", spy_data)
-
-        if not spy_data and request.use_yahoo_fallback:
-            spy_data = await yahoo_client.get_time_series("SPY", "1d", "5y")
-            if spy_data:
-                await cache.set_price_data("SPY", spy_data)
+        # Get SPY data for RS calculation
+        spy_data = await market_data_service.get_time_series(
+            ticker="SPY",
+            interval="1day",
+            outputsize=500
+        )
 
         # Run pattern detection
         detector = PatternDetector()
