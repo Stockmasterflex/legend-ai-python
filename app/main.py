@@ -3,9 +3,10 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 import httpx
+import os
 
 from app.config import get_settings
-from app.api.telegram import router as telegram_router
+from app.api.telegram_enhanced import router as telegram_router
 from app.api.patterns import router as patterns_router
 from app.api.charts import router as charts_router
 from app.api.universe import router as universe_router
@@ -83,6 +84,21 @@ app.include_router(watchlist_router)
 app.include_router(trade_router)
 app.include_router(analytics_router)
 app.include_router(market_router)
+
+# Mount Gradio dashboard for online access
+try:
+    import gradio as gr
+    # Set API_BASE environment variable for dashboard to use
+    os.environ["API_BASE"] = os.getenv("RAILWAY_PUBLIC_DOMAIN", "http://localhost:8000")
+    if not os.environ["API_BASE"].startswith("http"):
+        os.environ["API_BASE"] = f"https://{os.environ['API_BASE']}"
+
+    # Import and mount dashboard
+    from dashboard_pro import app as dashboard_app
+    app = gr.mount_gradio_app(app, dashboard_app, path="/dashboard")
+    logger.info("✅ Dashboard mounted at /dashboard")
+except Exception as e:
+    logger.warning(f"⚠️ Could not mount dashboard: {e}")
 
 @app.get("/")
 async def root():
