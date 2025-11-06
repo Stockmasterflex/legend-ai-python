@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     # Telegram
     telegram_bot_token: str = "dev-token"
+    telegram_chat_id: Optional[str] = None
     telegram_webhook_url: Optional[str] = None
 
     # AI Services
@@ -24,6 +25,12 @@ class Settings(BaseSettings):
     twelvedata_api_key: str = "dev-key"
     finnhub_api_key: Optional[str] = None
     alpha_vantage_api_key: Optional[str] = None
+
+    # API Rate Limits (daily)
+    twelvedata_daily_limit: int = 800
+    finnhub_daily_limit: int = 60
+    alpha_vantage_daily_limit: int = 500
+    chartimg_daily_limit: int = 500
 
     # Redis
     redis_url: str = "redis://localhost:6379"
