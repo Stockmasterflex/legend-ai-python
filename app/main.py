@@ -34,23 +34,32 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down...")
 
 async def setup_telegram_webhook():
-    """Set up Telegram webhook"""
+    """Set up Telegram webhook - non-blocking if not configured"""
     try:
-        webhook_url = f"{settings.telegram_webhook_url}/webhook/telegram"
+        # Only set webhook if both URL and token are properly configured
+        if not settings.telegram_webhook_url:
+            logger.info("Telegram webhook URL not configured - skipping webhook setup")
+            return
+        
+        if not settings.telegram_bot_token or settings.telegram_bot_token == "dev-token":
+            logger.info("Telegram bot token not configured - skipping webhook setup")
+            return
 
-        async with httpx.AsyncClient() as client:
+        webhook_url = f"{settings.telegram_webhook_url}/api/webhook/telegram"
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 f"https://api.telegram.org/bot{settings.telegram_bot_token}/setWebhook",
                 json={"url": webhook_url}
             )
 
             if response.status_code == 200:
-                logger.info(f"Telegram webhook set to: {webhook_url}")
+                logger.info(f"✅ Telegram webhook set to: {webhook_url}")
             else:
-                logger.error(f"Failed to set webhook: {response.text}")
+                logger.warning(f"⚠️ Failed to set webhook: {response.status_code} - {response.text}")
 
     except Exception as e:
-        logger.error(f"Error setting up webhook: {e}")
+        logger.warning(f"⚠️ Error setting up webhook (non-critical): {e}")
 
 # Create FastAPI app
 app = FastAPI(
@@ -77,34 +86,40 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Detailed health check"""
-    # Test Telegram connectivity
+    """Detailed health check - resilient to missing services"""
+    # Test Telegram connectivity (non-blocking)
     telegram_status = "unknown"
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.telegram.org/bot{settings.telegram_bot_token}/getMe"
-            )
-            telegram_status = "connected" if response.status_code == 200 else "error"
-    except Exception:
+        if settings.telegram_bot_token and settings.telegram_bot_token != "dev-token":
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    f"https://api.telegram.org/bot{settings.telegram_bot_token}/getMe"
+                )
+                telegram_status = "connected" if response.status_code == 200 else "error"
+        else:
+            telegram_status = "not_configured"
+    except Exception as e:
+        logger.debug(f"Telegram health check failed: {e}")
         telegram_status = "disconnected"
 
-    # Test Redis connectivity
+    # Test Redis connectivity (non-blocking)
     redis_status = "unknown"
     try:
         from app.services.cache import get_cache_service
         cache = get_cache_service()
         health_check = await cache.health_check()
-        redis_status = health_check["status"]
-    except Exception:
+        redis_status = health_check.get("status", "unknown")
+    except Exception as e:
+        logger.debug(f"Redis health check failed: {e}")
         redis_status = "disconnected"
 
+    # Always return healthy status - individual services can be down
     return {
         "status": "healthy",
         "telegram": telegram_status,
         "redis": redis_status,
         "version": "1.0.0",
-        "webhook_url": settings.telegram_webhook_url
+        "webhook_url": settings.telegram_webhook_url if settings.telegram_webhook_url else None
     }
 
 if __name__ == "__main__":
