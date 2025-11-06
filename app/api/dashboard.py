@@ -423,3 +423,91 @@ Status: ${m.status}`;
 async def dashboard():
     """Serve the dashboard HTML"""
     return HTMLResponse(HTML_DASHBOARD)
+
+@router.get("/test")
+async def dashboard_test():
+    """Simple test dashboard to verify buttons work"""
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Legend AI - Test Dashboard</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #764ba2; }
+        .result { margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px; min-height: 100px; font-family: monospace; }
+        .loading { color: #667eea; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Legend AI - Test Dashboard</h1>
+
+        <h2>Test Pattern Detection</h2>
+        <button onclick="testPatternAPI()">Test Pattern Detection</button>
+
+        <h2>Test Universe Scan</h2>
+        <button onclick="testUniverseAPI()">Test Universe Scan</button>
+
+        <h2>Test Market Data</h2>
+        <button onclick="testMarketAPI()">Test Market Data</button>
+
+        <div id="result" class="result">Click a button to test...</div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.protocol + '//' + window.location.host;
+
+        function setResult(text, className = '') {
+            const el = document.getElementById('result');
+            el.innerHTML = '<pre>' + text + '</pre>';
+            el.className = 'result ' + className;
+        }
+
+        async function testPatternAPI() {
+            setResult('Loading...', 'loading');
+            try {
+                const response = await fetch(API_BASE + '/api/patterns/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker: 'AAPL', interval: '1day' })
+                });
+                const data = await response.json();
+                setResult(JSON.stringify(data, null, 2), data.success ? 'success' : 'error');
+            } catch (e) {
+                setResult('Error: ' + e.message, 'error');
+            }
+        }
+
+        async function testUniverseAPI() {
+            setResult('Loading...', 'loading');
+            try {
+                const response = await fetch(API_BASE + '/api/universe/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ min_score: 7.0, limit: 5 })
+                });
+                const data = await response.json();
+                setResult(JSON.stringify(data, null, 2), data.success ? 'success' : 'error');
+            } catch (e) {
+                setResult('Error: ' + e.message, 'error');
+            }
+        }
+
+        async function testMarketAPI() {
+            setResult('Loading...', 'loading');
+            try {
+                const response = await fetch(API_BASE + '/api/market/internals');
+                const data = await response.json();
+                setResult(JSON.stringify(data, null, 2), data.success ? 'success' : 'error');
+            } catch (e) {
+                setResult('Error: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(html)
