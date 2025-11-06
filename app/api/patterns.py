@@ -11,27 +11,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
-@router.get("/health")
-async def health():
-    """Health check for patterns service"""
-    cache = get_cache_service()
-    try:
-        stats = await cache.get_cache_stats()
-        return {
-            "status": "healthy",
-            "cache": {
-                "hits": stats.get("redis_hits", 0),
-                "misses": stats.get("redis_misses", 0),
-                "hit_rate": f"{stats.get('redis_hit_rate', 0):.1f}%" if stats.get("redis_hits", 0) > 0 else "0%",
-                "total_keys": stats.get("total_keys", 0),
-                "pattern_keys": stats.get("pattern_keys", 0),
-                "price_keys": stats.get("price_keys", 0),
-                "memory_used": stats.get("memory_used", "unknown")
-            }
-        }
-    except Exception as e:
-        return {"status": "degraded", "error": str(e)}
-
 
 class PatternRequest(BaseModel):
     ticker: str
@@ -126,10 +105,17 @@ async def detect_pattern(request: PatternRequest):
         # Cache the price data (15 min TTL)
         await cache.set_price_data(ticker, price_data)
 
-        # Get SPY data for RS calculation
+        # Get SPY data for RS calculation (tries cache → TwelveData → Yahoo)
         spy_data = await cache.get_price_data("SPY")
         if not spy_data:
-        spy_data = await twelve_data_client.get_time_series("SPY", "1day", 500)
+            spy_data = await twelve_data_client.get_time_series(
+                ticker="SPY",
+                interval="1day",
+                outputsize=500
+            )
+            if spy_data:
+                await cache.set_price_data("SPY", spy_data)
+
         if not spy_data and request.use_yahoo_fallback:
             spy_data = await yahoo_client.get_time_series("SPY", "1d", "5y")
             if spy_data:
@@ -233,4 +219,4 @@ async def cache_stats():
         return {
             "status": "error",
             "error": str(e)
-    }
+        }
