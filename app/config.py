@@ -14,6 +14,20 @@ class Settings(BaseSettings):
     telegram_chat_id: Optional[str] = None
     telegram_webhook_url: Optional[str] = None
 
+    @property
+    def auto_webhook_url(self) -> str:
+        """Auto-generate webhook URL from Railway domain"""
+        import os
+        # Try to get from Railway environment
+        railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        if railway_domain:
+            return f"https://{railway_domain}"
+        # Fallback to explicitly set URL
+        if self.telegram_webhook_url:
+            return self.telegram_webhook_url
+        # Default for local development
+        return "http://localhost:8000"
+
     # AI Services
     openrouter_api_key: str = "dev-key"
     openai_api_key: Optional[str] = None
