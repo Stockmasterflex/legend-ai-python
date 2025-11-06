@@ -61,11 +61,11 @@ class ChartingService:
             # Check rate limit
             if not await self._check_rate_limit():
                 logger.warning(f"Chart-IMG rate limit exceeded for {ticker}")
-                return None
+                return self._get_placeholder_url(ticker)
 
-            # Check for dev key
-            if self.api_key in ["dev-key", "", None]:
-                logger.warning("Chart-IMG API key not configured, returning placeholder")
+            # Check for dev key or missing key - return TradingView fallback
+            if not self.api_key or self.api_key in ["dev-key", "", "your-api-key-here"]:
+                logger.debug(f"Chart-IMG API key not configured, returning TradingView embed for {ticker}")
                 return self._get_placeholder_url(ticker)
 
             # Map timeframe to Chart-IMG format
@@ -77,7 +77,8 @@ class ChartingService:
             }
             period = timeframe_map.get(timeframe.lower(), "daily")
 
-            # Build request
+            # Build request for Chart-IMG Pro API
+            # Chart-IMG endpoint: https://chart-img.com/chart
             params = {
                 "symbol": ticker.upper(),
                 "period": period,
@@ -86,28 +87,37 @@ class ChartingService:
                 "api_key": self.api_key
             }
 
+            logger.debug(f"Requesting chart for {ticker} from Chart-IMG API")
+
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.get(self.BASE_URL, params=params)
 
                 if response.status_code == 200:
-                    # Chart-IMG returns a URL or image URL
-                    # Typically the response is JSON with chart URL
+                    # Chart-IMG returns JSON with chart_url
                     try:
                         data = response.json()
-                        chart_url = data.get("url") or data.get("chart_url")
+                        chart_url = data.get("url") or data.get("chart_url") or data.get("image_url")
                         if chart_url:
-                            logger.info(f"Chart generated for {ticker}: {chart_url[:80]}...")
+                            logger.info(f"✅ Chart generated for {ticker} via Chart-IMG")
                             return chart_url
-                    except:
-                        # If response is image data, return the request URL
-                        logger.info(f"Chart generated for {ticker}")
-                        return response.url.path
+                        else:
+                            # If no URL in JSON, try to return response data
+                            logger.warning(f"Chart-IMG returned success but no URL for {ticker}")
+                            return self._get_placeholder_url(ticker)
+                    except ValueError:
+                        # Response is likely an image blob, not JSON
+                        # Return the direct image URL
+                        logger.info(f"✅ Chart generated for {ticker} as image data")
+                        return str(response.url)
                 else:
-                    logger.error(f"Chart-IMG error for {ticker}: {response.status_code}")
+                    logger.warning(f"Chart-IMG error for {ticker}: HTTP {response.status_code}")
                     return self._get_placeholder_url(ticker)
 
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱️ Chart generation timeout for {ticker}")
+            return self._get_placeholder_url(ticker)
         except Exception as e:
-            logger.error(f"Error generating chart for {ticker}: {e}")
+            logger.warning(f"⚠️ Chart generation error for {ticker}: {e}")
             return self._get_placeholder_url(ticker)
 
     def _get_placeholder_url(self, ticker: str) -> str:
