@@ -471,6 +471,60 @@ _Usage resets daily at midnight UTC_
             logger.error(f"Error in handle_usage: {e}")
             return f"❌ Error: {str(e)}"
 
+    async def handle_natural_language(self, chat_id: str, text: str) -> str:
+        """Handle natural language queries"""
+        text_lower = text.lower()
+
+        # Extract ticker symbols from text (3-5 uppercase letters)
+        import re
+        ticker_pattern = r'\b[A-Z]{2,5}\b'
+        tickers = re.findall(ticker_pattern, text)
+        ticker = tickers[0] if tickers else None
+
+        # Intent detection based on keywords
+        scan_keywords = ["scan", "best setups", "top stocks", "find", "search", "what's good"]
+        pattern_keywords = ["analyze", "analysis", "pattern", "check", "look at", "review"]
+        chart_keywords = ["chart", "graph", "show me"]
+        market_keywords = ["market", "spy", "indices", "how is the market"]
+        plan_keywords = ["trading plan", "position size", "how much", "trade"]
+
+        # Check intents
+        if any(kw in text_lower for kw in scan_keywords):
+            return await self.handle_scan(chat_id)
+
+        elif any(kw in text_lower for kw in chart_keywords) and ticker:
+            caption, photo_url = await self.handle_chart(chat_id, ticker)
+            if photo_url:
+                await self.send_photo(chat_id, photo_url, caption)
+                return ""
+            return caption
+
+        elif any(kw in text_lower for kw in pattern_keywords) and ticker:
+            return await self.handle_pattern(chat_id, ticker)
+
+        elif any(kw in text_lower for kw in plan_keywords) and ticker:
+            return await self.handle_plan(chat_id, ticker)
+
+        elif any(kw in text_lower for kw in market_keywords):
+            return await self.handle_market(chat_id)
+
+        # If ticker found but no clear intent, default to pattern analysis
+        elif ticker:
+            return await self.handle_pattern(chat_id, ticker)
+
+        # No clear intent
+        else:
+            return """💡 *I can help you with:*
+
+• "Scan for best setups"
+• "Analyze NVDA"
+• "Show me TSLA chart"
+• "Trading plan for AAPL"
+• "How is the market?"
+
+Or use commands like /pattern, /scan, /chart, etc.
+Type /help for full command list."""
+
 
 # Global service instance
 telegram_service = TelegramService()
@@ -546,10 +600,16 @@ async def telegram_webhook(update: TelegramUpdate):
             response = await telegram_service.handle_usage(chat_id)
             await telegram_service.send_message(chat_id, response)
 
-        else:
+        elif cmd.startswith("/"):
             # Unknown command
             response = "❌ Unknown command. Use /help to see available commands."
             await telegram_service.send_message(chat_id, response)
+
+        else:
+            # Handle natural language
+            response = await telegram_service.handle_natural_language(chat_id, text)
+            if response:  # Only send if not empty (chart already sent photo)
+                await telegram_service.send_message(chat_id, response)
 
         return {"ok": True}
 

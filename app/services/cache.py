@@ -40,6 +40,35 @@ class CacheService:
         key_parts = [f"{k}={v}" for k, v in sorted_items]
         return f"{prefix}:{':'.join(key_parts)}"
 
+    async def get(self, key: str) -> Optional[Any]:
+        """Generic get from cache (for market_data service)"""
+        try:
+            redis = await self._get_redis()
+            data = await redis.get(key)
+            if data:
+                try:
+                    return json.loads(data)
+                except:
+                    return data
+            return None
+        except Exception as e:
+            logger.error(f"Cache get error for {key}: {e}")
+            return None
+
+    async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
+        """Generic set to cache (for market_data service)"""
+        try:
+            redis = await self._get_redis()
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value)
+            elif isinstance(value, (int, float)):
+                value = str(value)
+            await redis.setex(key, ttl, value)
+            return True
+        except Exception as e:
+            logger.error(f"Cache set error for {key}: {e}")
+            return False
+
     async def get_pattern(
         self,
         ticker: str,

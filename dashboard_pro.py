@@ -1,8 +1,10 @@
 import gradio as gr
 import httpx
 import json
+import os
 
-API_BASE = "http://localhost:8000"
+# Use environment variable or default to localhost
+API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
 async def scan_pattern(ticker, interval):
     async with httpx.AsyncClient(timeout=30) as client:
