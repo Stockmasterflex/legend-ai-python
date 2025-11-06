@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.api.telegram import router as telegram_router
 from app.api.patterns import router as patterns_router
 from app.api.charts import router as charts_router
+from app.api.universe import router as universe_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +74,7 @@ app = FastAPI(
 app.include_router(telegram_router, prefix="/api", tags=["telegram"])
 app.include_router(patterns_router)
 app.include_router(charts_router)
+app.include_router(universe_router)
 
 @app.get("/")
 async def root():
