@@ -27,10 +27,8 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Legend AI Bot...")
 
-    # Set webhook if URL provided (Phase 1.2)
-    if settings.telegram_webhook_url:
-        await setup_telegram_webhook()
-        logger.info(f"Webhook URL configured: {settings.telegram_webhook_url}")
+    # Set webhook automatically
+    await setup_telegram_webhook()
 
     logger.info("Bot started successfully!")
 
@@ -40,32 +38,35 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down...")
 
 async def setup_telegram_webhook():
-    """Set up Telegram webhook - non-blocking if not configured"""
+    """Set up Telegram webhook - auto-configures from Railway"""
     try:
-        # Only set webhook if both URL and token are properly configured
-        if not settings.telegram_webhook_url:
-            logger.info("Telegram webhook URL not configured - skipping webhook setup")
-            return
-        
-        if not settings.telegram_bot_token or settings.telegram_bot_token == "dev-token":
-            logger.info("Telegram bot token not configured - skipping webhook setup")
+        # Get bot token
+        bot_token = settings.telegram_bot_token
+        if not bot_token or bot_token == "dev-token":
+            logger.warning("⚠️ Telegram bot token not configured - webhook not set")
             return
 
-        webhook_url = f"{settings.telegram_webhook_url}/api/webhook/telegram"
+        # Get webhook URL (auto-detect from Railway or use configured)
+        webhook_base = settings.auto_webhook_url
+        webhook_url = f"{webhook_base}/api/webhook/telegram"
+
+        logger.info(f"📡 Setting Telegram webhook to: {webhook_url}")
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"https://api.telegram.org/bot{settings.telegram_bot_token}/setWebhook",
+                f"https://api.telegram.org/bot{bot_token}/setWebhook",
                 json={"url": webhook_url}
             )
 
             if response.status_code == 200:
-                logger.info(f"✅ Telegram webhook set to: {webhook_url}")
+                logger.info(f"✅ Telegram webhook successfully configured!")
+                logger.info(f"   URL: {webhook_url}")
             else:
-                logger.warning(f"⚠️ Failed to set webhook: {response.status_code} - {response.text}")
+                logger.error(f"❌ Failed to set webhook: {response.status_code}")
+                logger.error(f"   Response: {response.text}")
 
     except Exception as e:
-        logger.warning(f"⚠️ Error setting up webhook (non-critical): {e}")
+        logger.error(f"❌ Error setting up webhook: {e}")
 
 # Create FastAPI app
 app = FastAPI(

@@ -268,7 +268,7 @@ RS Rating: {result.rs_rating:.0f}
         """Handle /watchlist command"""
         try:
             # Get watchlist from API
-            response = await self.client.get(f"{settings.telegram_webhook_url}/api/watchlist")
+            response = await self.client.get(f"{settings.auto_webhook_url}/api/watchlist")
             data = response.json()
 
             if not data.get("success") or not data.get("items"):
@@ -298,7 +298,7 @@ RS Rating: {result.rs_rating:.0f}
 
         try:
             response = await self.client.post(
-                f"{settings.telegram_webhook_url}/api/watchlist/add",
+                f"{settings.auto_webhook_url}/api/watchlist/add",
                 json={"ticker": ticker, "reason": reason or "Monitoring"}
             )
             data = response.json()
@@ -321,7 +321,7 @@ RS Rating: {result.rs_rating:.0f}
 
         try:
             response = await self.client.delete(
-                f"{settings.telegram_webhook_url}/api/watchlist/{ticker}"
+                f"{settings.auto_webhook_url}/api/watchlist/{ticker}"
             )
             data = response.json()
 
