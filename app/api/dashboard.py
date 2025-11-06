@@ -1,6 +1,6 @@
 """
-Simple API-based dashboard endpoints (no Gradio queue issues)
-Returns HTML for browser or JSON for API clients
+Simple API-based dashboard endpoints
+Returns HTML for browser with working buttons
 """
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -12,7 +12,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legend AI Dashboard</title>
+    <title>Legend AI Trading Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -31,7 +31,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             margin-bottom: 30px;
             font-size: 32px;
         }
-        .tab-buttons {
+        .tabs {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
@@ -110,20 +110,15 @@ HTML_DASHBOARD = """<!DOCTYPE html>
         button:active {
             transform: translateY(0);
         }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
         .result {
             background: #f5f5f5;
             padding: 20px;
             border-radius: 8px;
             margin-top: 20px;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.6;
-            max-height: 500px;
+            max-height: 600px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-word;
@@ -141,12 +136,10 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             background: #e8f5e9;
             border-left-color: #388e3c;
         }
-        label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
-            color: #333;
+        .result img {
+            max-width: 100%;
+            margin-top: 15px;
+            border-radius: 6px;
         }
     </style>
 </head>
@@ -154,11 +147,11 @@ HTML_DASHBOARD = """<!DOCTYPE html>
     <div class="container">
         <h1>🚀 Legend AI Trading Dashboard</h1>
 
-        <div class="tab-buttons">
-            <button class="tab-btn active" onclick="showTab('pattern', event)">📊 Pattern Scanner</button>
-            <button class="tab-btn" onclick="showTab('universe', event)">🔍 Universe Scan</button>
-            <button class="tab-btn" onclick="showTab('watchlist', event)">📋 Watchlist</button>
-            <button class="tab-btn" onclick="showTab('market', event)">📈 Market</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'pattern')">📊 Pattern Scanner</button>
+            <button class="tab-btn" onclick="switchTab(event, 'universe')">🔍 Universe Scan</button>
+            <button class="tab-btn" onclick="switchTab(event, 'watchlist')">📋 Watchlist</button>
+            <button class="tab-btn" onclick="switchTab(event, 'market')">📈 Market</button>
         </div>
 
         <!-- Pattern Scanner Tab -->
@@ -212,18 +205,22 @@ HTML_DASHBOARD = """<!DOCTYPE html>
     <script>
         const API_BASE = window.location.protocol + '//' + window.location.host;
 
-        function showTab(tabName, event) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        function switchTab(evt, tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(el => el.classList.remove('active'));
+
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+
             document.getElementById(tabName).classList.add('active');
-            if (event && event.target) {
-                event.target.classList.add('active');
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
             }
         }
 
-        function showResult(elementId, message, isError = false) {
+        function showResult(elementId, text, isError) {
             const el = document.getElementById(elementId);
-            el.textContent = message;
+            el.textContent = text;
             el.classList.add('show');
             el.classList.toggle('error', isError);
             el.classList.toggle('success', !isError);
@@ -239,8 +236,8 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             }
 
             const resultEl = document.getElementById('patternResult');
-            resultEl.classList.remove('show', 'error', 'success');
-            resultEl.innerHTML = '<div style="text-align: center;">⏳ Analyzing ' + ticker + '...<br>(Generating chart...)</div>';
+            resultEl.classList.remove('error', 'success');
+            resultEl.innerHTML = '<div style="text-align: center; padding: 20px;">⏳ Analyzing ' + ticker + '...</div>';
             resultEl.classList.add('show');
 
             try {
@@ -255,32 +252,12 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                 if (data.success) {
                     const d = data.data;
+                    let html = '<h3>' + d.pattern + ' (Score: ' + d.score.toFixed(1) + '/10)</h3>';
+                    html += '<p>Entry: $' + d.entry.toFixed(2) + ' | Stop: $' + d.stop.toFixed(2) + ' | Target: $' + d.target.toFixed(2) + '</p>';
+                    html += '<p>R:R: ' + d.risk_reward.toFixed(2) + ':1 | Current: $' + d.current_price.toFixed(2) + '</p>';
 
-                    // Format score with color
-                    const scoreColor = d.score >= 8 ? '#388e3c' : d.score >= 6 ? '#ff9800' : '#d32f2f';
-                    const scoreEmoji = d.score >= 8 ? '✅' : d.score >= 6 ? '⚠️' : '❌';
-
-                    // Build formatted HTML result
-                    let html = `
-                    <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">
-                            ${scoreEmoji} ${d.pattern} <span style="color: ${scoreColor}; font-size: 16px;">${d.score.toFixed(1)}/10</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
-                            <div>📍 Entry: <strong>$${d.entry.toFixed(2)}</strong></div>
-                            <div>🎯 Target: <strong>$${d.target.toFixed(2)}</strong></div>
-                            <div>🛑 Stop: <strong>$${d.stop.toFixed(2)}</strong></div>
-                            <div>📊 R:R: <strong>${d.risk_reward.toFixed(2)}:1</strong></div>
-                            <div>💰 Current: <strong>$${d.current_price.toFixed(2)}</strong></div>
-                            <div>⭐ RS: <strong>${d.rs_rating ? d.rs_rating.toFixed(0) : 'N/A'}</strong></div>
-                        </div>
-                    </div>`;
-
-                    // Add chart if available
                     if (d.chart_url) {
-                        html += '<img src="' + d.chart_url + '" style="max-width: 100%; margin-top: 15px; border-radius: 6px; border: 2px solid #667eea;" onerror="this.style.display=\'none\';">';
-                    } else {
-                        html += '<div style="text-align: center; color: #999; padding: 20px;">📊 Chart not available</div>';
+                        html += '<img src="' + d.chart_url + '" alt="Chart">';
                     }
 
                     resultEl.innerHTML = html;
@@ -295,7 +272,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
         async function scanUniverse() {
             const minScore = parseFloat(document.getElementById('scanMinScore').value);
-            showResult('universeResult', '⏳ Scanning ' + minScore + '+ patterns... (1-2 minutes)', false);
+            showResult('universeResult', '⏳ Scanning... This may take 1-2 minutes', false);
 
             try {
                 const response = await fetch(API_BASE + '/api/universe/scan', {
@@ -307,28 +284,15 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
 
-                if (data.success && data.results.length > 0) {
+                if (data.success) {
                     const resultEl = document.getElementById('universeResult');
-                    let html = `<div style="margin-bottom: 15px; font-weight: bold;">Found <span style="color: #388e3c;">${data.results.length}</span> high-quality setups:</div>`;
-
+                    let html = 'Found ' + data.results.length + ' setups:\\n\\n';
                     data.results.forEach((r, i) => {
-                        const scoreColor = r.score >= 8 ? '#388e3c' : r.score >= 6 ? '#ff9800' : '#d32f2f';
-                        html += `
-                        <div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid ${scoreColor};">
-                            <div style="font-weight: bold; margin-bottom: 5px;">
-                                ${i + 1}. ${r.ticker} - ${r.pattern} <span style="color: ${scoreColor}; font-weight: bold;">${r.score.toFixed(1)}/10</span>
-                            </div>
-                            <div style="font-size: 13px;">
-                                📍 Entry: $${r.entry.toFixed(2)} | 🛑 Stop: $${r.stop.toFixed(2)} | 🎯 Target: $${r.target.toFixed(2)}
-                            </div>
-                        </div>`;
+                        html += (i + 1) + '. ' + r.ticker + ' - ' + r.pattern + ' (Score: ' + r.score.toFixed(1) + '/10)\\n';
+                        html += '   Entry: $' + r.entry.toFixed(2) + ' | Stop: $' + r.stop.toFixed(2) + ' | Target: $' + r.target.toFixed(2) + '\\n\\n';
                     });
-
-                    resultEl.innerHTML = html;
-                    resultEl.classList.remove('error');
-                    resultEl.classList.add('success');
-                } else if (data.success) {
-                    showResult('universeResult', '🔍 No setups found matching score ' + minScore + '+', false);
+                    resultEl.textContent = html;
+                    resultEl.classList.add('show', 'success');
                 } else {
                     showResult('universeResult', 'Error: ' + (data.detail || 'Scan failed'), true);
                 }
@@ -381,9 +345,11 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                 if (data.success && data.items && data.items.length > 0) {
                     let msg = 'Your Watchlist (' + data.items.length + ' stocks):\\n\\n';
                     data.items.forEach(item => {
-                        msg += `• ${item.ticker} - ${item.reason}\\n  Added: ${item.added_date}\\n\\n`;
+                        msg += '• ' + item.ticker + ' - ' + item.reason + '\\n  Added: ' + item.added_date + '\\n\\n';
                     });
-                    showResult('watchlistResult', msg, false);
+                    const resultEl = document.getElementById('watchlistResult');
+                    resultEl.textContent = msg;
+                    resultEl.classList.add('show', 'success');
                 } else {
                     showResult('watchlistResult', 'Watchlist is empty', false);
                 }
@@ -402,12 +368,14 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                 if (data.success) {
                     const m = data.data;
-                    const msg = `SPY Price: $${m.spy_price.toFixed(2)}
-50 SMA: $${m.sma_50.toFixed(2)}
-200 SMA: $${m.sma_200.toFixed(2)}
-Market Regime: ${m.regime}
-Status: ${m.status}`;
-                    showResult('marketResult', msg, false);
+                    const msg = 'SPY Price: $' + m.spy_price.toFixed(2) + '\\n' +
+                               '50 SMA: $' + m.sma_50.toFixed(2) + '\\n' +
+                               '200 SMA: $' + m.sma_200.toFixed(2) + '\\n' +
+                               'Market Regime: ' + m.regime + '\\n' +
+                               'Status: ' + m.status;
+                    const resultEl = document.getElementById('marketResult');
+                    resultEl.textContent = msg;
+                    resultEl.classList.add('show', 'success');
                 } else {
                     showResult('marketResult', 'Error: ' + (data.detail || 'Failed to fetch'), true);
                 }
