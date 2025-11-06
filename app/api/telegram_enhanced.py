@@ -16,7 +16,7 @@ from app.core.pattern_detector import PatternDetector
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-router = APIRouter(prefix="/api/webhook", tags=["telegram"])
+router = APIRouter(tags=["telegram"])
 
 
 class TelegramUpdate(BaseModel):
@@ -530,7 +530,7 @@ Type /help for full command list."""
 telegram_service = TelegramService()
 
 
-@router.post("/telegram")
+@router.post("/api/webhook/telegram")
 async def telegram_webhook(update: TelegramUpdate):
     """Handle incoming Telegram webhook updates"""
     try:
