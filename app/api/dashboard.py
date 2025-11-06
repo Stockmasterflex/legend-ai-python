@@ -238,7 +238,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
             const resultEl = document.getElementById('patternResult');
             resultEl.classList.remove('show', 'error', 'success');
-            resultEl.innerHTML = 'Analyzing...';
+            resultEl.innerHTML = '<div style="text-align: center;">⏳ Analyzing ' + ticker + '...<br>(Generating chart...)</div>';
             resultEl.classList.add('show');
 
             try {
@@ -253,19 +253,32 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                 if (data.success) {
                     const d = data.data;
-                    const msg = `Pattern: ${d.pattern}
-Score: ${d.score}/10
-Entry: $${d.entry.toFixed(2)}
-Stop: $${d.stop.toFixed(2)}
-Target: $${d.target.toFixed(2)}
-R:R Ratio: ${d.risk_reward.toFixed(2)}:1
-Current Price: $${d.current_price.toFixed(2)}
-RS Rating: ${d.rs_rating.toFixed(0)}`;
 
-                    // Display results with optional chart
-                    let html = '<pre>' + msg + '</pre>';
+                    // Format score with color
+                    const scoreColor = d.score >= 8 ? '#388e3c' : d.score >= 6 ? '#ff9800' : '#d32f2f';
+                    const scoreEmoji = d.score >= 8 ? '✅' : d.score >= 6 ? '⚠️' : '❌';
+
+                    // Build formatted HTML result
+                    let html = `
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                        <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">
+                            ${scoreEmoji} ${d.pattern} <span style="color: ${scoreColor}; font-size: 16px;">${d.score.toFixed(1)}/10</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                            <div>📍 Entry: <strong>$${d.entry.toFixed(2)}</strong></div>
+                            <div>🎯 Target: <strong>$${d.target.toFixed(2)}</strong></div>
+                            <div>🛑 Stop: <strong>$${d.stop.toFixed(2)}</strong></div>
+                            <div>📊 R:R: <strong>${d.risk_reward.toFixed(2)}:1</strong></div>
+                            <div>💰 Current: <strong>$${d.current_price.toFixed(2)}</strong></div>
+                            <div>⭐ RS: <strong>${d.rs_rating ? d.rs_rating.toFixed(0) : 'N/A'}</strong></div>
+                        </div>
+                    </div>`;
+
+                    // Add chart if available
                     if (d.chart_url) {
-                        html += '<br><img src="' + d.chart_url + '" style="max-width: 100%; margin-top: 20px; border-radius: 6px;">';
+                        html += '<img src="' + d.chart_url + '" style="max-width: 100%; margin-top: 15px; border-radius: 6px; border: 2px solid #667eea;" onerror="this.style.display=\'none\';">';
+                    } else {
+                        html += '<div style="text-align: center; color: #999; padding: 20px;">📊 Chart not available</div>';
                     }
 
                     resultEl.innerHTML = html;
@@ -280,7 +293,7 @@ RS Rating: ${d.rs_rating.toFixed(0)}`;
 
         async function scanUniverse() {
             const minScore = parseFloat(document.getElementById('scanMinScore').value);
-            showResult('universeResult', 'Scanning... This may take 1-2 minutes', false);
+            showResult('universeResult', '⏳ Scanning ' + minScore + '+ patterns... (1-2 minutes)', false);
 
             try {
                 const response = await fetch(API_BASE + '/api/universe/scan', {
@@ -292,13 +305,28 @@ RS Rating: ${d.rs_rating.toFixed(0)}`;
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
 
-                if (data.success) {
-                    let msg = 'Found ' + data.results.length + ' setups:\\n\\n';
+                if (data.success && data.results.length > 0) {
+                    const resultEl = document.getElementById('universeResult');
+                    let html = `<div style="margin-bottom: 15px; font-weight: bold;">Found <span style="color: #388e3c;">${data.results.length}</span> high-quality setups:</div>`;
+
                     data.results.forEach((r, i) => {
-                        msg += `${i + 1}. ${r.ticker} - ${r.pattern} (Score: ${r.score}/10)\\n`;
-                        msg += `   Entry: $${r.entry.toFixed(2)} | Stop: $${r.stop.toFixed(2)}\\n\\n`;
+                        const scoreColor = r.score >= 8 ? '#388e3c' : r.score >= 6 ? '#ff9800' : '#d32f2f';
+                        html += `
+                        <div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid ${scoreColor};">
+                            <div style="font-weight: bold; margin-bottom: 5px;">
+                                ${i + 1}. ${r.ticker} - ${r.pattern} <span style="color: ${scoreColor}; font-weight: bold;">${r.score.toFixed(1)}/10</span>
+                            </div>
+                            <div style="font-size: 13px;">
+                                📍 Entry: $${r.entry.toFixed(2)} | 🛑 Stop: $${r.stop.toFixed(2)} | 🎯 Target: $${r.target.toFixed(2)}
+                            </div>
+                        </div>`;
                     });
-                    showResult('universeResult', msg, false);
+
+                    resultEl.innerHTML = html;
+                    resultEl.classList.remove('error');
+                    resultEl.classList.add('success');
+                } else if (data.success) {
+                    showResult('universeResult', '🔍 No setups found matching score ' + minScore + '+', false);
                 } else {
                     showResult('universeResult', 'Error: ' + (data.detail || 'Scan failed'), true);
                 }
