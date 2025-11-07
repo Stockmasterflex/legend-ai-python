@@ -25,6 +25,7 @@ class ChartRequest(BaseModel):
     show_sma50: bool = True
     show_sma150: bool = True
     show_sma200: bool = True
+    preset: str = "breakout"
 
 
 class MultiTimeframeChartRequest(BaseModel):
@@ -34,6 +35,7 @@ class MultiTimeframeChartRequest(BaseModel):
     stop: Optional[float] = None
     target: Optional[float] = None
     overlays: Optional[List[str]] = None
+    preset: str = "breakout"
 
 
 class ChartResponse(BaseModel):
@@ -53,6 +55,11 @@ class MultiTimeframeChartResponse(BaseModel):
     failed_timeframes: List[str] = []
     processing_time: Optional[float] = None
     message: Optional[str] = None
+
+
+class ChartUsageResponse(BaseModel):
+    success: bool
+    usage: Dict[str, Any]
 
 
 @router.post("/generate", response_model=ChartResponse)
@@ -112,7 +119,8 @@ async def generate_chart(request: ChartRequest):
             entry=request.entry,
             stop=request.stop,
             target=request.target,
-            overlays=overlays if overlays else None
+            overlays=overlays if overlays else None,
+            preset=request.preset
         )
 
         if chart_url:
@@ -183,7 +191,8 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
             entry=request.entry,
             stop=request.stop,
             target=request.target,
-            overlays=request.overlays
+            overlays=request.overlays,
+            preset=request.preset
         )
 
         processing_time = time.time() - start_time
@@ -225,24 +234,33 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
         )
 
 
+@router.get("/usage", response_model=ChartUsageResponse)
+async def chart_usage():
+    """Expose Chart-IMG usage metrics for dashboards."""
+    try:
+        usage = await get_charting_service().get_usage_stats()
+        return ChartUsageResponse(success=True, usage=usage)
+    except Exception as e:
+        logger.error(f"Chart usage telemetry error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load Chart-IMG usage")
+
+
 @router.get("/health")
 async def charts_health():
     """Health check for charts service"""
     try:
         charting_service = get_charting_service()
-
-        # Check Chart-IMG API connection with a quick chart generation
-        # Use fallback mode flag to determine if we're degraded
+        usage = await charting_service.get_usage_stats()
         status_msg = "connected"
-        if charting_service.fallback_mode:
+        if usage.get("fallback_mode"):
             status_msg = "degraded (fallback mode)"
-
         return {
             "status": "healthy",
             "chart_img_api": status_msg,
-            "call_count": charting_service.call_count,
-            "daily_limit": charting_service.daily_limit,
-            "remaining_calls": charting_service.daily_limit - charting_service.call_count
+            "daily_usage": usage.get("daily_usage"),
+            "daily_limit": usage.get("daily_limit"),
+            "remaining_calls": max(0, usage.get("daily_limit", 0) - usage.get("daily_usage", 0)),
+            "burst_limit": usage.get("burst_limit")
         }
     except Exception as e:
         return {

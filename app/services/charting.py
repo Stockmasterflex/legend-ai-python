@@ -2,13 +2,16 @@
 Chart-IMG service for generating trading charts with indicators
 Pro plan: 500 daily calls, 10/sec rate limit, no watermark
 Supports: RSI, EMA 21, SMA 50, Volume, Support/Resistance, Long Position drawings
-Enhanced with multi-timeframe and graceful degradation
+Enhanced with multi-timeframe presets, Redis-backed rate limiting and graceful degradation
 """
 import logging
 import asyncio
 from typing import Optional, Dict, Any, List
 import httpx
 from datetime import datetime
+from uuid import uuid4
+from redis.asyncio import Redis
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -21,29 +24,62 @@ class ChartingService:
     RATE_LIMIT_DELAY = 0.1  # 100ms = 10 calls/sec
     MAX_PARAMETERS = 5  # Max studies + drawings combined; gracefully degrade if needed
 
+    CHART_PRESETS = {
+        "breakout": ["EMA21", "EMA50", "Volume"],
+        "swing": ["EMA21", "EMA50", "RSI"],
+        "momentum": ["EMA21", "EMA50", "EMA200"],
+        "support": ["EMA50", "EMA200", "Volume"],
+    }
+
     def __init__(self):
         self.api_key = settings.chartimg_api_key
         self.daily_limit = settings.chartimg_daily_limit
         self.rate_limit = 10  # 10 calls/sec
-        self.call_count = 0
-        self.last_reset = datetime.now()
-        self.request_queue = asyncio.Queue()
         self.fallback_mode = False  # Graceful degradation flag
+        self.redis: Redis = Redis.from_url(settings.redis_url, decode_responses=True)
 
     async def _check_rate_limit(self):
-        """Check daily rate limit and activate fallback if needed"""
-        now = datetime.now()
-        if (now - self.last_reset).total_seconds() >= 86400:
-            self.call_count = 0
-            self.last_reset = now
-
-        if self.call_count >= self.daily_limit:
-            logger.warning(f"⚠️ Chart-IMG daily limit reached ({self.daily_limit}). Entering fallback mode.")
+        """Global burst (10/sec) + daily quota (500/day) enforcement"""
+        if not await self._consume_burst_token():
+            return False
+        usage = await self._get_daily_usage()
+        if usage >= self.daily_limit:
+            logger.warning("⚠️ Chart-IMG daily quota exhausted. Using fallback charts.")
             self.fallback_mode = True
             return False
-
-        self.call_count += 1
+        await self._increment_daily_usage()
         return True
+
+    async def _consume_burst_token(self) -> bool:
+        """Shared 10 req/sec limit using Redis sorted set"""
+        now_ms = int(datetime.utcnow().timestamp() * 1000)
+        token_id = f"{now_ms}-{uuid4().hex}"
+        key = "chartimg:burst"
+        pipeline = self.redis.pipeline()
+        pipeline.zremrangebyscore(key, 0, now_ms - 1000)
+        pipeline.zadd(key, {token_id: now_ms})
+        pipeline.zcard(key)
+        pipeline.expire(key, 2)
+        _, _, count, _ = await pipeline.execute()
+        if count > self.rate_limit:
+            await self.redis.zrem(key, token_id)
+            return False
+        return True
+
+    async def _get_daily_usage(self) -> int:
+        value = await self.redis.get(self._daily_usage_key)
+        return int(value or 0)
+
+    async def _increment_daily_usage(self):
+        key = self._daily_usage_key
+        usage = await self.redis.incr(key)
+        if usage == 1:
+            await self.redis.expire(key, 86400)
+
+    @property
+    def _daily_usage_key(self) -> str:
+        today = datetime.utcnow().strftime("%Y%m%d")
+        return f"chartimg:usage:{today}"
 
     def _get_fallback_url(self, ticker: str, timeframe: str = "1day") -> str:
         """
@@ -93,7 +129,7 @@ class ChartingService:
         Gracefully degrade studies if we're approaching MAX_PARAMETERS limit
         """
         if overlays is None:
-            overlays = ["RSI", "EMA21", "EMA50", "Volume"]
+            overlays = self._resolve_overlays("breakout")
 
         # Convert ticker to TradingView format
         tv_symbol = self._format_ticker(ticker)
@@ -224,6 +260,11 @@ class ChartingService:
             }
         }
 
+    def _resolve_overlays(self, preset: str) -> List[str]:
+        """Return overlays for named preset"""
+        preset_key = (preset or "breakout").lower()
+        return self.CHART_PRESETS.get(preset_key, self.CHART_PRESETS["breakout"])
+
     def _resolve_interval(self, timeframe: str) -> str:
         """Convert timeframe string to Chart-IMG interval format"""
         timeframe_map = {
@@ -277,7 +318,8 @@ class ChartingService:
         target: Optional[float] = None,
         support: Optional[float] = None,
         resistance: Optional[float] = None,
-        overlays: Optional[List[str]] = None
+        overlays: Optional[List[str]] = None,
+        preset: str = "breakout"
     ) -> Optional[str]:
         """
         Generate a chart with indicators and drawings using Chart-IMG API
@@ -292,7 +334,8 @@ class ChartingService:
             target: Target price for long position drawing
             support: Support level price
             resistance: Resistance level price
-            overlays: List of indicators to overlay (RSI, EMA21, EMA50, EMA200, etc.)
+            overlays: Optional custom overlays; otherwise a preset is used
+            preset: Preset name (breakout, swing, momentum, support)
 
         Returns:
             URL of the generated chart image
@@ -308,7 +351,8 @@ class ChartingService:
             # Build Chart-IMG request payload
             payload = self._build_chart_payload(
                 ticker, timeframe, width, height,
-                entry, stop, target, support, resistance, overlays
+                entry, stop, target, support, resistance,
+                overlays or self._resolve_overlays(preset)
             )
 
             # Make API request
@@ -351,7 +395,8 @@ class ChartingService:
         entry: Optional[float] = None,
         stop: Optional[float] = None,
         target: Optional[float] = None,
-        overlays: Optional[List[str]] = None
+        overlays: Optional[List[str]] = None,
+        preset: str = "breakout"
     ) -> Dict[str, str]:
         """
         Generate charts for multiple timeframes concurrently
@@ -378,7 +423,8 @@ class ChartingService:
                 entry=entry,
                 stop=stop,
                 target=target,
-                overlays=overlays
+                overlays=overlays,
+                preset=preset
             )
             for tf in timeframes
         ]
@@ -394,6 +440,30 @@ class ChartingService:
                 logger.warning(f"⚠️ Failed to generate chart for {ticker} @ {tf}")
 
         return result
+
+    async def generate_thumbnail(
+        self,
+        ticker: str,
+        timeframe: str = "1day",
+        preset: str = "breakout"
+    ) -> Optional[str]:
+        """Generate lightweight thumbnails for watchlist cards."""
+        return await self.generate_chart(
+            ticker=ticker,
+            timeframe=timeframe,
+            width=400,
+            height=225,
+            preset=preset
+        )
+
+    async def get_usage_stats(self) -> Dict[str, Any]:
+        """Expose usage telemetry for dashboard health cards."""
+        return {
+            "daily_usage": await self._get_daily_usage(),
+            "daily_limit": self.daily_limit,
+            "burst_limit": self.rate_limit,
+            "fallback_mode": self.fallback_mode
+        }
 
     async def get_chart_batch(
         self,
