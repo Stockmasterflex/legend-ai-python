@@ -190,10 +190,11 @@ class UniverseService:
                 return results[:max_results]
             
             logger.info("🔍 Starting universe scan... (this may take a while)")
-            
+
             # Get universe
             universe = await self.get_full_universe()
-            
+            logger.info(f"📊 Scanning {len(universe)} tickers from universe (SP500 + NASDAQ100)")
+
             # Scan in batches to avoid overwhelming APIs
             from app.core.pattern_detector import PatternDetector
             from app.services.market_data import market_data_service
@@ -201,9 +202,9 @@ class UniverseService:
             detector = PatternDetector()
             results = []
             batch_size = 10
-            delay_between_batches = 2  # seconds
+            delay_between_batches = 1  # seconds
 
-            for i in range(0, min(len(universe), 100), batch_size):  # Limit to 100 tickers for API limits
+            for i in range(0, len(universe), batch_size):  # Scan ALL tickers in universe
                 batch = universe[i:i+batch_size]
                 logger.info(f"📊 Scanning batch {i//batch_size + 1} ({len(batch)} tickers)...")
                 
