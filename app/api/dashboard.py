@@ -582,6 +582,124 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             document.body.appendChild(script);
         }
 
+        function createEconomicCalendarWidget(containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const defaultOptions = {
+                "colorTheme": "dark",
+                "isTransparent": false,
+                "locale": "en",
+                "countryFilter": "us",
+                "importanceFilter": "-1,0,1",
+                "width": "100%",
+                "height": "100%"
+            };
+
+            const config = { ...defaultOptions, ...options };
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/economic-calendar/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">Economic Calendar</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+                  ${JSON.stringify(config)}
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
+        function createTopStoriesWidget(containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const defaultOptions = {
+                "displayMode": "regular",
+                "feedMode": "market",
+                "colorTheme": "dark",
+                "isTransparent": false,
+                "locale": "en",
+                "market": "stock",
+                "width": "100%",
+                "height": "100%"
+            };
+
+            const config = { ...defaultOptions, ...options };
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/news/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">Top stories</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
+                  ${JSON.stringify(config)}
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
+        function createSymbolInfoWidget(symbol, containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let tvSymbol = symbol;
+            if (!symbol.includes(':')) {
+                tvSymbol = 'NASDAQ:' + symbol;
+            }
+
+            const defaultOptions = {
+                "symbol": tvSymbol,
+                "colorTheme": "dark",
+                "isTransparent": false,
+                "locale": "en",
+                "width": "100%"
+            };
+
+            const config = { ...defaultOptions, ...options };
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/symbols/${tvSymbol}/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">${symbol} performance</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+                  ${JSON.stringify(config)}
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
         function switchTab(evt, tabName) {
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(el => el.classList.remove('active'));

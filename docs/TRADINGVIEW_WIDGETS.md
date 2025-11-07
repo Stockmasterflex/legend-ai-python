@@ -1,612 +1,210 @@
-# TradingView Widgets Documentation
+# TradingView Widgets in Legend AI Dashboards
 
-This document contains all TradingView widget code used in Legend AI. Each widget is documented with its HTML/JavaScript implementation for easy reference, editing, and reuse.
+This guide shows how to embed official TradingView widgets inside Python-powered dashboards (FastAPI/Starlette templates, Flask/Jinja, Streamlit, Dash, etc.). The approach loads `tv.js` once and spins up any widget type by describing it with JSON.
 
 ---
 
-## 1. Advanced Chart Widget
+## ⚙️ Basic Concept
 
-**Purpose**: Professional trading charts with technical studies (RSI, MACD, Volume, SMA, EMA)
+1. Define a list of widget descriptors in Python. Each descriptor has a `type` (maps to a TradingView constructor) and an `options` dict (copied from TradingView’s docs).
+2. Render an HTML template that:
+   - Creates a `<div>` placeholder for every widget.
+   - Stores the JSON config in a `<script type="application/json">` block.
+   - Loads `https://s3.tradingview.com/tv.js` once.
+   - Runs a small script that reads every config block and instantiates the correct widget.
 
-**Files**: `app/api/dashboard.py` - `createTradingViewWidget()` function
+This keeps layout/CSS under your control while still using the official widgets (which render as iframes).
 
-### HTML Implementation
+---
 
-```html
-<div class="tradingview-widget-container" style="height:100%;width:100%">
-  <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-  <div class="tradingview-widget-copyright">
-    <a href="https://www.tradingview.com/symbols/{SYMBOL}/" rel="noopener nofollow" target="_blank">
-      <span class="blue-text">{SYMBOL} chart</span>
-    </a>
-    <span class="trademark"> by TradingView</span>
-  </div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-  {
-    "allow_symbol_change": true,
-    "calendar": false,
-    "details": false,
-    "hide_side_toolbar": true,
-    "hide_top_toolbar": false,
-    "hide_legend": false,
-    "hide_volume": false,
-    "hotlist": false,
-    "interval": "D",
-    "locale": "en",
-    "save_image": true,
-    "style": "1",
-    "symbol": "{SYMBOL}",
-    "theme": "dark",
-    "timezone": "Etc/UTC",
-    "backgroundColor": "#0F0F0F",
-    "gridColor": "rgba(242, 242, 242, 0.06)",
-    "withdateranges": false,
-    "studies": [
-      "STD;RSI",
-      "STD;MACD",
-      "Volume@tv-basicstudies",
-      "STD;SMA",
-      "STD;EMA"
-    ],
-    "autosize": true
-  }
-  </script>
-</div>
-```
+## 🧪 Minimal Flask Example
 
-### JavaScript Function (Vanilla JS)
+> Drop-in demo you can run locally; adapt the same pattern to FastAPI or any other framework that can render Jinja-style templates.
 
-```javascript
-function createTradingViewWidget(symbol, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
+`app.py`
 
-    const tvSymbol = symbol.includes(':') ? symbol : 'NASDAQ:' + symbol;
+```python
+from flask import Flask, render_template
 
-    const widgetHTML = `
-        <div class="tradingview-widget-container" style="height:100%;width:100%">
-          <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-          <div class="tradingview-widget-copyright">
-            <a href="https://www.tradingview.com/symbols/${tvSymbol}/" rel="noopener nofollow" target="_blank">
-              <span class="blue-text">${symbol} chart</span>
-            </a>
-            <span class="trademark"> by TradingView</span>
-          </div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-          {
-            "allow_symbol_change": true,
-            "calendar": false,
-            "details": false,
-            "hide_side_toolbar": true,
-            "hide_top_toolbar": false,
-            "hide_legend": false,
-            "hide_volume": false,
-            "hotlist": false,
-            "interval": "D",
-            "locale": "en",
-            "save_image": true,
-            "style": "1",
-            "symbol": "${tvSymbol}",
-            "theme": "dark",
-            "timezone": "Etc/UTC",
-            "backgroundColor": "#0F0F0F",
-            "gridColor": "rgba(242, 242, 242, 0.06)",
-            "withdateranges": false,
-            "studies": [
-              "STD;RSI",
-              "STD;MACD",
-              "Volume@tv-basicstudies",
-              "STD;SMA",
-              "STD;EMA"
+app = Flask(__name__)
+
+@app.route("/")
+def dashboard():
+    widgets = [
+        {"type": "ticker-tape", "options": {
+            "symbols": [
+                {"proName": "FOREXCOM:SPXUSD", "title": "S&P 500"},
+                {"proName": "NASDAQ:NDX", "title": "Nasdaq 100"},
+                {"proName": "DJ:DJI", "title": "Dow"},
+                {"proName": "CRYPTO:BTCUSD", "title": "BTC"},
+                {"proName": "FX:EURUSD", "title": "EURUSD"},
             ],
-            "autosize": true
-          }
-          <\/script>
-        </div>
-    `;
+            "showSymbolLogo": True
+        }},
+        {"type": "market-overview", "options": {
+            "tabs": [
+                {"title": "US Indices", "symbols": [{"s": "FOREXCOM:SPXUSD"}, {"s": "NASDAQ:NDX"}, {"s": "DJ:DJI"}, {"s": "CME_MINI:RTY1!"}]},
+                {"title": "Futures", "symbols": [{"s": "CME_MINI:ES1!"}, {"s": "CME_MINI:NQ1!"}, {"s": "NYMEX:CL1!"}, {"s": "COMEX:GC1!"}]},
+            ]
+        }},
+        {"type": "stock-heatmap", "options": {"dataSource": "SPX"}},
+        {"type": "screener", "options": {"defaultColumn": "overview", "defaultScreen": "most_capitalized_us"}},
+        {"type": "symbol-overview", "options": {"symbols": [["NASDAQ:NVDA|1D"], ["NASDAQ:AAPL|1D"], ["NASDAQ:AMZN|1D"]]}},
+        {"type": "advanced-chart", "options": {"symbol": "NASDAQ:NVDA", "interval": "60"}},
+        {"type": "top-stories", "options": {}},
+        {"type": "economic-calendar", "options": {"importanceFilter": "-1,0,1", "currencyFilter": "USD,EUR"}}
+    ]
+    return render_template("dashboard.html", widgets=widgets)
 
-    container.innerHTML = widgetHTML;
-
-    // Reload the TradingView script
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    document.body.appendChild(script);
-}
+if __name__ == "__main__":
+    app.run(debug=True)
 ```
 
-### Usage
-
-```javascript
-// In your HTML
-<div id="chart_NVDA_0"></div>
-
-// Call the function
-createTradingViewWidget('NVDA', 'chart_NVDA_0');
-```
-
-**Key Settings**:
-- `interval`: "D" (daily), change to "W" (weekly), "4H", "1H" as needed
-- `studies`: Array of technical studies - can add/remove as needed
-- `backgroundColor`: Dark theme color (#0F0F0F)
-- `theme`: "dark" or "light"
-
----
-
-## 2. Ticker Tape Widget
-
-**Purpose**: Real-time ticker showing prices and changes for major indices and assets
-
-**Use Case**: Market header/overview section
-
-### HTML Implementation
+`templates/dashboard.html`
 
 ```html
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <div class="tradingview-widget-copyright">
-    <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">
-      <span class="blue-text">Ticker tape</span>
-    </a>
-    <span class="trademark"> by TradingView</span>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Legend AI – TradingView Widgets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Optional CSP if you enforce one:
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' https://s3.tradingview.com;
+                 frame-src https://s.tradingview.com https://www.tradingview.com;
+                 img-src * data:;
+                 style-src 'self' 'unsafe-inline'"> -->
+  <style>
+    body { margin:0; background:#0b0e11; color:#e5e7eb; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(320px,1fr)); padding:16px; }
+    .card { background:#111418; border:1px solid #1f242b; border-radius:12px; padding:8px; min-height:220px; }
+    .full { grid-column: 1/-1; min-height:520px; }
+  </style>
+</head>
+<body>
+  <div class="grid" id="tv-root">
+    {% for w in widgets %}
+      <div class="card {% if w.type in ['advanced-chart','market-overview'] %}full{% endif %}">
+        <div class="tv-container" id="tv_{{ loop.index }}"></div>
+        <script type="application/json" class="tv-config" data-target="tv_{{ loop.index }}">
+          {{ (w | tojson) | safe }}
+        </script>
+      </div>
+    {% endfor %}
   </div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-  {
-    "symbols": [
-      {
-        "proName": "FOREXCOM:SPXUSD",
-        "title": "S&P 500 Index"
-      },
-      {
-        "proName": "FOREXCOM:NSXUSD",
-        "title": "US 100 Cash CFD"
-      },
-      {
-        "proName": "FX_IDC:EURUSD",
-        "title": "EUR to USD"
-      },
-      {
-        "proName": "BITSTAMP:BTCUSD",
-        "title": "Bitcoin"
-      },
-      {
-        "proName": "BITSTAMP:ETHUSD",
-        "title": "Ethereum"
-      }
-    ],
-    "colorTheme": "dark",
-    "locale": "en",
-    "largeChartUrl": "",
-    "isTransparent": false,
-    "showSymbolLogo": true,
-    "displayMode": "adaptive"
-  }
-  </script>
-</div>
-```
 
-### JavaScript Function (Vanilla JS)
-
-```javascript
-function createTickerTapeWidget(containerId, symbols) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const widgetHTML = `
-        <div class="tradingview-widget-container">
-          <div class="tradingview-widget-container__widget"></div>
-          <div class="tradingview-widget-copyright">
-            <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">
-              <span class="blue-text">Ticker tape</span>
-            </a>
-            <span class="trademark"> by TradingView</span>
-          </div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-          {
-            "symbols": ${JSON.stringify(symbols)},
-            "colorTheme": "dark",
-            "locale": "en",
-            "largeChartUrl": "",
-            "isTransparent": false,
-            "showSymbolLogo": true,
-            "displayMode": "adaptive"
-          }
-          <\/script>
-        </div>
-    `;
-
-    container.innerHTML = widgetHTML;
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    document.body.appendChild(script);
-}
-```
-
-### Usage
-
-```javascript
-const symbols = [
-  { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
-  { "proName": "FOREXCOM:NSXUSD", "title": "NASDAQ 100" },
-  { "proName": "BITSTAMP:BTCUSD", "title": "Bitcoin" }
-];
-
-createTickerTapeWidget('ticker_container', symbols);
-```
-
-**Key Settings**:
-- `symbols`: Array of ticker objects (proName + title)
-- `displayMode`: "adaptive", "compact", or "full"
-- `showSymbolLogo`: true/false
-- `colorTheme`: "dark" or "light"
-
----
-
-## 3. Stock Heatmap Widget
-
-**Purpose**: Visual heatmap of S&P 500 stocks grouped by sector, colored by price change
-
-**Use Case**: Quick market overview, sector analysis
-
-### HTML Implementation
-
-```html
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <div class="tradingview-widget-copyright">
-    <a href="https://www.tradingview.com/heatmap/stock/" rel="noopener nofollow" target="_blank">
-      <span class="blue-text">Stock Heatmap</span>
-    </a>
-    <span class="trademark"> by TradingView</span>
-  </div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-  {
-    "dataSource": "SPX500",
-    "blockSize": "market_cap_basic",
-    "blockColor": "change",
-    "grouping": "sector",
-    "locale": "en",
-    "symbolUrl": "",
-    "colorTheme": "dark",
-    "exchanges": [],
-    "hasTopBar": false,
-    "isDataSetEnabled": false,
-    "isZoomEnabled": true,
-    "hasSymbolTooltip": true,
-    "isMonoSize": false,
-    "width": "100%",
-    "height": "100%"
-  }
-  </script>
-</div>
-```
-
-### JavaScript Function (Vanilla JS)
-
-```javascript
-function createStockHeatmapWidget(containerId, options = {}) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const defaultOptions = {
-        "dataSource": "SPX500",
-        "blockSize": "market_cap_basic",
-        "blockColor": "change",
-        "grouping": "sector",
-        "locale": "en",
-        "colorTheme": "dark",
-        "isZoomEnabled": true,
-        "hasSymbolTooltip": true
+  <script async src="https://s3.tradingview.com/tv.js"></script>
+  <script>
+    const TV_CONSTRUCTORS = {
+      "advanced-chart":        "widget",
+      "symbol-overview":       "SymbolOverviewWidget",
+      "mini-chart":            "MiniWidget",
+      "market-overview":       "MarketOverviewWidget",
+      "stock-market":          "StockMarketWidget",
+      "market-quotes":         "MarketQuotesWidget",
+      "ticker-tape":           "tickerTape",
+      "ticker":                "TickerWidget",
+      "single-ticker":         "SingleTickerWidget",
+      "stock-heatmap":         "StockHeatmapWidget",
+      "crypto-heatmap":        "CryptoHeatmapWidget",
+      "etf-heatmap":           "ETFHeatmapWidget",
+      "forex-cross-rates":     "ForexCrossRatesWidget",
+      "forex-heatmap":         "ForexHeatmapWidget",
+      "screener":              "ScreenerWidget",
+      "crypto-mkt-screener":   "CryptoMarketWidget",
+      "symbol-info":           "SymbolInfoWidget",
+      "technical-analysis":    "TechnicalAnalysisWidget",
+      "fundamental-data":      "FundamentalDataWidget",
+      "company-profile":       "CompanyProfileWidget",
+      "top-stories":           "TopStoriesWidget",
+      "economic-calendar":     "EconomicCalendarWidget"
     };
 
-    const config = { ...defaultOptions, ...options };
+    (function mountWhenReady(){
+      if (!window.TradingView) { return setTimeout(mountWhenReady, 50); }
 
-    const widgetHTML = `
-        <div class="tradingview-widget-container">
-          <div class="tradingview-widget-container__widget"></div>
-          <div class="tradingview-widget-copyright">
-            <a href="https://www.tradingview.com/heatmap/stock/" rel="noopener nofollow" target="_blank">
-              <span class="blue-text">Stock Heatmap</span>
-            </a>
-            <span class="trademark"> by TradingView</span>
-          </div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-          ${JSON.stringify(config)}
-          <\/script>
-        </div>
-    `;
+      document.querySelectorAll('.tv-config').forEach(scriptTag => {
+        const cfg = JSON.parse(scriptTag.textContent);
+        const containerId = scriptTag.dataset.target;
+        const type = cfg.type;
+        const options = cfg.options || {};
+        const ctorName = TV_CONSTRUCTORS[type];
 
-    container.innerHTML = widgetHTML;
+        if (!ctorName) {
+          console.warn("Unknown TradingView widget type:", type);
+          return;
+        }
 
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    document.body.appendChild(script);
-}
-```
+        const baseOptions = {
+          container_id: containerId,
+          autosize: true,
+          theme: "dark",
+          locale: "en",
+          ...options
+        };
 
-### Usage
-
-```javascript
-// Basic usage
-createStockHeatmapWidget('heatmap_container');
-
-// With custom options
-createStockHeatmapWidget('heatmap_container', {
-    "grouping": "industry",  // or "sector"
-    "blockSize": "market_cap_basic"  // or "price_scale"
-});
-```
-
-**Key Settings**:
-- `dataSource`: "SPX500", "NASDAQ100", "AllUSStocks"
-- `grouping`: "sector", "industry", "country"
-- `blockSize`: "market_cap_basic", "price_scale"
-- `blockColor`: "change" (red/green), "volume", "range"
-
----
-
-## 4. ETF Heatmap Widget
-
-**Purpose**: Visual heatmap of ETFs, useful for sector/asset class rotation analysis
-
-**Use Case**: Asset allocation, ETF comparison, sector rotation
-
-### HTML Implementation
-
-```html
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <div class="tradingview-widget-copyright">
-    <a href="https://www.tradingview.com/heatmap/etf/" rel="noopener nofollow" target="_blank">
-      <span class="blue-text">ETF Heatmap</span>
-    </a>
-    <span class="trademark"> by TradingView</span>
-  </div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-etf-heatmap.js" async>
-  {
-    "dataSource": "AllUSEtf",
-    "blockSize": "volume",
-    "blockColor": "change",
-    "grouping": "asset_class",
-    "locale": "en",
-    "symbolUrl": "",
-    "colorTheme": "dark",
-    "hasTopBar": false,
-    "isDataSetEnabled": false,
-    "isZoomEnabled": true,
-    "hasSymbolTooltip": true,
-    "isMonoSize": false,
-    "width": "100%",
-    "height": "100%"
-  }
+        if (type === "advanced-chart") {
+          new window.TradingView.widget(baseOptions);
+        } else {
+          new window.TradingView[ctorName](baseOptions);
+        }
+      });
+    })();
   </script>
-</div>
+</body>
+</html>
 ```
 
-### JavaScript Function (Vanilla JS)
-
-```javascript
-function createETFHeatmapWidget(containerId, options = {}) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const defaultOptions = {
-        "dataSource": "AllUSEtf",
-        "blockSize": "volume",
-        "blockColor": "change",
-        "grouping": "asset_class",
-        "locale": "en",
-        "colorTheme": "dark",
-        "isZoomEnabled": true,
-        "hasSymbolTooltip": true
-    };
-
-    const config = { ...defaultOptions, ...options };
-
-    const widgetHTML = `
-        <div class="tradingview-widget-container">
-          <div class="tradingview-widget-container__widget"></div>
-          <div class="tradingview-widget-copyright">
-            <a href="https://www.tradingview.com/heatmap/etf/" rel="noopener nofollow" target="_blank">
-              <span class="blue-text">ETF Heatmap</span>
-            </a>
-            <span class="trademark"> by TradingView</span>
-          </div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-etf-heatmap.js" async>
-          ${JSON.stringify(config)}
-          <\/script>
-        </div>
-    `;
-
-    container.innerHTML = widgetHTML;
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    document.body.appendChild(script);
-}
-```
-
-### Usage
-
-```javascript
-// Basic usage
-createETFHeatmapWidget('etf_heatmap_container');
-
-// With custom options
-createETFHeatmapWidget('etf_heatmap_container', {
-    "grouping": "asset_class",  // or "country", "currency"
-    "blockSize": "volume"  // or "market_cap_basic"
-});
-```
-
-**Key Settings**:
-- `dataSource`: "AllUSEtf", "AllWorldEtf"
-- `grouping`: "asset_class", "country", "currency", "issuer"
-- `blockSize`: "volume", "market_cap_basic", "price_scale"
-- `blockColor`: "change", "volume", "range"
+Run `python app.py` and open `http://127.0.0.1:5000/`.
 
 ---
 
-## 5. Stock Screener Widget
+## 🔁 Reusing in Legend AI / FastAPI
 
-**Purpose**: Full-featured stock screener with filtering, sorting, and analysis capabilities
-
-**Use Case**: Alternative to native universe scan, stock discovery
-
-### HTML Implementation
-
-```html
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <div class="tradingview-widget-copyright">
-    <a href="https://www.tradingview.com/screener/" rel="noopener nofollow" target="_blank">
-      <span class="blue-text">Stock Screener</span>
-    </a>
-    <span class="trademark"> by TradingView</span>
-  </div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
-  {
-    "market": "america",
-    "showToolbar": true,
-    "defaultColumn": "overview",
-    "defaultScreen": "top_gainers",
-    "isTransparent": false,
-    "locale": "en",
-    "colorTheme": "dark",
-    "width": "100%",
-    "height": 550
-  }
-  </script>
-</div>
-```
-
-### JavaScript Function (Vanilla JS)
-
-```javascript
-function createStockScreenerWidget(containerId, options = {}) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const defaultOptions = {
-        "market": "america",
-        "showToolbar": true,
-        "defaultColumn": "overview",
-        "defaultScreen": "top_gainers",
-        "isTransparent": false,
-        "locale": "en",
-        "colorTheme": "dark",
-        "width": "100%",
-        "height": 550
-    };
-
-    const config = { ...defaultOptions, ...options };
-
-    const widgetHTML = `
-        <div class="tradingview-widget-container">
-          <div class="tradingview-widget-container__widget"></div>
-          <div class="tradingview-widget-copyright">
-            <a href="https://www.tradingview.com/screener/" rel="noopener nofollow" target="_blank">
-              <span class="blue-text">Stock Screener</span>
-            </a>
-            <span class="trademark"> by TradingView</span>
-          </div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
-          ${JSON.stringify(config)}
-          <\/script>
-        </div>
-    `;
-
-    container.innerHTML = widgetHTML;
-
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    document.body.appendChild(script);
-}
-```
-
-### Usage
-
-```javascript
-// Basic usage
-createStockScreenerWidget('screener_container');
-
-// With custom options
-createStockScreenerWidget('screener_container', {
-    "market": "america",
-    "defaultScreen": "top_losers",
-    "height": 700
-});
-```
-
-**Key Settings**:
-- `market`: "america", "europe", "asia", etc.
-- `defaultScreen`: "top_gainers", "top_losers", "most_active", "earnings", etc.
-- `defaultColumn`: "overview", "performance", "technicals", "fundamentals"
-- `showToolbar`: true/false (enable filters)
+- Add an endpoint that prepares the `widgets` list and renders a template (or returns `HTMLResponse`).
+- The same template works with FastAPI/Jinja because it only relies on standard templating features.
+- For the existing Legend AI dashboards, you can embed the HTML block inside the HTMX/Gradio view or expose it behind `/dashboard/widgets`.
 
 ---
 
-## Integration Guide
+## 📦 Using in Streamlit or Dash
 
-### Adding to Dashboard
-
-```javascript
-// 1. Create container divs in HTML
-<div id="ticker_container" style="height: 60px; margin-bottom: 20px;"></div>
-<div id="stock_heatmap" style="height: 600px; margin-bottom: 20px;"></div>
-<div id="etf_heatmap" style="height: 600px; margin-bottom: 20px;"></div>
-<div id="screener_container" style="height: 700px;"></div>
-
-// 2. Call widget functions on page load
-window.addEventListener('DOMContentLoaded', function() {
-    createTickerTapeWidget('ticker_container', symbols);
-    createStockHeatmapWidget('stock_heatmap');
-    createETFHeatmapWidget('etf_heatmap');
-    createStockScreenerWidget('screener_container');
-});
-```
-
-### Responsive Design
-
-All widgets automatically resize to container dimensions:
-
-```css
-.widget-container {
-    width: 100%;
-    height: 600px;
-    margin-bottom: 20px;
-}
-
-@media (max-width: 768px) {
-    .widget-container {
-        height: 400px;
-    }
-}
-```
+| Framework | How to render |
+|-----------|---------------|
+| **Streamlit** | `html = render_template("dashboard.html", widgets=widgets)` then `st.components.v1.html(html, height=1200, scrolling=True)` |
+| **Plotly Dash** | Pass `srcDoc=rendered_html` into an `html.Iframe`, or copy the `<div>` + script tags into Dash layouts (ensure Dash allows inline scripts/CSP). |
+| **Gradio / HTMX** | Serve the rendered HTML as part of your FastAPI endpoint and embed it via `<iframe src="/dashboard/widgets">`. |
 
 ---
 
-## Performance Notes
+## 🧱 Adding New Widgets
 
-- **Lazy Loading**: Load widgets only when needed (tabs, modals)
-- **Script Caching**: TradingView's script (`tv.js`) is cached by browser
-- **Multiple Instances**: Each container creates a new widget instance
-- **Reload**: Call the function again to replace widget with updated config
-
----
-
-## References
-
-- [TradingView Advanced Chart Docs](https://www.tradingview.com/pine-script-docs/)
-- [TradingView Embedding Docs](https://www.tradingview.com/widget-docs/)
-- [TradingView API Reference](https://www.tradingview.com/charting_library_docs/)
+1. Pick a widget from the [TradingView Widgets Catalog](https://www.tradingview.com/widget/).
+2. Grab the JSON snippet from their builder.
+3. Append a dict to the Python `widgets` list: `{"type": "technical-analysis", "options": { ... }}`.
+4. If the widget should be full-width, add logic similar to the `{% if ... %}full{% endif %}` class assignment.
+5. Theme/light mode: either set `theme: "light"` globally in the JS script or per widget inside `options`.
 
 ---
 
-**Last Updated**: 2025-11-07
-**Status**: Production Ready
+## ⚠️ Notes & Limitations
+
+- Widgets are iframe embeds; they do **not** give you data back. Keep using TwelveData/Redis cache for server-side analytics.
+- Free widgets include TradingView branding and may deliver delayed quotes depending on the exchange.
+- Follow TradingView’s terms of service; some widgets require users to accept their cookies.
+- If you enforce CSPs, remember to allow scripts from `https://s3.tradingview.com` and frames from `https://www.tradingview.com` / `https://s.tradingview.com`.
+- For dynamic pages like `/symbol/AAPL`, set the widget’s `symbol` option from the route parameter and re-render the template.
+
+---
+
+## ✅ Checklist When Embedding
+
+- [ ] Load `tv.js` once per page.
+- [ ] Ensure every widget `type` maps to a constructor in `TV_CONSTRUCTORS`.
+- [ ] Pass `container_id` and unique `div` IDs to avoid collisions.
+- [ ] Lazy-mount widgets after `window.TradingView` is defined.
+- [ ] Keep CSS responsive (use grid/flex) so widgets resize with the dashboard.
+
+With this pattern you can build rich client dashboards (market overview, watchlists, single stock drill-downs) without leaving Python.
