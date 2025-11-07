@@ -267,11 +267,9 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                         // Check if it's a TradingView URL (needs iframe) or direct image
                         if (d.chart_url.includes('tradingview')) {
                             html += '<iframe src="' + d.chart_url + '" style="width:100%; height:500px; border: 1px solid #ddd; border-radius: 6px; margin-top: 15px;"></iframe>';
-                        } else if (d.chart_url.includes('chart-img')) {
-                            // Try as image but fallback to TradingView if it fails
-                            html += '<img src="' + d.chart_url + '" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px;" onerror="this.parentElement.innerHTML += \'<p style=\\\"color: #999;\\\">Chart image unavailable. <a href=\\\"https://www.tradingview.com/?symbol=' + document.getElementById(\'patternTicker\').value + '\\\" target=\\\"_blank\\\">View on TradingView</a></p>\'">';
                         } else {
-                            html += '<img src="' + d.chart_url + '" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px;">';
+                            // For all other chart types, just show as image
+                            html += '<img src="' + d.chart_url + '" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px; display: block;">';
                         }
                     } else {
                         html += '<p style="text-align: center; color: #999; margin-top: 15px;">📊 Chart not available</p>';
