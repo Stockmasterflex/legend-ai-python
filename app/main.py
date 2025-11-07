@@ -23,6 +23,7 @@ from app.api.alerts import router as alerts_router
 from app.api.multitimeframe import router as multitf_router
 from app.api.risk import router as risk_router
 from app.api.trades import router as trades_router
+from app.api import analyze as analyze_pkg, watchlist as watchlist_pkg
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
     logger.info("Starting Legend AI Bot...")
+    logger.info("API_ANALYZE_ENABLED=True")
 
     # Set webhook automatically
     await setup_telegram_webhook()
@@ -109,6 +111,8 @@ app.include_router(risk_router)
 app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
+app.include_router(analyze_pkg.router, prefix="/api", tags=["analyze"])  # explicit mount
+app.include_router(watchlist_pkg.router, prefix="/api", tags=["watchlist"])  # explicit mount
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"
@@ -125,6 +129,14 @@ async def root():
         "version": "1.0.0",
         "dashboard": "/dashboard",
         "docs": "/docs"
+    }
+
+@app.get("/api/version")
+def version():
+    import os
+    return {
+        "branch": os.getenv("GIT_BRANCH", "unknown"),
+        "commit": os.getenv("GIT_COMMIT", "unknown"),
     }
 
 @app.get("/health")

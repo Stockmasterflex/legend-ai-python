@@ -24,6 +24,11 @@
     fetchMarketInternals();
     loadWatchlist();
     setInterval(fetchMarketInternals, 300000);
+    // Fetch build version and stamp header
+    fetch('/api/version').then(r => r.json()).then(v => {
+      const el = document.getElementById('build-version');
+      if (el && v && v.commit) el.textContent = `(build ${String(v.commit).slice(0,7)})`;
+    }).catch(() => {});
   });
 
   function cacheDom() {
@@ -99,8 +104,10 @@
     try {
       const tf = interval === '1week' ? 'weekly' : 'daily';
       const res = await fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
-      if (!res.ok) throw new Error('Analyze request failed');
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.detail || data?.reason || `Analyze failed (${res.status})`);
+      }
       renderAnalyzeIntel(data);
       mountAnalyzeChart(ticker, interval);
       toast(`Analyzed ${ticker}`, 'success');

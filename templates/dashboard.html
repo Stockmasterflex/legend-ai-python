@@ -7,17 +7,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css" />
-    <link rel="stylesheet" href="/static/css/dashboard.css" />
+    <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="/static/js/dashboard.js"></script>
+    <script defer src="/static/js/dashboard.js?v=__VERSION__"></script>
 </head>
 <body class="app-shell">
     <main class="container" x-data="{ activeTab: 'analyze' }">
         <header class="hero">
             <div class="hero-content">
                 <div>
-                    <p class="eyebrow">Legend AI</p>
+                    <p class="eyebrow">Legend AI <span id="build-version"></span></p>
                     <h1>Pattern Intelligence for Traders</h1>
                     <p>Scan patterns, analyze tickers, build plans. Fast.</p>
                 </div>
@@ -30,8 +30,6 @@
                     <div class="quick-search">
                         <select id="quick-timeframe" class="select">
                             <option value="1day">Daily</option>
-                            <option value="60min">60m</option>
-                            <option value="15min">15m</option>
                             <option value="1week">Weekly</option>
                         </select>
                         <button id="quick-snapshot" class="btn btn-secondary">Snapshot</button>
@@ -56,6 +54,7 @@
             </nav>
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" x-show="activeTab === 'analyze'" x-cloak>
+                    <h2 class="eyebrow">Analyze (Daily or Weekly only – intraday coming later)</h2>
                     <form id="pattern-form" class="form-grid">
                         <div class="form-field">
                             <label for="pattern-ticker">Ticker</label>
