@@ -158,6 +158,10 @@ legend-ai/
 - **Docker** - Containerized deployment
 - **GitHub Actions** - CI/CD pipeline
 
+## 📚 Additional Guides
+
+- [`docs/TRADINGVIEW_WIDGETS.md`](docs/TRADINGVIEW_WIDGETS.md) – embed TradingView widgets (ticker tapes, advanced charts, heatmaps, etc.) inside Python dashboards using reusable HTML + tv.js.
+
 ## 📊 Performance Goals
 
 | Metric | n8n Current | Python Target | Improvement |
