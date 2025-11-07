@@ -65,8 +65,19 @@ async def detect_pattern(request: PatternRequest):
             from datetime import datetime
             if isinstance(cached_result.get("timestamp"), str):
                 cached_result["timestamp"] = datetime.fromisoformat(cached_result["timestamp"])
-            
+
             result = PatternResult(**cached_result)
+
+            # Always regenerate fresh chart URLs (charting service returns TradingView)
+            try:
+                charting = get_charting_service()
+                chart_url = await charting.generate_chart(ticker, request.interval)
+                if chart_url:
+                    result.chart_url = chart_url
+                    logger.info(f"📊 Chart regenerated for {ticker}: {chart_url[:60]}...")
+            except Exception as e:
+                logger.warning(f"⚠️ Chart regeneration failed for {ticker}: {e}")
+
             processing_time = time.time() - start_time
 
             logger.info(f"⚡ Cache hit for {ticker}: {result.pattern} ({result.score}/10) in {processing_time:.2f}s")
