@@ -259,20 +259,18 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                 if (data.success) {
                     const d = data.data;
-                    let html = '<h3>' + d.pattern + ' (Score: ' + d.score.toFixed(1) + '/10)</h3>';
-                    html += '<p>Entry: $' + d.entry.toFixed(2) + ' | Stop: $' + d.stop.toFixed(2) + ' | Target: $' + d.target.toFixed(2) + '</p>';
-                    html += '<p>R:R: ' + d.risk_reward.toFixed(2) + ':1 | Current: $' + d.current_price.toFixed(2) + '</p>';
+                    let html = `<h3>${d.pattern} (Score: ${d.score.toFixed(1)}/10)</h3>`;
+                    html += `<p>Entry: $${d.entry.toFixed(2)} | Stop: $${d.stop.toFixed(2)} | Target: $${d.target.toFixed(2)}</p>`;
+                    html += `<p>R:R: ${d.risk_reward.toFixed(2)}:1 | Current: $${d.current_price.toFixed(2)}</p>`;
 
                     if (d.chart_url) {
-                        // Check if it's a TradingView URL (needs iframe) or direct image
                         if (d.chart_url.includes('tradingview')) {
-                            html += '<iframe src="' + d.chart_url + '" style="width:100%; height:500px; border: 1px solid #ddd; border-radius: 6px; margin-top: 15px;"></iframe>';
+                            html += `<iframe src="${d.chart_url}" style="width:100%; height:500px; border: 1px solid #ddd; border-radius: 6px; margin-top: 15px;"></iframe>`;
                         } else {
-                            // For all other chart types, just show as image
-                            html += '<img src="' + d.chart_url + '" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px; display: block;">';
+                            html += `<img src="${d.chart_url}" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px;">`;
                         }
                     } else {
-                        html += '<p style="text-align: center; color: #999; margin-top: 15px;">📊 Chart not available</p>';
+                        html += `<p style="text-align: center; color: #999; margin-top: 15px;">📊 Chart not available</p>`;
                     }
 
                     resultEl.innerHTML = html;
