@@ -118,7 +118,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             font-family: 'Courier New', monospace;
             font-size: 13px;
             line-height: 1.6;
-            max-height: 600px;
+            max-height: 1200px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-word;
@@ -140,6 +140,13 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             max-width: 100%;
             margin-top: 15px;
             border-radius: 6px;
+        }
+        .result iframe {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -257,7 +264,17 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                     html += '<p>R:R: ' + d.risk_reward.toFixed(2) + ':1 | Current: $' + d.current_price.toFixed(2) + '</p>';
 
                     if (d.chart_url) {
-                        html += '<img src="' + d.chart_url + '" alt="Chart">';
+                        // Check if it's a TradingView URL (needs iframe) or direct image
+                        if (d.chart_url.includes('tradingview')) {
+                            html += '<iframe src="' + d.chart_url + '" style="width:100%; height:500px; border: 1px solid #ddd; border-radius: 6px; margin-top: 15px;"></iframe>';
+                        } else if (d.chart_url.includes('chart-img')) {
+                            // Try as image but fallback to TradingView if it fails
+                            html += '<img src="' + d.chart_url + '" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px;" onerror="this.parentElement.innerHTML += \'<p style=\\\"color: #999;\\\">Chart image unavailable. <a href=\\\"https://www.tradingview.com/?symbol=' + document.getElementById(\'patternTicker\').value + '\\\" target=\\\"_blank\\\">View on TradingView</a></p>\'">';
+                        } else {
+                            html += '<img src="' + d.chart_url + '" alt="Chart" style="max-width: 100%; margin-top: 15px; border-radius: 6px;">';
+                        }
+                    } else {
+                        html += '<p style="text-align: center; color: #999; margin-top: 15px;">📊 Chart not available</p>';
                     }
 
                     resultEl.innerHTML = html;

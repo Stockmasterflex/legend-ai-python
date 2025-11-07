@@ -46,84 +46,30 @@ class ChartingService:
         height: int = 600
     ) -> Optional[str]:
         """
-        Generate a chart for a ticker
+        Generate a chart for a ticker using TradingView embed
 
         Args:
             ticker: Stock symbol (e.g., NVDA)
             timeframe: "1day" or "1week"
-            width: Chart width (max 1920)
-            height: Chart height (max 1080)
+            width: Chart width (unused - TradingView is responsive)
+            height: Chart height (unused - TradingView is responsive)
 
         Returns:
-            URL of the generated chart or None if failed
+            URL of the TradingView embed chart
         """
         try:
-            # Check rate limit
-            if not await self._check_rate_limit():
-                logger.warning(f"Chart-IMG rate limit exceeded for {ticker}")
-                return self._get_placeholder_url(ticker)
-
-            # Check for dev key or missing key - return TradingView fallback
-            if not self.api_key or self.api_key in ["dev-key", "", "your-api-key-here"]:
-                logger.debug(f"Chart-IMG API key not configured, returning TradingView embed for {ticker}")
-                return self._get_placeholder_url(ticker)
-
-            # Map timeframe to Chart-IMG format
-            timeframe_map = {
-                "1day": "daily",
-                "daily": "daily",
-                "1week": "weekly",
-                "weekly": "weekly"
-            }
-            period = timeframe_map.get(timeframe.lower(), "daily")
-
-            # Build request for Chart-IMG Pro API
-            # Chart-IMG endpoint: https://chart-img.com/chart
-            params = {
-                "symbol": ticker.upper(),
-                "period": period,
-                "width": min(width, 1920),
-                "height": min(height, 1080),
-                "api_key": self.api_key
-            }
-
-            logger.debug(f"Requesting chart for {ticker} from Chart-IMG API")
-
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.get(self.BASE_URL, params=params)
-
-                if response.status_code == 200:
-                    # Chart-IMG returns JSON with chart_url
-                    try:
-                        data = response.json()
-                        chart_url = data.get("url") or data.get("chart_url") or data.get("image_url")
-                        if chart_url:
-                            logger.info(f"✅ Chart generated for {ticker} via Chart-IMG")
-                            return chart_url
-                        else:
-                            # If no URL in JSON, try to return response data
-                            logger.warning(f"Chart-IMG returned success but no URL for {ticker}")
-                            return self._get_placeholder_url(ticker)
-                    except ValueError:
-                        # Response is likely an image blob, not JSON
-                        # Return the direct image URL
-                        logger.info(f"✅ Chart generated for {ticker} as image data")
-                        return str(response.url)
-                else:
-                    logger.warning(f"Chart-IMG error for {ticker}: HTTP {response.status_code}")
-                    return self._get_placeholder_url(ticker)
-
-        except asyncio.TimeoutError:
-            logger.warning(f"⏱️ Chart generation timeout for {ticker}")
+            # Always use TradingView embed - it's reliable and doesn't require API key
+            logger.info(f"📊 Chart URL generated for {ticker}")
             return self._get_placeholder_url(ticker)
+
         except Exception as e:
             logger.warning(f"⚠️ Chart generation error for {ticker}: {e}")
             return self._get_placeholder_url(ticker)
 
     def _get_placeholder_url(self, ticker: str) -> str:
-        """Get a placeholder chart URL when real API fails"""
-        # TradingView lightweight chart embed or fallback
-        return f"https://www.tradingview.com/chart/?symbol={ticker.upper()}"
+        """Get a TradingView embed chart URL - works reliably"""
+        # Use TradingView's lightweight embed which always works
+        return f"https://www.tradingview.com/widgetembed/?symbol={ticker.upper()}&interval=D&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"
 
     async def get_chart_batch(
         self,
