@@ -68,10 +68,18 @@ async def detect_pattern(request: PatternRequest):
 
             result = PatternResult(**cached_result)
 
-            # Always regenerate fresh chart URLs (charting service returns TradingView)
+            # Always regenerate fresh chart URLs with latest indicators
             try:
                 charting = get_charting_service()
-                chart_url = await charting.generate_chart(ticker, request.interval)
+                chart_url = await charting.generate_chart(
+                    ticker=ticker,
+                    timeframe=request.interval,
+                    entry=result.entry,
+                    stop=result.stop,
+                    target=result.target,
+                    support=result.support_start,
+                    resistance=None  # Could add support_end or resistance level
+                )
                 if chart_url:
                     result.chart_url = chart_url
                     logger.info(f"📊 Chart regenerated for {ticker}: {chart_url[:60]}...")
@@ -130,10 +138,18 @@ async def detect_pattern(request: PatternRequest):
                 detail=f"Pattern analysis failed for {ticker}"
             )
 
-        # Generate chart (with fallback)
+        # Generate chart with indicators and drawings
         try:
             charting = get_charting_service()
-            chart_url = await charting.generate_chart(ticker, request.interval)
+            chart_url = await charting.generate_chart(
+                ticker=ticker,
+                timeframe=request.interval,
+                entry=result.entry,
+                stop=result.stop,
+                target=result.target,
+                support=result.support_start,
+                resistance=None  # Could add support_end or resistance level
+            )
             if chart_url:
                 result.chart_url = chart_url
                 logger.info(f"📊 Chart generated for {ticker}: {chart_url[:60]}...")
