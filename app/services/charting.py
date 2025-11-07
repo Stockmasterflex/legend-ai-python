@@ -2,6 +2,7 @@
 Chart-IMG service for generating trading charts with indicators
 Pro plan: 500 daily calls, 10/sec rate limit, no watermark
 Supports: RSI, EMA 21, SMA 50, Volume, Support/Resistance, Long Position drawings
+Enhanced with multi-timeframe and graceful degradation
 """
 import logging
 import asyncio
@@ -18,7 +19,7 @@ class ChartingService:
 
     BASE_URL = "https://api.chart-img.com/v2/tradingview/advanced-chart/storage"
     RATE_LIMIT_DELAY = 0.1  # 100ms = 10 calls/sec
-    MAX_PARAMETERS = 5  # Max studies + drawings combined
+    MAX_PARAMETERS = 5  # Max studies + drawings combined; gracefully degrade if needed
 
     def __init__(self):
         self.api_key = settings.chartimg_api_key
@@ -27,22 +28,53 @@ class ChartingService:
         self.call_count = 0
         self.last_reset = datetime.now()
         self.request_queue = asyncio.Queue()
+        self.fallback_mode = False  # Graceful degradation flag
 
     async def _check_rate_limit(self):
-        """Check daily rate limit"""
+        """Check daily rate limit and activate fallback if needed"""
         now = datetime.now()
         if (now - self.last_reset).total_seconds() >= 86400:
             self.call_count = 0
             self.last_reset = now
 
         if self.call_count >= self.daily_limit:
-            logger.warning(f"⚠️ Chart-IMG daily limit reached ({self.daily_limit})")
+            logger.warning(f"⚠️ Chart-IMG daily limit reached ({self.daily_limit}). Entering fallback mode.")
+            self.fallback_mode = True
             return False
 
         self.call_count += 1
         return True
 
-    async def generate_chart(
+    def _get_fallback_url(self, ticker: str, timeframe: str = "1day") -> str:
+        """
+        Fallback: Return a basic TradingView chart URL when Chart-IMG is throttled
+        This gracefully degrades to a lightweight solution
+        """
+        tf_map = {
+            "1day": "D",
+            "1D": "D",
+            "daily": "D",
+            "1week": "W",
+            "1W": "W",
+            "weekly": "W",
+            "60min": "60",
+            "60m": "60",
+            "1hour": "60",
+            "1H": "60",
+            "4hour": "240",
+            "4H": "240"
+        }
+        tv_timeframe = tf_map.get(timeframe.lower(), "D")
+
+        # Basic TradingView embedded widget (no annotations but shows the chart)
+        fallback_url = (
+            f"https://www.tradingview.com/widgetembed/?symbol=NASDAQ:{ticker.upper()}"
+            f"&interval={tv_timeframe}&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en"
+        )
+        logger.info(f"📊 Using fallback chart for {ticker}: {fallback_url[:60]}...")
+        return fallback_url
+
+    def _build_chart_payload(
         self,
         ticker: str,
         timeframe: str = "1day",
@@ -52,135 +84,61 @@ class ChartingService:
         stop: Optional[float] = None,
         target: Optional[float] = None,
         support: Optional[float] = None,
-        resistance: Optional[float] = None
-    ) -> Optional[str]:
-        """
-        Generate a chart with indicators and drawings using Chart-IMG API
-
-        Args:
-            ticker: Stock symbol (e.g., NVDA)
-            timeframe: "1day" or "1week"
-            width: Chart width in pixels
-            height: Chart height in pixels
-            entry: Entry price for long position drawing
-            stop: Stop loss price for long position drawing
-            target: Target price for long position drawing
-            support: Support level price
-            resistance: Resistance level price
-
-        Returns:
-            URL of the generated chart image
-        """
-        try:
-            # Check rate limiting
-            if not await self._check_rate_limit():
-                return self._get_fallback_url(ticker)
-
-            # Apply rate limit delay
-            await asyncio.sleep(self.RATE_LIMIT_DELAY)
-
-            # Build Chart-IMG request payload
-            payload = self._build_chart_payload(
-                ticker, timeframe, width, height,
-                entry, stop, target, support, resistance
-            )
-
-            # Make API request
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    self.BASE_URL,
-                    json=payload,
-                    headers={
-                        "x-api-key": self.api_key,
-                        "Content-Type": "application/json"
-                    }
-                )
-
-                if response.status_code == 200:
-                    data = response.json()
-                    # Storage endpoint returns: {"success": true, "data": {"url": "...", "expires_at": "..."}}
-                    if data.get("success") and data.get("data"):
-                        chart_url = data["data"].get("url")
-                        expires_at = data["data"].get("expires_at", "N/A")
-                        logger.info(f"✅ Chart generated for {ticker}: {chart_url} (expires: {expires_at})")
-                        return chart_url
-                    else:
-                        logger.warning(f"⚠️ Chart-IMG storage error for {ticker}: {data.get('error', 'Unknown error')}")
-                        return self._get_fallback_url(ticker)
-                else:
-                    logger.warning(
-                        f"⚠️ Chart-IMG error {response.status_code} for {ticker}: "
-                        f"{response.text}"
-                    )
-                    return self._get_fallback_url(ticker)
-
-        except Exception as e:
-            logger.warning(f"⚠️ Chart generation error for {ticker}: {e}")
-            return self._get_fallback_url(ticker)
-
-    def _build_chart_payload(
-        self,
-        ticker: str,
-        timeframe: str,
-        width: int,
-        height: int,
-        entry: Optional[float],
-        stop: Optional[float],
-        target: Optional[float],
-        support: Optional[float],
-        resistance: Optional[float]
+        resistance: Optional[float] = None,
+        overlays: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """Build JSON payload for Chart-IMG API request"""
+        """
+        Build Chart-IMG request payload with smart parameter management
+
+        Gracefully degrade studies if we're approaching MAX_PARAMETERS limit
+        """
+        if overlays is None:
+            overlays = ["RSI", "EMA21", "EMA50", "Volume"]
 
         # Convert ticker to TradingView format
         tv_symbol = self._format_ticker(ticker)
 
         # Convert timeframe to Chart-IMG format
-        interval = "1D" if "day" in timeframe else "1W"
+        interval = self._resolve_interval(timeframe)
 
-        # Build studies (indicators)
-        studies = [
-            {
-                "name": "Relative Strength Index",
-                "input": {
-                    "length": 14,
-                    "smoothingLine": "SMA",
-                    "smoothingLength": 14
-                },
-                "override": {
-                    "Plot.linewidth": 2,
-                    "Plot.plottype": "line",
-                    "Plot.color": "rgb(126,87,194)",
-                    "UpperLimit.visible": True,
-                    "UpperLimit.value": 70,
-                    "LowerLimit.visible": True,
-                    "LowerLimit.value": 30
-                }
-            },
-            {
-                "name": "Moving Average Exponential",
-                "input": {
-                    "length": 21,
-                    "source": "close"
-                },
-                "override": {
-                    "Plot.linewidth": 2,
-                    "Plot.color": "rgb(255,109,0)"
-                }
-            },
-            {
-                "name": "Moving Average",
-                "input": {
-                    "length": 50,
-                    "source": "close",
-                    "smoothingLine": "SMA"
-                },
-                "override": {
-                    "Plot.linewidth": 2,
-                    "Plot.color": "rgb(67,160,71)"
-                }
-            },
-            {
+        # Build core studies with controlled parameter count
+        studies = self._build_studies(overlays)
+
+        # Build drawings (entry/stop/target) - try to fit within MAX_PARAMETERS
+        drawings = []
+        parameter_count = len(studies)
+
+        # Add long position drawing if we have space (reserves 1 parameter slot)
+        if entry and stop and target and parameter_count < self.MAX_PARAMETERS:
+            drawings.append(
+                self._build_long_position_drawing(entry, stop, target)
+            )
+            parameter_count += 1
+
+        payload = {
+            "symbol": tv_symbol,
+            "interval": interval,
+            "width": width,
+            "height": height,
+            "theme": "dark",
+            "studies": studies,
+            "drawings": drawings,
+            "timezone": "America/New_York"
+        }
+
+        # Add support/resistance if space available
+        if (support or resistance) and parameter_count < self.MAX_PARAMETERS:
+            if support:
+                payload["support_level"] = support
+            if resistance:
+                payload["resistance_level"] = resistance
+
+        return payload
+
+    def _build_studies(self, overlays: List[str]) -> List[Dict[str, Any]]:
+        """Build studies list, gracefully degrading if we have too many overlays"""
+        studies_config = {
+            "Volume": {
                 "name": "Volume",
                 "forceOverlay": False,
                 "override": {
@@ -188,58 +146,107 @@ class ChartingService:
                     "Volume.color.0": "rgba(247,82,95,0.5)",
                     "Volume.color.1": "rgba(34,171,148,0.5)"
                 }
+            },
+            "RSI": {
+                "name": "Relative Strength Index",
+                "input": {"length": 14, "smoothingLine": "SMA", "smoothingLength": 14},
+                "override": {
+                    "Plot.linewidth": 2,
+                    "Plot.color": "rgb(126,87,194)",
+                    "UpperLimit.value": 70,
+                    "LowerLimit.value": 30
+                }
+            },
+            "EMA21": {
+                "name": "Moving Average Exponential",
+                "input": {"length": 21, "source": "close"},
+                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(255,109,0)"}
+            },
+            "EMA50": {
+                "name": "Moving Average Exponential",
+                "input": {"length": 50, "source": "close"},
+                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(33,150,243)"}
+            },
+            "EMA200": {
+                "name": "Moving Average Exponential",
+                "input": {"length": 200, "source": "close"},
+                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(156,39,176)"}
+            },
+            "SMA50": {
+                "name": "Moving Average",
+                "input": {"length": 50, "source": "close"},
+                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(67,160,71)"}
+            },
+            "SMA200": {
+                "name": "Moving Average",
+                "input": {"length": 200, "source": "close"},
+                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(255,193,7)"}
+            },
+            "MACD": {
+                "name": "MACD",
+                "input": {"fastLength": 12, "slowLength": 26, "signalLength": 9},
+                "override": {"Plot.linewidth": 2}
             }
-        ]
-
-        # Build drawings (annotations)
-        drawings = []
-
-        # Add long position drawing if entry/stop/target provided
-        if entry and stop and target:
-            drawings.append({
-                "name": "Long Position",
-                "input": {
-                    "startDatetime": datetime.now().isoformat() + "Z",
-                    "entryPrice": round(entry, 2),
-                    "targetPrice": round(target, 2),
-                    "stopPrice": round(stop, 2)
-                },
-                "override": {
-                    "fillBackground": True,
-                    "showPrice": True,
-                    "showStats": True
-                }
-            })
-
-        # Add support/resistance lines (if we have room, we already have 4 studies)
-        # We can add max 1 more (5 total), so choose based on which is more important
-        if support and len(drawings) < 1:
-            drawings.append({
-                "name": "Horizontal Line",
-                "input": {
-                    "price": round(support, 2),
-                    "text": "Support"
-                },
-                "override": {
-                    "lineColor": "rgb(67,160,71)",
-                    "textColor": "rgb(67,160,71)",
-                    "lineStyle": 1
-                }
-            })
-
-        # Build final payload
-        payload = {
-            "symbol": tv_symbol,
-            "interval": interval,
-            "width": width,
-            "height": height,
-            "theme": "dark",
-            "studies": studies[:4],  # Max 4 studies (leaving room for drawings)
-            "drawings": drawings,  # Up to 1 drawing to stay within 5 parameter limit
-            "override": {}
         }
 
-        return payload
+        studies = []
+        # Add each overlay requested, up to MAX_PARAMETERS
+        for overlay in overlays:
+            if len(studies) >= self.MAX_PARAMETERS - 1:  # Reserve 1 for drawings
+                logger.warning(f"⚠️ Skipping overlays due to MAX_PARAMETERS limit: {overlays[len(studies):]}")
+                break
+
+            if overlay in studies_config:
+                studies.append(studies_config[overlay])
+
+        # Ensure we always have at least Volume
+        if not any(s.get("name") == "Volume" for s in studies):
+            studies.insert(0, studies_config["Volume"])
+
+        return studies
+
+    def _build_long_position_drawing(
+        self, entry: float, stop: float, target: float
+    ) -> Dict[str, Any]:
+        """Build a long position drawing annotation"""
+        return {
+            "name": "Long Position",
+            "input": {
+                "startDatetime": datetime.now().isoformat() + "Z",
+                "entryPrice": round(entry, 2),
+                "targetPrice": round(target, 2),
+                "stopPrice": round(stop, 2)
+            },
+            "override": {
+                "fillBackground": True,
+                "showPrice": True,
+                "showStats": True
+            }
+        }
+
+    def _resolve_interval(self, timeframe: str) -> str:
+        """Convert timeframe string to Chart-IMG interval format"""
+        timeframe_map = {
+            "1day": "1D",
+            "1D": "1D",
+            "daily": "1D",
+            "1week": "1W",
+            "1W": "1W",
+            "weekly": "1W",
+            "60min": "60",
+            "60m": "60",
+            "1hour": "60",
+            "1H": "60",
+            "4hour": "240",
+            "4H": "240",
+            "15min": "15",
+            "15m": "15",
+            "5min": "5",
+            "5m": "5"
+        }
+        resolved = timeframe_map.get(timeframe.lower(), "1D")
+        logger.debug(f"Resolved timeframe {timeframe} -> {resolved}")
+        return resolved
 
     def _format_ticker(self, ticker: str) -> str:
         """Convert ticker symbol to TradingView format (EXCHANGE:SYMBOL)"""
@@ -259,18 +266,138 @@ class ChartingService:
         exchange = us_exchanges.get(ticker, "NASDAQ")
         return f"{exchange}:{ticker}"
 
-    def _get_fallback_url(self, ticker: str) -> str:
-        """Get fallback TradingView embed URL when Chart-IMG fails"""
-        logger.info(f"📊 Using fallback TradingView embed for {ticker}")
-        return (
-            f"https://www.tradingview.com/widgetembed/?symbol={ticker.upper()}"
-            f"&interval=D&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en"
-            f"&withdateranges=1"
-        )
+    async def generate_chart(
+        self,
+        ticker: str,
+        timeframe: str = "1day",
+        width: int = 1200,
+        height: int = 600,
+        entry: Optional[float] = None,
+        stop: Optional[float] = None,
+        target: Optional[float] = None,
+        support: Optional[float] = None,
+        resistance: Optional[float] = None,
+        overlays: Optional[List[str]] = None
+    ) -> Optional[str]:
+        """
+        Generate a chart with indicators and drawings using Chart-IMG API
+
+        Args:
+            ticker: Stock symbol (e.g., NVDA)
+            timeframe: "1day", "1week", "60min", etc.
+            width: Chart width in pixels
+            height: Chart height in pixels
+            entry: Entry price for long position drawing
+            stop: Stop loss price for long position drawing
+            target: Target price for long position drawing
+            support: Support level price
+            resistance: Resistance level price
+            overlays: List of indicators to overlay (RSI, EMA21, EMA50, EMA200, etc.)
+
+        Returns:
+            URL of the generated chart image
+        """
+        try:
+            # Check rate limiting
+            if not await self._check_rate_limit():
+                return self._get_fallback_url(ticker, timeframe)
+
+            # Apply rate limit delay
+            await asyncio.sleep(self.RATE_LIMIT_DELAY)
+
+            # Build Chart-IMG request payload
+            payload = self._build_chart_payload(
+                ticker, timeframe, width, height,
+                entry, stop, target, support, resistance, overlays
+            )
+
+            # Make API request
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self.BASE_URL,
+                    json=payload,
+                    headers={
+                        "x-api-key": self.api_key,
+                        "Content-Type": "application/json"
+                    }
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    # Storage endpoint returns: {"success": true, "data": {"url": "...", "expires_at": "..."}}
+                    if data.get("success") and data.get("data"):
+                        chart_url = data["data"].get("url")
+                        expires_at = data["data"].get("expires_at", "N/A")
+                        logger.info(f"✅ Chart generated for {ticker} ({timeframe}): {chart_url[:60]}... (expires: {expires_at})")
+                        return chart_url
+                    else:
+                        logger.warning(f"⚠️ Chart-IMG storage error for {ticker}: {data.get('error', 'Unknown error')}")
+                        return self._get_fallback_url(ticker, timeframe)
+                else:
+                    logger.warning(
+                        f"⚠️ Chart-IMG error {response.status_code} for {ticker}: "
+                        f"{response.text[:100]}"
+                    )
+                    return self._get_fallback_url(ticker, timeframe)
+
+        except Exception as e:
+            logger.warning(f"⚠️ Chart generation error for {ticker}: {e}")
+            return self._get_fallback_url(ticker, timeframe)
+
+    async def generate_multi_timeframe_charts(
+        self,
+        ticker: str,
+        timeframes: Optional[List[str]] = None,
+        entry: Optional[float] = None,
+        stop: Optional[float] = None,
+        target: Optional[float] = None,
+        overlays: Optional[List[str]] = None
+    ) -> Dict[str, str]:
+        """
+        Generate charts for multiple timeframes concurrently
+
+        Args:
+            ticker: Stock symbol
+            timeframes: List of timeframe strings (default: ["1D", "1W", "60m"])
+            entry: Entry price
+            stop: Stop loss
+            target: Target price
+            overlays: Indicators to include
+
+        Returns:
+            Dict mapping timeframe -> chart_url (only successful charts)
+        """
+        if timeframes is None:
+            timeframes = ["1day", "1week", "60min"]
+
+        # Generate charts concurrently
+        chart_tasks = [
+            self.generate_chart(
+                ticker=ticker,
+                timeframe=tf,
+                entry=entry,
+                stop=stop,
+                target=target,
+                overlays=overlays
+            )
+            for tf in timeframes
+        ]
+
+        urls = await asyncio.gather(*chart_tasks)
+
+        result = {}
+        for tf, url in zip(timeframes, urls):
+            if url:
+                result[tf] = url
+                logger.info(f"✅ Generated chart for {ticker} @ {tf}")
+            else:
+                logger.warning(f"⚠️ Failed to generate chart for {ticker} @ {tf}")
+
+        return result
 
     async def get_chart_batch(
         self,
-        tickers: list[str],
+        tickers: List[str],
         timeframe: str = "1day"
     ) -> Dict[str, Optional[str]]:
         """
