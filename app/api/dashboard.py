@@ -1,9 +1,14 @@
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+# Resolve the dashboard template relative to the repository root so it works
+# locally and inside Railway containers.
+TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
 
 
 @router.get("", response_class=HTMLResponse)
@@ -11,7 +16,7 @@ async def get_dashboard():
     """
     Serve the main Legend AI dashboard
     
-    Modern Jinja2-based dashboard with:
+    Modern dashboard with:
     - Pattern scanner (single ticker)
     - Universe scanner (bulk analysis)
     - Watchlist management
@@ -20,10 +25,8 @@ async def get_dashboard():
     - Real-time KPI tiles
     """
     try:
-        # Read the dashboard template
-        with open("/Users/kyleholthaus/Projects/legend-ai-python/templates/dashboard.html", "r") as f:
-            html_content = f.read()
-        
+        html_content = TEMPLATE_PATH.read_text(encoding="utf-8")
+
         logger.info("📊 Serving dashboard")
         return html_content
         
