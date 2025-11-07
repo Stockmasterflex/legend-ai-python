@@ -16,7 +16,7 @@ settings = get_settings()
 class ChartingService:
     """Generate trading charts using Chart-IMG API with indicators and drawings"""
 
-    BASE_URL = "https://api.chart-img.com/v2/tradingview/advanced-chart"
+    BASE_URL = "https://api.chart-img.com/v2/tradingview/advanced-chart/storage"
     RATE_LIMIT_DELAY = 0.1  # 100ms = 10 calls/sec
     MAX_PARAMETERS = 5  # Max studies + drawings combined
 
@@ -98,9 +98,15 @@ class ChartingService:
 
                 if response.status_code == 200:
                     data = response.json()
-                    chart_url = data.get("url")
-                    logger.info(f"✅ Chart generated for {ticker}: {chart_url}")
-                    return chart_url
+                    # Storage endpoint returns: {"success": true, "data": {"url": "...", "expires_at": "..."}}
+                    if data.get("success") and data.get("data"):
+                        chart_url = data["data"].get("url")
+                        expires_at = data["data"].get("expires_at", "N/A")
+                        logger.info(f"✅ Chart generated for {ticker}: {chart_url} (expires: {expires_at})")
+                        return chart_url
+                    else:
+                        logger.warning(f"⚠️ Chart-IMG storage error for {ticker}: {data.get('error', 'Unknown error')}")
+                        return self._get_fallback_url(ticker)
                 else:
                     logger.warning(
                         f"⚠️ Chart-IMG error {response.status_code} for {ticker}: "
