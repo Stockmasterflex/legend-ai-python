@@ -35,21 +35,36 @@ class WatchlistItem(BaseModel):
 
 @router.post("/add")
 async def add_to_watchlist(item: WatchlistItem):
-    db = _load()
-    ticker = item.ticker.upper().strip()
-    db[ticker] = {
-        "ticker": ticker,
-        "reason": item.reason,
-        "target_entry": item.target_entry,
-        "status": item.status,
-        "added_date": datetime.utcnow().isoformat(),
-    }
-    _save(db)
-    return {"success": True, "ticker": ticker}
+    """Prefer Postgres, fallback to file store."""
+    try:
+        from app.services.database import get_database_service
+        dbs = get_database_service()
+        dbs.add_watchlist_symbol(item.ticker, item.reason, None, item.status)
+        return {"success": True, "ticker": item.ticker.upper()}
+    except Exception:
+        db = _load()
+        ticker = item.ticker.upper().strip()
+        db[ticker] = {
+            "ticker": ticker,
+            "reason": item.reason,
+            "target_entry": item.target_entry,
+            "status": item.status,
+            "added_date": datetime.utcnow().isoformat(),
+        }
+        _save(db)
+        return {"success": True, "ticker": ticker}
 
 
 @router.get("")
 async def get_watchlist():
+    try:
+        from app.services.database import get_database_service
+        dbs = get_database_service()
+        items = dbs.get_watchlist_items()
+        if items:
+            return {"success": True, "items": items, "total": len(items)}
+    except Exception:
+        pass
     db = _load()
     items = list(db.values())
     return {"success": True, "items": items, "total": len(items)}
@@ -64,17 +79,3 @@ async def remove_from_watchlist(ticker: str):
         _save(db)
         return {"success": True, "message": f"{t} removed"}
     raise HTTPException(status_code=404, detail=f"{t} not in watchlist")
-                "target_price": item.target_price
-            })
-        
-        logger.info(f"📊 Fetched {len(activity)} recent watchlist updates")
-        
-        return {
-            "success": True,
-            "activity": activity,
-            "count": len(activity)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error fetching watchlist activity: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch activity: {str(e)}")

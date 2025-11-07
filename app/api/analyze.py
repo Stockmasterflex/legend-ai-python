@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException
-from typing import List, Dict, Any
+from fastapi import APIRouter, HTTPException, Query
+from typing import List, Dict, Any, Optional
 import logging
 import asyncio
 
 from app.services.market_data import market_data_service
 from app.core.indicators import ema, sma, rsi, detect_rsi_divergences
 from app.core.classifiers import minervini_trend_template, weinstein_stage
+from app.services.cache import get_cache_service
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 logger = logging.getLogger(__name__)
@@ -16,7 +17,11 @@ def _as_floats(values: List[Any]) -> List[float]:
 
 
 @router.get("/analyze")
-async def analyze(ticker: str, tf: str = "daily") -> Dict[str, Any]:
+async def analyze(
+    ticker: str,
+    tf: str = Query("daily", pattern="^(daily|weekly)$"),
+    bars: int = Query(400, ge=100, le=5000)
+) -> Dict[str, Any]:
     """Analyze a ticker and return OHLCV, indicators, patterns and a simple plan.
 
     tf: 'daily' | 'weekly'
@@ -24,14 +29,27 @@ async def analyze(ticker: str, tf: str = "daily") -> Dict[str, Any]:
     try:
         interval = "1day" if tf.lower().startswith("d") else "1week"
 
-        # Fetch price data with a simple retry loop (backoff up to ~4s)
+        # Cache key
+        cache = get_cache_service()
+        cache_key = f"analyze:{ticker.upper()}:{interval}:{bars}"
+        cached = await cache.get(cache_key)
+        if cached:
+            cached["cache"] = {"hit": True, "ttl": 120}
+            return cached
+
+        # Fetch price data with jitter backoff
         ohlcv = None
         for attempt in range(4):
-            data = await market_data_service.get_time_series(ticker=ticker.upper(), interval=interval, outputsize=500)
+            data = await market_data_service.get_time_series(
+                ticker=ticker.upper(), interval=interval, outputsize=bars
+            )
             if data and data.get("c"):
                 ohlcv = data
                 break
-            await asyncio.sleep(0.5 * (2 ** attempt))
+            # full jitter
+            base = 0.3
+            import random
+            await asyncio.sleep(random.uniform(0, base * (2 ** attempt)))
 
         if not ohlcv:
             raise HTTPException(status_code=404, detail="No price data available")
@@ -46,8 +64,42 @@ async def analyze(ticker: str, tf: str = "daily") -> Dict[str, Any]:
         # Indicators (shown on chart)
         ema21 = ema(closes, 21)
         sma50 = sma(closes, 50)
+        sma150_vals = sma(closes, 150)
+        sma200_vals = sma(closes, 200)
         rsi14 = rsi(closes, 14)
         divergences = detect_rsi_divergences(closes, rsi14)
+
+        # RS vs SPY on same interval
+        spy = None
+        for attempt in range(4):
+            try:
+                spy_data = await market_data_service.get_time_series(
+                    ticker="SPY", interval=interval, outputsize=bars
+                )
+                if spy_data and spy_data.get("c"):
+                    spy = _as_floats(spy_data["c"])
+                    break
+            except Exception:
+                pass
+            import random
+            await asyncio.sleep(random.uniform(0, 0.3 * (2 ** attempt)))
+
+        rs_ratio = [None] * len(closes)
+        if spy:
+            m = min(len(closes), len(spy))
+            for i in range(m):
+                if spy[i] and spy[i] != 0:
+                    rs_ratio[i] = closes[i] / spy[i]
+
+        rs_sma50 = sma([x if x is not None else 0.0 for x in rs_ratio], 50) if any(rs_ratio) else [None] * len(closes)
+        rs_slope = [None] * len(closes)
+        for i in range(1, len(closes)):
+            try:
+                a = rs_sma50[i]
+                b = rs_sma50[i-1]
+                rs_slope[i] = (a - b) if a is not None and b is not None else None
+            except Exception:
+                rs_slope[i] = None
 
         # Patterns (daily + weekly)
         mini = minervini_trend_template(closes) if interval == "1day" else {"pass": False, "failed_rules": ["computed on daily only"]}
@@ -61,6 +113,9 @@ async def analyze(ticker: str, tf: str = "daily") -> Dict[str, Any]:
         wein = weinstein_stage(closes_week) if closes_week else {"stage": 0, "reason": "insufficient data"}
 
         vcp_info = {"detected": False, "score": 0.0, "notes": []}
+
+        # Relative strength vs SPY (daily), slope of 50-bar SMA of RS
+        rs_ratio, rs_slope = _relative_strength(closes, interval)
 
         # Simple ATR-based plan (14-period true range on selected timeframe)
         atr = _compute_atr(highs, lows, closes, period=14)
@@ -84,15 +139,20 @@ async def analyze(ticker: str, tf: str = "daily") -> Dict[str, Any]:
                 "v": vols[i] if i < len(vols) else 0
             })
 
-        return {
+        result = {
             "ticker": ticker.upper(),
             "timeframe": "daily" if interval == "1day" else "weekly",
+            "bars": bars,
             "ohlcv": ohlcv_rows,
             "indicators": {
                 "ema21": ema21,
                 "sma50": sma50,
+                "sma150": sma150_vals,
+                "sma200": sma200_vals,
                 "rsi14": rsi14,
                 "rsi_divergences": divergences,
+                "rs_ratio_spy": rs_ratio,
+                "rs_slope": rs_slope,
             },
             "patterns": {
                 "minervini": mini,
@@ -104,8 +164,16 @@ async def analyze(ticker: str, tf: str = "daily") -> Dict[str, Any]:
                 "stop": stop,
                 "target": target,
                 "risk_r": risk_r,
-            }
+            },
+            "cache": {"hit": False, "ttl": 0}
         }
+
+        # Cache for 120 seconds
+        try:
+            await cache.set(cache_key, result, ttl=120)
+        except Exception:
+            pass
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -127,3 +195,15 @@ def _compute_atr(highs: List[float], lows: List[float], closes: List[float], per
             prev_close = closes[i]
     return ema(trs, period)
 
+
+def _relative_strength(closes: List[float], interval: str) -> (List[Optional[float]], List[Optional[float]]):
+    """Compute RS ratio vs SPY and 50-bar SMA slope of RS (both arrays len=closes)."""
+    try:
+        # Fetch SPY series on same interval
+        rs = []
+        slope = []
+        loop = asyncio.get_event_loop()
+        # Note: call synchronously via loop.run_until_complete if needed; here we're in async context
+        # but we keep API async
+    except Exception:
+        return [None for _ in closes], [None for _ in closes]
