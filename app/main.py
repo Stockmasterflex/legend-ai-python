@@ -16,6 +16,7 @@ from app.api.trade_plan import router as trade_router
 from app.api.analytics import router as analytics_router
 from app.api.market import router as market_router
 from app.api.dashboard import router as dashboard_router
+from app.api.alerts import router as alerts_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -96,6 +97,7 @@ app.include_router(watchlist_router)
 app.include_router(trade_router)
 app.include_router(analytics_router)
 app.include_router(market_router)
+app.include_router(alerts_router)
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 
 @app.get("/")
