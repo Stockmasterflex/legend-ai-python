@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
+import os
 import logging
 from pathlib import Path
 
@@ -26,6 +27,9 @@ async def get_dashboard():
     """
     try:
         html_content = TEMPLATE_PATH.read_text(encoding="utf-8")
+        ver = os.getenv("GIT_COMMIT", "unknown")[:7]
+        # Cache-busting for static assets and inline version token
+        html_content = html_content.replace("__VERSION__", ver)
 
         logger.info("📊 Serving dashboard")
         return html_content
