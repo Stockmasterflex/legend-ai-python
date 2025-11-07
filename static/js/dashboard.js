@@ -19,15 +19,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     cacheDom();
     bindEvents();
-    window.Dashboard = {
-      focusTab: (tab) => (state.activeTab = tab),
-    };
+    window.Dashboard = { focusTab: (tab) => (state.activeTab = tab) };
     initTradingViewWidgets();
     fetchMarketInternals();
     loadWatchlist();
-    loadSystemHealth();
     setInterval(fetchMarketInternals, 300000);
-    setInterval(loadSystemHealth, 120000);
   });
 
   function cacheDom() {
@@ -62,18 +58,6 @@
     els.chartsResults = document.getElementById('charts-results');
 
     els.toastStack = document.getElementById('toast-stack');
-
-    els.kpi = {
-      regime: document.getElementById('kpi-market-regime'),
-      regimeDetail: document.getElementById('kpi-market-detail'),
-      regimeStatus: document.getElementById('kpi-market-status'),
-      cacheHit: document.getElementById('kpi-cache-hit'),
-      cacheStatus: document.getElementById('kpi-cache-status'),
-      lastScan: document.getElementById('kpi-last-scan'),
-      scanStatus: document.getElementById('kpi-scan-status'),
-      redis: document.getElementById('kpi-redis'),
-      redisStatus: document.getElementById('kpi-redis-status'),
-    };
   }
 
   function bindEvents() {
@@ -195,9 +179,6 @@
       const payload = await res.json();
       if (!payload.success) throw new Error(payload.error || 'Universe scan failed');
       renderUniverseTable(payload.data || []);
-      els.kpi.lastScan.textContent = new Date().toLocaleTimeString();
-      els.kpi.scanStatus.textContent = 'Completed';
-      els.kpi.scanStatus.className = 'kpi-status status-healthy';
     } catch (err) {
       console.error(err);
       toast(err.message, 'error');
@@ -379,57 +360,9 @@
           </div>
         </div>
       </article>`;
-    els.kpi.regime.textContent = data.regime;
-    els.kpi.regimeDetail.textContent = data.regime_details?.signal || 'Neutral';
-    els.kpi.regimeStatus.textContent = data.regime_details?.trend || '—';
-    els.kpi.regimeStatus.className = `kpi-status ${data.regime.includes('UP') ? 'status-healthy' : 'status-warning'}`;
+    // KPI chips removed from main UI; keep only the detailed card content.
   }
 
-  async function loadSystemHealth() {
-    try {
-      const [healthRes, cacheRes, usageRes] = await Promise.all([
-        fetch('/health'),
-        fetch('/api/patterns/cache/stats'),
-        fetch('/api/charts/usage'),
-      ]);
-
-      const health = await healthRes.json();
-      const cacheStats = await cacheRes.json();
-      const usage = await usageRes.json();
-
-      let badge = 'status-healthy';
-      const statusParts = [];
-
-      if (cacheStats?.cache_stats) {
-        const hitRate = Number(cacheStats.cache_stats.redis_hit_rate || 0);
-        els.kpi.cacheHit.textContent = `${hitRate.toFixed(1)}%`;
-        statusParts.push(`${cacheStats.cache_stats.total_keys || 0} keys`);
-        if (hitRate < 60) badge = 'status-warning';
-      }
-
-      if (usage?.usage) {
-        const dailyUsage = usage.usage.daily_usage || 0;
-        const dailyLimit = usage.usage.daily_limit || 0;
-        statusParts.push(`Chart-IMG ${dailyUsage}/${dailyLimit}`);
-        const ratio = dailyLimit ? dailyUsage / dailyLimit : 0;
-        if (ratio > 0.85) badge = 'status-warning';
-      }
-
-      if (statusParts.length) {
-        els.kpi.cacheStatus.textContent = statusParts.join(' · ');
-        els.kpi.cacheStatus.className = `kpi-status ${badge}`;
-      }
-
-      if (health?.redis) {
-        els.kpi.redis.textContent = health.redis;
-        const healthy = ['connected', 'healthy'].includes(health.redis);
-        els.kpi.redisStatus.textContent = healthy ? 'Ready' : 'Degraded';
-        els.kpi.redisStatus.className = `kpi-status ${healthy ? 'status-healthy' : 'status-warning'}`;
-      }
-    } catch (err) {
-      console.error('System health error', err);
-    }
-  }
 
   function exportUniverseCsv() {
     if (!state.universeRows.length) {
@@ -586,20 +519,22 @@
       toolbar_bg: '#0b0f14',
       hideideas: true,
     });
-    state.tvWidgets.advanced = new TradingView.widget({
-      container_id: 'tv-advanced-chart',
-      symbol: 'NASDAQ:NVDA',
-      interval: 'D',
-      theme: 'dark',
-      autosize: true,
-      style: '1',
-      withdateranges: true,
-      hide_side_toolbar: false,
-      allow_symbol_change: true,
-      locale: 'en',
-      studies: ['EMA21@tv-basicstudies', 'EMA50@tv-basicstudies', 'EMA200@tv-basicstudies', 'Volume@tv-basicstudies'],
-      toolbar_bg: '#0b0f14',
-    });
+    if (document.getElementById('tv-advanced-chart')) {
+      state.tvWidgets.advanced = new TradingView.widget({
+        container_id: 'tv-advanced-chart',
+        symbol: 'NASDAQ:NVDA',
+        interval: 'D',
+        theme: 'dark',
+        autosize: true,
+        style: '1',
+        withdateranges: true,
+        hide_side_toolbar: false,
+        allow_symbol_change: true,
+        locale: 'en',
+        studies: ['EMA21@tv-basicstudies', 'EMA50@tv-basicstudies', 'EMA200@tv-basicstudies', 'Volume@tv-basicstudies'],
+        toolbar_bg: '#0b0f14',
+      });
+    }
     state.tvWidgets.heatmap = new TradingView.widget({
       container_id: 'tv-heatmap',
       width: '100%',
