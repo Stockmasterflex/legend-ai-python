@@ -55,8 +55,9 @@ class Settings(BaseSettings):
     # Google Sheets
     google_sheets_id: Optional[str] = None
 
-    # Email (optional for Phase 4)
+    # Email & Alerts (optional for Phase 4)
     sendgrid_api_key: Optional[str] = None
+    alert_email: Optional[str] = None
 
     # Security
     algorithm: str = "HS256"
