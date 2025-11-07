@@ -14,105 +14,230 @@ HTML_DASHBOARD = """<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Legend AI Trading Dashboard</title>
     <style>
+        /* Dark Cyberpunk AI Trading Theme */
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0a0e27 100%);
             min-height: 100vh;
             padding: 20px;
+            color: #e0e0e0;
+            overflow-x: hidden;
+            position: relative;
         }
+
+        /* Animated background elements */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 200, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 0, 150, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
+
         h1 {
-            color: white;
+            background: linear-gradient(135deg, #00ffcc 0%, #ff00ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 32px;
+            margin-bottom: 10px;
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
         }
+
+        .subtitle {
+            text-align: center;
+            color: #00ffcc;
+            font-size: 14px;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
             justify-content: center;
+            padding: 8px;
+            background: rgba(20, 20, 50, 0.5);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 200, 0.1);
         }
+
         .tab-btn {
             padding: 12px 24px;
-            border: none;
+            border: 2px solid rgba(0, 255, 200, 0.3);
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+            background: rgba(0, 0, 0, 0.4);
+            color: #00ffcc;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
+            font-size: 14px;
+            font-weight: 600;
             transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
         }
+
+        .tab-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 200, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
         .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(0, 255, 200, 0.8);
+            background: rgba(0, 255, 200, 0.05);
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
             transform: translateY(-2px);
         }
+
+        .tab-btn:hover::before {
+            left: 100%;
+        }
+
         .tab-btn.active {
-            background: white;
-            color: #667eea;
-            font-weight: 600;
+            background: linear-gradient(135deg, rgba(0, 255, 200, 0.2) 0%, rgba(255, 0, 150, 0.2) 100%);
+            border-color: #00ffcc;
+            box-shadow: 0 0 30px rgba(0, 255, 200, 0.5), inset 0 0 20px rgba(0, 255, 200, 0.1);
+            color: #00ffcc;
         }
+
         .tab-content {
-            background: white;
+            background: rgba(15, 20, 50, 0.7);
             border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 35px;
+            box-shadow: 0 0 40px rgba(0, 255, 200, 0.1), inset 0 0 40px rgba(0, 0, 0, 0.3);
             display: none;
-        }
-        .tab-content.active {
-            display: block;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+            backdrop-filter: blur(20px);
             animation: fadeIn 0.3s ease;
         }
+
+        .tab-content.active {
+            display: block;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         .tab-content h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 24px;
+            background: linear-gradient(135deg, #00ffcc 0%, #00aaff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 25px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 1px;
         }
+
         .form-group {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 20px;
             flex-wrap: wrap;
             align-items: center;
         }
+
         input, select {
-            padding: 10px 15px;
-            border: 2px solid #667eea;
+            padding: 12px 15px;
+            border: 2px solid rgba(0, 255, 200, 0.3);
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
+            background: rgba(0, 0, 0, 0.3);
+            color: #e0e0e0;
+            transition: all 0.3s ease;
         }
+
+        input::placeholder {
+            color: rgba(224, 224, 224, 0.5);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00ffcc;
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.3), inset 0 0 10px rgba(0, 255, 200, 0.05);
+            background: rgba(0, 255, 200, 0.02);
+        }
+
         button {
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #00ffcc 0%, #00aaff 100%);
+            color: #0a0e27;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
+            position: relative;
+            overflow: hidden;
         }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
         button:hover {
-            background: #764ba2;
-            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(0, 255, 200, 0.6);
+            transform: translateY(-3px);
         }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
         button:active {
-            transform: translateY(0);
+            transform: translateY(-1px);
         }
+
         .result {
-            background: #f5f5f5;
-            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 25px;
             border-radius: 8px;
             margin-top: 20px;
             font-family: 'Courier New', monospace;
@@ -122,37 +247,68 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-word;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #00ffcc;
             display: none;
+            color: #00ffcc;
+            border: 1px solid rgba(0, 255, 200, 0.2);
         }
+
         .result.show { display: block; }
+
         .result.error {
-            color: #d32f2f;
-            background: #ffebee;
-            border-left-color: #d32f2f;
+            color: #ff3366;
+            border-left-color: #ff3366;
+            border-color: rgba(255, 51, 102, 0.2);
+            background: rgba(255, 51, 102, 0.05);
         }
+
         .result.success {
-            color: #388e3c;
-            background: #e8f5e9;
-            border-left-color: #388e3c;
+            color: #00ffcc;
+            border-left-color: #00ffcc;
+            border-color: rgba(0, 255, 200, 0.2);
+            background: rgba(0, 255, 200, 0.05);
         }
+
         .result img {
             max-width: 100%;
             margin-top: 15px;
             border-radius: 6px;
+            border: 1px solid rgba(0, 255, 200, 0.2);
         }
+
         .result iframe {
             width: 100%;
             height: 500px;
-            border: 1px solid #ddd;
+            border: 1px solid rgba(0, 255, 200, 0.2);
             border-radius: 6px;
             margin-top: 15px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Scrollbar styling */
+        .result::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .result::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .result::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #00ffcc 0%, #ff00ff 100%);
+            border-radius: 4px;
+        }
+
+        .result::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #00ffff 0%, #ff0080 100%);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Legend AI Trading Dashboard</h1>
+        <h1>⚡ LEGEND AI</h1>
+        <div class="subtitle">AI-Powered Swing Trading Dashboard | Real-Time Pattern Detection</div>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab(event, 'pattern')">📊 Pattern Scanner</button>
@@ -348,7 +504,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
         }
 
         async function refreshWatchlist() {
-            showResult('watchlistResult', 'Loading...', false);
+            showResult('watchlistResult', 'Loading watchlist...', false);
 
             try {
                 const response = await fetch(API_BASE + '/api/watchlist');
@@ -356,15 +512,34 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                 const data = await response.json();
 
                 if (data.success && data.items && data.items.length > 0) {
-                    let msg = 'Your Watchlist (' + data.items.length + ' stocks):\\n\\n';
+                    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-top: 20px;">';
+
                     data.items.forEach(item => {
-                        msg += '• ' + item.ticker + ' - ' + item.reason + '\\n  Added: ' + item.added_date + '\\n\\n';
+                        const tvSymbol = item.ticker.includes('.') ? item.ticker.replace('.', '') : item.ticker;
+                        html += `
+                            <div style="border: 1px solid #667eea; border-radius: 8px; padding: 15px; background: #f8f8f8;">
+                                <div style="margin-bottom: 10px;">
+                                    <h3 style="margin: 0 0 5px 0; color: #667eea;">${item.ticker}</h3>
+                                    <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">
+                                        <strong>Reason:</strong> ${item.reason || 'No reason specified'}
+                                    </p>
+                                    <p style="margin: 0; font-size: 11px; color: #999;">Added: ${item.added_date}</p>
+                                </div>
+                                <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+                                    <!-- TradingView Widget -->
+                                    <iframe src="https://www.tradingview.com/widgetembed/?symbol=${tvSymbol}&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"
+                                            width="100%" height="300" frameborder="0" style="border-radius: 4px;"></iframe>
+                                </div>
+                            </div>
+                        `;
                     });
+
+                    html += '</div>';
                     const resultEl = document.getElementById('watchlistResult');
-                    resultEl.textContent = msg;
+                    resultEl.innerHTML = html;
                     resultEl.classList.add('show', 'success');
                 } else {
-                    showResult('watchlistResult', 'Watchlist is empty', false);
+                    showResult('watchlistResult', 'Watchlist is empty. Add stocks to monitor them!', false);
                 }
             } catch (error) {
                 showResult('watchlistResult', 'Error: ' + error.message, true);
@@ -372,7 +547,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
         }
 
         async function getMarketData() {
-            showResult('marketResult', 'Loading...', false);
+            showResult('marketResult', 'Loading market data...', false);
 
             try {
                 const response = await fetch(API_BASE + '/api/market/internals');
@@ -381,13 +556,78 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                 if (data.success) {
                     const m = data.data;
-                    const msg = 'SPY Price: $' + m.spy_price.toFixed(2) + '\\n' +
-                               '50 SMA: $' + m.sma_50.toFixed(2) + '\\n' +
-                               '200 SMA: $' + m.sma_200.toFixed(2) + '\\n' +
-                               'Market Regime: ' + m.regime + '\\n' +
-                               'Status: ' + m.status;
+                    let html = '<div style="margin-top: 20px;">';
+
+                    // Market Status Summary
+                    html += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">';
+                    html += '<h3 style="margin: 0 0 10px 0;">Market Status</h3>';
+                    html += '<p style="margin: 0;"><strong>SPY Price:</strong> $' + m.spy_price.toFixed(2) + '</p>';
+                    html += '<p style="margin: 5px 0;"><strong>50 SMA:</strong> $' + m.sma_50.toFixed(2) + '</p>';
+                    html += '<p style="margin: 5px 0;"><strong>200 SMA:</strong> $' + m.sma_200.toFixed(2) + '</p>';
+                    html += '<p style="margin: 5px 0;"><strong>Regime:</strong> ' + m.regime + '</p>';
+                    html += '<p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> ' + m.status + '</p>';
+                    html += '</div>';
+
+                    // Main Market Indices
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px;">';
+
+                    // SPY
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">S&P 500 (SPY)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=SPY&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    // QQQ
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">Nasdaq 100 (QQQ)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=QQQ&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    // IWM
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">Russell 2000 (IWM)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=IWM&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    // DIA
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">Dow Jones (DIA)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=DIA&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    html += '</div>'; // Close grid
+
+                    // Sector Performance Grid
+                    html += '<div style="margin-top: 30px;">';
+                    html += '<h3 style="margin-bottom: 15px; color: #667eea;">Sector Performance</h3>';
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px;">';
+
+                    const sectors = [
+                        { name: 'Technology', symbol: 'XLK', color: '#667eea' },
+                        { name: 'Healthcare', symbol: 'XLV', color: '#764ba2' },
+                        { name: 'Financials', symbol: 'XLF', color: '#f093fb' },
+                        { name: 'Energy', symbol: 'XLE', color: '#4facfe' },
+                        { name: 'Industrials', symbol: 'XLI', color: '#00f2fe' },
+                        { name: 'Consumer Disc.', symbol: 'XLY', color: '#43e97b' }
+                    ];
+
+                    sectors.forEach(sector => {
+                        html += '<div style="border: 1px solid ' + sector.color + '; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                        html += '<h4 style="margin: 10px 15px; color: ' + sector.color + ';">' + sector.name + ' (' + sector.symbol + ')</h4>';
+                        html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=' + sector.symbol + '&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                        html += ' width="100%" height="220" frameborder="0" style="border: none;"></iframe>';
+                        html += '</div>';
+                    });
+
+                    html += '</div>'; // Close sector grid
+                    html += '</div>'; // Close main div
+
                     const resultEl = document.getElementById('marketResult');
-                    resultEl.textContent = msg;
+                    resultEl.innerHTML = html;
                     resultEl.classList.add('show', 'success');
                 } else {
                     showResult('marketResult', 'Error: ' + (data.detail || 'Failed to fetch'), true);

@@ -1,10 +1,31 @@
 # Legend AI - Python FastAPI Conversion
 
-**Status:** Phase 1.1 - Project Setup ✅  
-**Conversion Progress:** 0%  
+**Status:** Phase 1.1 - Project Setup ✅
+**Conversion Progress:** 0%
 **Target Completion:** November 30, 2025
 
 Professional trading pattern scanner converting from n8n workflows to Python FastAPI backend.
+
+---
+
+## ⚠️ IMPORTANT: Claude Code Development Branch
+
+> **Always read `.claude-branch` file before starting work!**
+
+This repository uses a dedicated development branch for Claude Code:
+- **Development Branch**: `claude/initial-repo-review-011CUsBeQ3RGbnNF3EMZgqJ2` ✅ **USE THIS**
+- **Production Branch**: `main` (merges only, no direct commits)
+
+**Quick Check:**
+```bash
+cat .claude-branch                                    # Read branch name
+git checkout $(cat .claude-branch)                   # Switch if needed
+git status                                           # Verify correct branch
+```
+
+**CRITICAL**: All Claude Code commits MUST go to the claude branch, not main. See [`CLAUDE_CODE_WORKFLOW.md`](./CLAUDE_CODE_WORKFLOW.md) for complete instructions.
+
+---
 
 ## 🚀 Quick Start
 
