@@ -348,7 +348,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
         }
 
         async function refreshWatchlist() {
-            showResult('watchlistResult', 'Loading...', false);
+            showResult('watchlistResult', 'Loading watchlist...', false);
 
             try {
                 const response = await fetch(API_BASE + '/api/watchlist');
@@ -356,15 +356,34 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                 const data = await response.json();
 
                 if (data.success && data.items && data.items.length > 0) {
-                    let msg = 'Your Watchlist (' + data.items.length + ' stocks):\\n\\n';
+                    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-top: 20px;">';
+
                     data.items.forEach(item => {
-                        msg += '• ' + item.ticker + ' - ' + item.reason + '\\n  Added: ' + item.added_date + '\\n\\n';
+                        const tvSymbol = item.ticker.includes('.') ? item.ticker.replace('.', '') : item.ticker;
+                        html += `
+                            <div style="border: 1px solid #667eea; border-radius: 8px; padding: 15px; background: #f8f8f8;">
+                                <div style="margin-bottom: 10px;">
+                                    <h3 style="margin: 0 0 5px 0; color: #667eea;">${item.ticker}</h3>
+                                    <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">
+                                        <strong>Reason:</strong> ${item.reason || 'No reason specified'}
+                                    </p>
+                                    <p style="margin: 0; font-size: 11px; color: #999;">Added: ${item.added_date}</p>
+                                </div>
+                                <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+                                    <!-- TradingView Widget -->
+                                    <iframe src="https://www.tradingview.com/widgetembed/?symbol=${tvSymbol}&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"
+                                            width="100%" height="300" frameborder="0" style="border-radius: 4px;"></iframe>
+                                </div>
+                            </div>
+                        `;
                     });
+
+                    html += '</div>';
                     const resultEl = document.getElementById('watchlistResult');
-                    resultEl.textContent = msg;
+                    resultEl.innerHTML = html;
                     resultEl.classList.add('show', 'success');
                 } else {
-                    showResult('watchlistResult', 'Watchlist is empty', false);
+                    showResult('watchlistResult', 'Watchlist is empty. Add stocks to monitor them!', false);
                 }
             } catch (error) {
                 showResult('watchlistResult', 'Error: ' + error.message, true);
@@ -372,7 +391,7 @@ HTML_DASHBOARD = """<!DOCTYPE html>
         }
 
         async function getMarketData() {
-            showResult('marketResult', 'Loading...', false);
+            showResult('marketResult', 'Loading market data...', false);
 
             try {
                 const response = await fetch(API_BASE + '/api/market/internals');
@@ -381,13 +400,78 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                 if (data.success) {
                     const m = data.data;
-                    const msg = 'SPY Price: $' + m.spy_price.toFixed(2) + '\\n' +
-                               '50 SMA: $' + m.sma_50.toFixed(2) + '\\n' +
-                               '200 SMA: $' + m.sma_200.toFixed(2) + '\\n' +
-                               'Market Regime: ' + m.regime + '\\n' +
-                               'Status: ' + m.status;
+                    let html = '<div style="margin-top: 20px;">';
+
+                    // Market Status Summary
+                    html += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">';
+                    html += '<h3 style="margin: 0 0 10px 0;">Market Status</h3>';
+                    html += '<p style="margin: 0;"><strong>SPY Price:</strong> $' + m.spy_price.toFixed(2) + '</p>';
+                    html += '<p style="margin: 5px 0;"><strong>50 SMA:</strong> $' + m.sma_50.toFixed(2) + '</p>';
+                    html += '<p style="margin: 5px 0;"><strong>200 SMA:</strong> $' + m.sma_200.toFixed(2) + '</p>';
+                    html += '<p style="margin: 5px 0;"><strong>Regime:</strong> ' + m.regime + '</p>';
+                    html += '<p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> ' + m.status + '</p>';
+                    html += '</div>';
+
+                    // Main Market Indices
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px;">';
+
+                    // SPY
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">S&P 500 (SPY)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=SPY&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    // QQQ
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">Nasdaq 100 (QQQ)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=QQQ&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    // IWM
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">Russell 2000 (IWM)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=IWM&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    // DIA
+                    html += '<div style="border: 1px solid #667eea; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                    html += '<h4 style="margin: 10px 15px; color: #667eea;">Dow Jones (DIA)</h4>';
+                    html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=DIA&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                    html += ' width="100%" height="250" frameborder="0" style="border: none;"></iframe>';
+                    html += '</div>';
+
+                    html += '</div>'; // Close grid
+
+                    // Sector Performance Grid
+                    html += '<div style="margin-top: 30px;">';
+                    html += '<h3 style="margin-bottom: 15px; color: #667eea;">Sector Performance</h3>';
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px;">';
+
+                    const sectors = [
+                        { name: 'Technology', symbol: 'XLK', color: '#667eea' },
+                        { name: 'Healthcare', symbol: 'XLV', color: '#764ba2' },
+                        { name: 'Financials', symbol: 'XLF', color: '#f093fb' },
+                        { name: 'Energy', symbol: 'XLE', color: '#4facfe' },
+                        { name: 'Industrials', symbol: 'XLI', color: '#00f2fe' },
+                        { name: 'Consumer Disc.', symbol: 'XLY', color: '#43e97b' }
+                    ];
+
+                    sectors.forEach(sector => {
+                        html += '<div style="border: 1px solid ' + sector.color + '; border-radius: 8px; overflow: hidden; background: #f8f8f8;">';
+                        html += '<h4 style="margin: 10px 15px; color: ' + sector.color + ';">' + sector.name + ' (' + sector.symbol + ')</h4>';
+                        html += '<iframe src="https://www.tradingview.com/widgetembed/?symbol=' + sector.symbol + '&interval=D&hideothercharts=0&hidesidetoolbar=0&hidetopmenu=0&style=1&locale=en&withdateranges=1"';
+                        html += ' width="100%" height="220" frameborder="0" style="border: none;"></iframe>';
+                        html += '</div>';
+                    });
+
+                    html += '</div>'; // Close sector grid
+                    html += '</div>'; // Close main div
+
                     const resultEl = document.getElementById('marketResult');
-                    resultEl.textContent = msg;
+                    resultEl.innerHTML = html;
                     resultEl.classList.add('show', 'success');
                 } else {
                     showResult('marketResult', 'Error: ' + (data.detail || 'Failed to fetch'), true);
