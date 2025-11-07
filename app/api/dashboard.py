@@ -426,6 +426,162 @@ HTML_DASHBOARD = """<!DOCTYPE html>
             document.body.appendChild(script);
         }
 
+        function createTickerTapeWidget(containerId, symbols) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">Ticker tape</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                  {
+                    "symbols": ${JSON.stringify(symbols)},
+                    "colorTheme": "dark",
+                    "locale": "en",
+                    "largeChartUrl": "",
+                    "isTransparent": false,
+                    "showSymbolLogo": true,
+                    "displayMode": "adaptive"
+                  }
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
+        function createStockHeatmapWidget(containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const defaultOptions = {
+                "dataSource": "SPX500",
+                "blockSize": "market_cap_basic",
+                "blockColor": "change",
+                "grouping": "sector",
+                "locale": "en",
+                "colorTheme": "dark",
+                "isZoomEnabled": true,
+                "hasSymbolTooltip": true,
+                "width": "100%",
+                "height": "100%"
+            };
+
+            const config = { ...defaultOptions, ...options };
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/heatmap/stock/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">Stock Heatmap</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
+                  ${JSON.stringify(config)}
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
+        function createETFHeatmapWidget(containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const defaultOptions = {
+                "dataSource": "AllUSEtf",
+                "blockSize": "volume",
+                "blockColor": "change",
+                "grouping": "asset_class",
+                "locale": "en",
+                "colorTheme": "dark",
+                "isZoomEnabled": true,
+                "hasSymbolTooltip": true,
+                "width": "100%",
+                "height": "100%"
+            };
+
+            const config = { ...defaultOptions, ...options };
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/heatmap/etf/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">ETF Heatmap</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-etf-heatmap.js" async>
+                  ${JSON.stringify(config)}
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
+        function createStockScreenerWidget(containerId, options = {}) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const defaultOptions = {
+                "market": "america",
+                "showToolbar": true,
+                "defaultColumn": "overview",
+                "defaultScreen": "top_gainers",
+                "isTransparent": false,
+                "locale": "en",
+                "colorTheme": "dark",
+                "width": "100%",
+                "height": 550
+            };
+
+            const config = { ...defaultOptions, ...options };
+
+            const widgetHTML = `
+                <div class="tradingview-widget-container">
+                  <div class="tradingview-widget-container__widget"></div>
+                  <div class="tradingview-widget-copyright">
+                    <a href="https://www.tradingview.com/screener/" rel="noopener nofollow" target="_blank">
+                      <span class="blue-text">Stock Screener</span>
+                    </a>
+                    <span class="trademark"> by TradingView</span>
+                  </div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+                  ${JSON.stringify(config)}
+                  <\/script>
+                </div>
+            `;
+
+            container.innerHTML = widgetHTML;
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
         function switchTab(evt, tabName) {
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(el => el.classList.remove('active'));
@@ -632,6 +788,11 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                     html += '<p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> ' + m.status + '</p>';
                     html += '</div>';
 
+                    // Ticker Tape
+                    html += '<div style="margin-top: 30px; margin-bottom: 30px; border: 1px solid rgba(0, 255, 200, 0.3); border-radius: 8px; padding: 0; background: rgba(15, 20, 50, 0.5); overflow: hidden; height: 70px;">';
+                    html += '<div id="ticker_tape_container" style="height: 100%; width: 100%;"></div>';
+                    html += '</div>';
+
                     // Main Market Indices
                     html += '<h3 style="color: #00ffcc; margin-top: 30px; margin-bottom: 15px;">📈 Market Indices</h3>';
                     html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 20px;">';
@@ -675,6 +836,25 @@ HTML_DASHBOARD = """<!DOCTYPE html>
                     });
 
                     html += '</div>';
+
+                    // Stock Heatmap
+                    html += '<h3 style="color: #00ffcc; margin-top: 30px; margin-bottom: 15px;">🔥 Stock Heatmap (S&P 500)</h3>';
+                    html += '<div style="border: 1px solid rgba(0, 255, 200, 0.3); border-radius: 8px; padding: 0; background: rgba(15, 20, 50, 0.5); overflow: hidden; height: 600px; margin-bottom: 30px;">';
+                    html += '<div id="stock_heatmap_container" style="height: 100%; width: 100%;"></div>';
+                    html += '</div>';
+
+                    // ETF Heatmap
+                    html += '<h3 style="color: #00ffcc; margin-top: 30px; margin-bottom: 15px;">📊 ETF Heatmap (Asset Classes)</h3>';
+                    html += '<div style="border: 1px solid rgba(0, 255, 200, 0.3); border-radius: 8px; padding: 0; background: rgba(15, 20, 50, 0.5); overflow: hidden; height: 600px; margin-bottom: 30px;">';
+                    html += '<div id="etf_heatmap_container" style="height: 100%; width: 100%;"></div>';
+                    html += '</div>';
+
+                    // Stock Screener
+                    html += '<h3 style="color: #00ffcc; margin-top: 30px; margin-bottom: 15px;">🔎 Stock Screener</h3>';
+                    html += '<div style="border: 1px solid rgba(0, 255, 200, 0.3); border-radius: 8px; padding: 0; background: rgba(15, 20, 50, 0.5); overflow: hidden; margin-bottom: 30px;">';
+                    html += '<div id="stock_screener_container" style="height: 100%; width: 100%;"></div>';
+                    html += '</div>';
+
                     html += '</div>'; // Close main div
 
                     const resultEl = document.getElementById('marketResult');
@@ -683,12 +863,28 @@ HTML_DASHBOARD = """<!DOCTYPE html>
 
                     // Create TradingView widgets for all indices and sectors
                     setTimeout(() => {
+                        // Ticker Tape
+                        const tickerSymbols = [
+                            { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
+                            { "proName": "FOREXCOM:NSXUSD", "title": "NASDAQ 100" },
+                            { "proName": "CBOT:ZB1!", "title": "US Treasury Bonds" },
+                            { "proName": "BITSTAMP:BTCUSD", "title": "Bitcoin" },
+                            { "proName": "BITSTAMP:ETHUSD", "title": "Ethereum" }
+                        ];
+                        createTickerTapeWidget('ticker_tape_container', tickerSymbols);
+
+                        // Index and sector charts
                         indices.forEach(idx => {
                             createTradingViewWidget(idx.symbol, 'chart_' + idx.symbol);
                         });
                         sectors.forEach(sector => {
                             createTradingViewWidget(sector.symbol, 'chart_' + sector.symbol);
                         });
+
+                        // Heatmaps and screener
+                        createStockHeatmapWidget('stock_heatmap_container');
+                        createETFHeatmapWidget('etf_heatmap_container');
+                        createStockScreenerWidget('stock_screener_container');
                     }, 100);
                 } else {
                     showResult('marketResult', 'Error: ' + (data.detail || 'Failed to fetch'), true);
