@@ -196,6 +196,63 @@ class DatabaseService:
             db.refresh(scan_log)
             return scan_log
 
+    # -------------------- Watchlist (Raw SQL hotfix) --------------------
+    def ensure_watchlist_table(self):
+        try:
+            with self.engine.begin() as conn:
+                conn.execute(text(
+                    """
+                    create table if not exists watchlist (
+                      id serial primary key,
+                      symbol text unique not null,
+                      reason text,
+                      tags text,
+                      status text default 'Watching',
+                      created_at timestamptz default now()
+                    );
+                    """
+                ))
+        except Exception as e:
+            logger.warning(f"Could not ensure watchlist table: {e}")
+
+    def get_watchlist_items(self) -> List[Dict[str, Any]]:
+        """Return watchlist items from Postgres. Never raise; returns []."""
+        try:
+            if not self.engine:
+                return []
+            self.ensure_watchlist_table()
+            with self.engine.begin() as conn:
+                rows = conn.execute(text("select id, symbol, reason, tags, status, created_at from watchlist order by created_at desc"))
+                return [
+                    {
+                        "id": r[0],
+                        "ticker": r[1],
+                        "reason": r[2],
+                        "tags": r[3],
+                        "status": r[4],
+                        "added_at": r[5].isoformat() if r[5] else None,
+                    }
+                    for r in rows
+                ]
+        except Exception as e:
+            logger.warning(f"get_watchlist_items fallback: {e}")
+            return []
+
+    def add_watchlist_symbol(self, symbol: str, reason: str = None, tags: str = None, status: str = "Watching") -> bool:
+        try:
+            if not self.engine:
+                return False
+            self.ensure_watchlist_table()
+            with self.engine.begin() as conn:
+                conn.execute(
+                    text("insert into watchlist (symbol, reason, tags, status) values (:s, :r, :t, :st) on conflict(symbol) do update set reason=excluded.reason, tags=excluded.tags, status=excluded.status"),
+                    {"s": symbol.upper(), "r": reason, "t": tags, "st": status}
+                )
+            return True
+        except Exception as e:
+            logger.warning(f"add_watchlist_symbol failed: {e}")
+            return False
+
 # Global database service instance
 _db_service: Optional[DatabaseService] = None
 
