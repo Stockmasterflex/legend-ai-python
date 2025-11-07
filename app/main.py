@@ -17,6 +17,7 @@ from app.api.watchlist import router as watchlist_router
 from app.api.trade_plan import router as trade_router
 from app.api.analytics import router as analytics_router
 from app.api.market import router as market_router
+from app.api.analyze import router as analyze_router
 from app.api.dashboard import router as dashboard_router
 from app.api.alerts import router as alerts_router
 from app.api.multitimeframe import router as multitf_router
@@ -107,6 +108,7 @@ app.include_router(multitf_router)
 app.include_router(risk_router)
 app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
+app.include_router(analyze_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"

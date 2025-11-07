@@ -97,17 +97,13 @@
     state.currentInterval = interval;
     toggleLoading(els.patternLoading, true);
     try {
-      const res = await fetch('/api/patterns/detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, interval }),
-      });
-      const payload = await res.json();
-      if (!payload.success) throw new Error(payload.error || payload.detail || 'Pattern scan failed');
-      renderPatternResult(payload.data, payload.cached);
-      updateKpiScan();
-      updatePatternChart(ticker, interval);
-      toast(`Pattern scan complete for ${ticker}`, 'success');
+      const tf = interval === '1week' ? 'weekly' : 'daily';
+      const res = await fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
+      if (!res.ok) throw new Error('Analyze request failed');
+      const data = await res.json();
+      renderAnalyzeIntel(data);
+      mountAnalyzeChart(ticker, interval);
+      toast(`Analyzed ${ticker}`, 'success');
     } catch (err) {
       console.error(err);
       els.patternResults.innerHTML = `<p style="color:#ef4444;">${err.message}</p>`;
@@ -117,49 +113,51 @@
     }
   }
 
-  function renderPatternResult(data, cached) {
-    if (!data) {
-      els.patternResults.innerHTML = '<p>No analysis available.</p>';
-      return;
-    }
-    const scorePct = Math.round((data.score || 0) * 10);
-    const rs = data.rs_rating ?? '—';
-    const criteria = (data.criteria_met || []).map((c) => `<li>${c}</li>`).join('');
+  function renderAnalyzeIntel(data) {
+    if (!data) return;
+    const m = data.patterns?.minervini || { pass: false, failed_rules: [] };
+    const w = data.patterns?.weinstein || { stage: 0, reason: '' };
+    const p = data.plan || {};
+    const scorePct = m.pass ? 80 : 40; // placeholder gauge
     els.patternResults.innerHTML = `
       <article class="result-card">
         <div class="result-header">
           <div>
             <div class="ticker-symbol">${data.ticker}</div>
-            <div class="pattern-type">${data.pattern || 'Pattern'}</div>
+            <div class="pattern-type">Minervini: ${m.pass ? 'PASS' : 'FAIL'}</div>
           </div>
-          <span class="badge ${cached ? 'warning' : 'success'}">${cached ? 'Cached' : 'Live'}</span>
         </div>
         <div class="score-gauge">
-          <div class="gauge-bar"><div class="gauge-fill" style="--score:${scorePct}%;"></div></div>
+          <div class="gauge-bar"><div class="gauge-fill" style="--score:${scorePct}%"></div></div>
           <div class="score-text">${scorePct}/100</div>
         </div>
         <div class="form-grid">
-          <div>
-            <div class="kpi-label">Entry</div>
-            <div>$${Number(data.entry || 0).toFixed(2)}</div>
-          </div>
-          <div>
-            <div class="kpi-label">Stop</div>
-            <div>$${Number(data.stop || 0).toFixed(2)}</div>
-          </div>
-          <div>
-            <div class="kpi-label">Target</div>
-            <div>$${Number(data.target || 0).toFixed(2)}</div>
-          </div>
-          <div>
-            <div class="kpi-label">RS Rating</div>
-            <div>${rs}</div>
-          </div>
+          <div><div class="kpi-label">Weinstein</div><div>Stage ${w.stage} — ${w.reason || ''}</div></div>
+          <div><div class="kpi-label">Entry</div><div>$${Number(p.entry || 0).toFixed(2)}</div></div>
+          <div><div class="kpi-label">Stop</div><div>$${Number(p.stop || 0).toFixed(2)}</div></div>
+          <div><div class="kpi-label">Target</div><div>$${Number(p.target || 0).toFixed(2)}</div></div>
         </div>
-        <p>${data.analysis || 'Pattern explanation coming soon.'}</p>
-        <ul>${criteria}</ul>
-      </article>
-    `;
+      </article>`;
+  }
+
+  function mountAnalyzeChart(ticker, interval) {
+    const container = document.getElementById('pattern-chart');
+    if (!container) return;
+    container.innerHTML = '';
+    const resolutionMap = { '1day': 'D', '1week': 'W', '60min': '60', '15min': '15' };
+    const reso = resolutionMap[interval] || 'D';
+    state.tvWidgets.pattern = new TradingView.widget({
+      container_id: 'pattern-chart',
+      symbol: `NASDAQ:${ticker}`,
+      interval: reso,
+      theme: 'dark',
+      autosize: true,
+      style: '1',
+      locale: 'en',
+      studies: ['EMA21@tv-basicstudies', 'SMA50@tv-basicstudies', 'RSI@tv-basicstudies', 'Volume@tv-basicstudies'],
+      toolbar_bg: '#0b0f14',
+      hide_top_toolbar: false,
+    });
   }
 
   async function handleUniverseScan(event) {
@@ -506,19 +504,7 @@
         { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
       ],
     });
-    state.tvWidgets.pattern = new TradingView.widget({
-      container_id: 'pattern-chart',
-      symbol: 'NASDAQ:NVDA',
-      interval: 'D',
-      theme: 'dark',
-      autosize: true,
-      allow_symbol_change: false,
-      style: '1',
-      locale: 'en',
-      studies: ['EMA21@tv-basicstudies', 'EMA50@tv-basicstudies', 'RSI@tv-basicstudies'],
-      toolbar_bg: '#0b0f14',
-      hideideas: true,
-    });
+    // Do not mount pattern chart until analyze completes
     if (document.getElementById('tv-advanced-chart')) {
       state.tvWidgets.advanced = new TradingView.widget({
         container_id: 'tv-advanced-chart',
