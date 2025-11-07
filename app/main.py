@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
 import httpx
 import os
+from pathlib import Path
 
 from app.config import get_settings
 from app.api.telegram_enhanced import router as telegram_router
@@ -104,16 +106,23 @@ app.include_router(alerts_router)
 app.include_router(multitf_router)
 app.include_router(risk_router)
 app.include_router(trades_router)
-app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
+app.include_router(dashboard_router, tags=["dashboard"])
+
+# Mount static files if they exist
+static_path = Path(__file__).parent.parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+    logger.info(f"📁 Static files mounted from {static_path}")
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
+    """Root endpoint - redirects to dashboard"""
     return {
         "status": "running",
-        "service": "Legend AI Bot",
+        "service": "Legend AI",
         "version": "1.0.0",
-        "phase": "1.1 - Project Setup"
+        "dashboard": "/dashboard",
+        "docs": "/docs"
     }
 
 @app.get("/health")
