@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Legend AI · Cyberpunk Trading Intelligence</title>
+    <title>Legend AI — Pattern Intelligence for Traders</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
@@ -13,14 +13,13 @@
     <script defer src="/static/js/dashboard.js"></script>
 </head>
 <body class="app-shell">
-    <main class="container" x-data="{ activeTab: 'scanner' }">
+    <main class="container" x-data="{ activeTab: 'analyze' }">
         <header class="hero">
             <div class="hero-content">
                 <div>
-                    <p class="eyebrow">Legend AI · Phase 1.2</p>
-                    <h1>Lightning-fast pattern intelligence</h1>
-                    <p>Cyberpunk-grade swing trading desk with Minervini + CANSLIM logic, interactive charts, and instant market breadth.</p>
-                    <div class="badge neon">⌘K · Command Palette</div>
+                    <p class="eyebrow">Legend AI</p>
+                    <h1>Pattern Intelligence for Traders</h1>
+                    <p>Scan patterns, analyze tickers, build plans. Fast.</p>
                 </div>
                 <div class="hero-actions">
                     <label for="quick-symbol-input">Quick symbol</label>
@@ -45,43 +44,18 @@
             <div id="tv-ticker-tape" aria-label="Live market ticker"></div>
         </section>
 
-        <section class="kpi-grid" id="kpi-grid">
-            <article class="kpi-card">
-                <div class="kpi-label">Market Regime</div>
-                <div class="kpi-value" id="kpi-market-regime">Loading…</div>
-                <div class="kpi-detail" id="kpi-market-detail">Awaiting data</div>
-                <span class="kpi-status status-warning" id="kpi-market-status">Syncing</span>
-            </article>
-            <article class="kpi-card">
-                <div class="kpi-label">Cache</div>
-                <div class="kpi-value" id="kpi-cache-hit">--%</div>
-                <div class="kpi-detail">Redis hit rate</div>
-                <span class="kpi-status status-warning" id="kpi-cache-status">Unknown</span>
-            </article>
-            <article class="kpi-card">
-                <div class="kpi-label">Last Scan</div>
-                <div class="kpi-value" id="kpi-last-scan">--:--</div>
-                <div class="kpi-detail">Universe snapshot</div>
-                <span class="kpi-status status-warning" id="kpi-scan-status">Pending</span>
-            </article>
-            <article class="kpi-card">
-                <div class="kpi-label">Redis</div>
-                <div class="kpi-value" id="kpi-redis">Unknown</div>
-                <div class="kpi-detail">Connection health</div>
-                <span class="kpi-status status-warning" id="kpi-redis-status">Init</span>
-            </article>
-        </section>
+        <!-- Dev/infra KPI panels removed for trader-first UI -->
 
         <section class="tabs-container">
             <nav class="tabs-header">
+                <button class="tab-button" :class="{ 'active': activeTab === 'analyze' }" @click="activeTab = 'analyze'; window.Dashboard.focusTab('analyze');">Analyze</button>
                 <button class="tab-button" :class="{ 'active': activeTab === 'scanner' }" @click="activeTab = 'scanner'; window.Dashboard.focusTab('scanner');">Pattern Scanner</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'universe' }" @click="activeTab = 'universe'; window.Dashboard.focusTab('universe');">Universe Scan</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'watchlist' }" @click="activeTab = 'watchlist'; window.Dashboard.focusTab('watchlist');">Watchlist</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'top' }" @click="activeTab = 'top'; window.Dashboard.focusTab('top');">Top Setups</button>
                 <button class="tab-button" :class="{ 'active': activeTab === 'internals' }" @click="activeTab = 'internals'; window.Dashboard.focusTab('internals');">Market Internals</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'charts' }" @click="activeTab = 'charts'; window.Dashboard.focusTab('charts');">Charts</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'watchlist' }" @click="activeTab = 'watchlist'; window.Dashboard.focusTab('watchlist');">Watchlist</button>
             </nav>
             <div class="tabs-content">
-                <section id="tab-scanner" class="tab-pane" x-show="activeTab === 'scanner'" x-cloak>
+                <section id="tab-analyze" class="tab-pane" x-show="activeTab === 'analyze'" x-cloak>
                     <form id="pattern-form" class="form-grid">
                         <div class="form-field">
                             <label for="pattern-ticker">Ticker</label>
@@ -117,7 +91,7 @@
                     <div class="tv-card" id="pattern-chart" aria-label="Interactive TradingView chart"></div>
                 </section>
 
-                <section id="tab-universe" class="tab-pane" x-show="activeTab === 'universe'" x-cloak>
+                <section id="tab-scanner" class="tab-pane" x-show="activeTab === 'scanner'" x-cloak>
                     <form id="universe-form" class="form-grid">
                         <div class="form-field">
                             <label for="universe-source">Universe</label>
@@ -168,6 +142,10 @@
                     </div>
                 </section>
 
+                <section id="tab-top" class="tab-pane" x-show="activeTab === 'top'" x-cloak>
+                    <p style="color: var(--color-text-secondary)">Top Setups will appear here (daily best 10). Coming shortly.</p>
+                </section>
+
                 <section id="tab-watchlist" class="tab-pane" x-show="activeTab === 'watchlist'" x-cloak>
                     <form id="watchlist-form" class="form-grid">
                         <div class="form-field">
@@ -213,34 +191,7 @@
                         <div class="tv-card" id="tv-calendar"></div>
                     </div>
                 </section>
-
-                <section id="tab-charts" class="tab-pane" x-show="activeTab === 'charts'" x-cloak>
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="chart-ticker">Ticker</label>
-                            <input id="chart-ticker" type="text" value="NVDA" />
-                        </div>
-                        <div class="form-field">
-                            <label>Timeframes</label>
-                            <div class="quick-search">
-                                <button class="btn btn-secondary" data-timeframe="1D" type="button">1D</button>
-                                <button class="btn btn-secondary" data-timeframe="60" type="button">1H</button>
-                                <button class="btn btn-secondary" data-timeframe="240" type="button">4H</button>
-                                <button class="btn btn-secondary" data-timeframe="W" type="button">1W</button>
-                            </div>
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button id="chart-refresh" class="btn btn-primary" type="button">Refresh chart</button>
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button id="chart-multi" class="btn btn-ghost" type="button">Generate snapshots</button>
-                        </div>
-                    </div>
-                    <div class="tv-card" id="tv-advanced-chart"></div>
-                    <div id="charts-results" class="results-grid"></div>
-                </section>
+                
             </div>
         </section>
     </main>
