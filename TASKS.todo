@@ -1,0 +1,9 @@
+[ ] Implement GET /api/analyze per MVP schema
+[ ] Wire Analyze button → call /api/analyze; mount chart on success only
+[ ] Add EMA21, SMA50, RSI, divergence logic (core)
+[ ] Minervini pass/fail (+ failed rules) and Weinstein stage
+[ ] Plan: entry/stop/target/risk_r (server-side)
+[ ] Minimal watchlist get/add/remove or safe guard
+[ ] Unit tests (indicators, patterns) + contract test /api/analyze
+[ ] Remove any dev/infra panels from visible UI
+
