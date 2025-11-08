@@ -6,6 +6,7 @@ import asyncio
 import httpx
 
 from app.config import get_settings
+from app.infra.symbols import to_chartimg_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ async def build_analyze_chart(
 
     interval = "1D" if tf.lower().startswith("d") else "1W"
     # Best-effort guess for symbol format; many tickers work without exchange prefix
-    symbol = ticker.upper()
+    symbol = to_chartimg_symbol(ticker)
 
     drawings: List[Dict[str, Any]] = []
     try:
@@ -112,4 +113,3 @@ async def build_analyze_chart(
             await asyncio.sleep(random.uniform(0, base * (2 ** attempt)))
     logger.error(f"Chart-IMG render failed after retries: {last_err}")
     return None
-
