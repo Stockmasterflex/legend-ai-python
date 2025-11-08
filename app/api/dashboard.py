@@ -27,9 +27,13 @@ async def get_dashboard():
     """
     try:
         html_content = TEMPLATE_PATH.read_text(encoding="utf-8")
-        ver = os.getenv("GIT_COMMIT", "unknown")[:7]
+        import time
+        ver_env = os.getenv("GIT_COMMIT")
+        ver = (ver_env[:7] if ver_env else str(int(time.time())))
         # Cache-busting for static assets and inline version token
         html_content = html_content.replace("__VERSION__", ver)
+        # Inject build sha placeholder for dashboard.js and header text
+        html_content = html_content.replace("{{ build_sha }}", ver)
 
         logger.info("📊 Serving dashboard")
         return html_content
