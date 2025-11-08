@@ -19,7 +19,14 @@
   document.addEventListener('DOMContentLoaded', () => {
     cacheDom();
     bindEvents();
-    window.Dashboard = { focusTab: (tab) => (state.activeTab = tab) };
+    window.Dashboard = { focusTab: (tab) => {
+      if (state.activeTab === 'analyze' && tab !== 'analyze') {
+        // Destroy/unmount analyze chart image when leaving the tab
+        const container = document.getElementById('pattern-chart');
+        if (container) container.innerHTML = '';
+      }
+      state.activeTab = tab;
+    }};
     initTradingViewWidgets();
     fetchMarketInternals();
     loadWatchlist();
@@ -37,6 +44,7 @@
     els.patternInterval = document.getElementById('pattern-interval');
     els.patternResults = document.getElementById('pattern-results');
     els.patternLoading = document.getElementById('pattern-loading');
+    els.patternChart = document.getElementById('pattern-chart');
     els.patternAddWatchlist = document.getElementById('pattern-add-watchlist');
     els.patternSnapshot = document.getElementById('pattern-snapshot');
 
@@ -109,7 +117,7 @@
         throw new Error(data?.detail || data?.reason || `Analyze failed (${res.status})`);
       }
       renderAnalyzeIntel(data);
-      mountAnalyzeChart(ticker, interval);
+      renderAnalyzeChartImage(data);
       toast(`Analyzed ${ticker}`, 'success');
     } catch (err) {
       console.error(err);
@@ -122,16 +130,17 @@
 
   function renderAnalyzeIntel(data) {
     if (!data) return;
-    const m = data.patterns?.minervini || { pass: false, failed_rules: [] };
+    const m = data.patterns?.minervini || { passed: false, failed_rules: [] };
     const w = data.patterns?.weinstein || { stage: 0, reason: '' };
     const p = data.plan || {};
-    const scorePct = m.pass ? 80 : 40; // placeholder gauge
+    const minPass = !!(m.passed ?? m.pass);
+    const scorePct = minPass ? 80 : 40; // placeholder gauge
     els.patternResults.innerHTML = `
       <article class="result-card">
         <div class="result-header">
           <div>
             <div class="ticker-symbol">${data.ticker}</div>
-            <div class="pattern-type">Minervini: ${m.pass ? 'PASS' : 'FAIL'}</div>
+            <div class="pattern-type">Minervini: ${minPass ? 'PASS' : 'FAIL'}</div>
           </div>
         </div>
         <div class="score-gauge">
@@ -147,24 +156,35 @@
       </article>`;
   }
 
-  function mountAnalyzeChart(ticker, interval) {
+// Render analyze chart_url image (no client-side API keys or widgets)
+function renderAnalyzeChartImage(data) {
     const container = document.getElementById('pattern-chart');
     if (!container) return;
     container.innerHTML = '';
-    const resolutionMap = { '1day': 'D', '1week': 'W', '60min': '60', '15min': '15' };
-    const reso = resolutionMap[interval] || 'D';
-    state.tvWidgets.pattern = new TradingView.widget({
-      container_id: 'pattern-chart',
-      symbol: `NASDAQ:${ticker}`,
-      interval: reso,
-      theme: 'dark',
-      autosize: true,
-      style: '1',
-      locale: 'en',
-      studies: ['EMA21@tv-basicstudies', 'SMA50@tv-basicstudies', 'RSI@tv-basicstudies', 'Volume@tv-basicstudies'],
-      toolbar_bg: '#0b0f14',
-      hide_top_toolbar: false,
-    });
+    const url = data?.chart_url;
+    if (typeof url === 'string' && url.length > 0) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.display = 'block';
+      link.style.background = '#0b0f14';
+      link.style.borderRadius = '8px';
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = `${data?.ticker || ''} ${data?.timeframe || ''} snapshot`;
+      img.style.display = 'block';
+      img.style.width = '100%';
+      img.style.height = 'auto';
+      img.loading = 'lazy';
+      link.appendChild(img);
+      container.appendChild(link);
+    } else {
+      const p = document.createElement('p');
+      p.textContent = 'Chart snapshot unavailable';
+      p.style.color = 'var(--color-text-secondary)';
+      container.appendChild(p);
+    }
   }
 
   async function handleUniverseScan(event) {
