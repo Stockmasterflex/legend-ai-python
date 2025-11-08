@@ -30,4 +30,11 @@ This living roadmap extracts the planned phases from the MVP PRD and maps them t
 - Extend CI/CD: smoke tests, linting, deployment tagging with `build_sha`.
 - Document AI Council mode, automated reports, and future automation workflows.
 
+## Swing Trader Critical Features (from MASTER_IMPROVEMENT_PLAN, SWING_TRADER_FEATURE_ROADMAP)
+- **Real-Time Pattern Alerts**: Monitor watchlist every minute during market hours, send Telegram/email/SMS alerts when strong patterns appear, log R:R, entry, and stop. Toast notifications and alert history on the dashboard.
+- **Multi-Timeframe Confirmation**: Confirm setups across weekly, daily, 4H, and 1H charts; boost confidence when timeframes align. New “Multi-TF Analysis” tab or overlay displays pattern heatmap per timeframe.
+- **Entry/Exit Management**: Trade journal, position sizing, ATR-based stops, partial exits; endpoints like `/api/trades/create`, `/api/trades/open`, `/api/trades/{id}/close` track PnL and R multiple over time.
+- **Universe Scanner & Scheduled Jobs**: Weekly refresh of S&P 500 + NASDAQ 100 universes, scheduled scan at market close, rate-limiting + caching, deliver top 10–20 setups plus sector scanning endpoints.
+- **Watchlist & Alerts**: Full CRUD with states (Watching/Breaking Out/Triggered) and real-time monitoring; integrate with the universe scanner, watchlist-based alerts, and Telegram bot commands (`/watchlist`, `/plan`, `/scan`).
+
 Track progress by aligning each sprint/PR to a roadmap phase while keeping docs updated.
