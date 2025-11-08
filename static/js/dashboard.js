@@ -19,23 +19,26 @@
   document.addEventListener('DOMContentLoaded', () => {
     cacheDom();
     bindEvents();
-    window.Dashboard = { focusTab: (tab) => {
-      if (state.activeTab === 'analyze' && tab !== 'analyze') {
-        // Destroy/unmount analyze chart image when leaving the tab
-        const container = document.getElementById('pattern-chart');
-        if (container) container.innerHTML = '';
-      }
-      state.activeTab = tab;
-    }};
+    window.Dashboard = { focusTab: (tab) => switchTab(tab) };
     initTradingViewWidgets();
     fetchMarketInternals();
     loadWatchlist();
     setInterval(fetchMarketInternals, 300000);
     // Fetch build version and stamp header
-    fetch('/api/version').then(r => r.json()).then(v => {
-      const el = document.getElementById('build-version');
-      if (el && v && v.commit) el.textContent = `(build ${String(v.commit).slice(0,7)})`;
-    }).catch(() => {});
+    fetch('/api/version')
+      .then(r => r.json())
+      .then(v => {
+        const el = document.getElementById('build-version');
+        if (el && v && v.commit && String(v.commit).trim() !== 'unknown') {
+          el.textContent = `(build ${String(v.commit).slice(0,7)})`;
+        } else if (el) {
+          el.textContent = '';
+        }
+      })
+      .catch(() => {
+        const el = document.getElementById('build-version');
+        if (el) el.textContent = '';
+      });
   });
 
   function cacheDom() {
@@ -73,14 +76,100 @@
     els.toastStack = document.getElementById('toast-stack');
   }
 
+  // New: fetch /api/analyze with timeout and loading guards
+  async function fetchAnalyze(ticker, tf) {
+    if (!ticker) {
+      toast('Enter a ticker to scan.', 'error');
+      return;
+    }
+    state.currentTicker = ticker;
+    state.currentInterval = tf === 'weekly' ? '1week' : '1day';
+    toggleLoading(els.patternLoading, true);
+    const btn = els.patternForm?.querySelector('button[type="submit"]');
+    const origLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const url = `/api/analyze?ticker=${encodeURIComponent(ticker)}&tf=${tf}`;
+      const res = await fetch(url, { signal: controller.signal });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.detail || data?.reason || `Analyze failed (${res.status})`);
+      renderAnalyzeIntel(data);
+      renderAnalyzeChartImage(data?.chart_url);
+      toast(`Analyzed ${ticker}`, 'success');
+    } catch (err) {
+      console.error(err);
+      els.patternResults.innerHTML = `<p style=\"color:#ef4444;\">${err.message}</p>`;
+      toast(err.message, 'error');
+      renderAnalyzeChartImage(null);
+    } finally {
+      clearTimeout(timer);
+      toggleLoading(els.patternLoading, false);
+      if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+    }
+  }
+
+  function switchTab(tab) {
+    const tabs = Array.from(document.querySelectorAll('.tabs-header .tab-button'));
+    const panes = {
+      analyze: document.getElementById('tab-analyze'),
+      scanner: document.getElementById('tab-scanner'),
+      top: document.getElementById('tab-top'),
+      internals: document.getElementById('tab-internals'),
+      watchlist: document.getElementById('tab-watchlist'),
+    };
+    // Unmount analyze view on leave
+    if (state.activeTab === 'analyze' && tab !== 'analyze') {
+      const container = document.getElementById('pattern-chart');
+      if (container) container.innerHTML = '';
+    }
+    state.activeTab = tab;
+    tabs.forEach((btn) => {
+      const label = (btn.textContent || '').toLowerCase();
+      const isActive = label.includes(tab);
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('tabindex', isActive ? '0' : '-1');
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          btn.click();
+        }
+      });
+    });
+    Object.entries(panes).forEach(([key, el]) => {
+      if (!el) return;
+      const on = key === tab;
+      el.style.display = on ? '' : 'none';
+      el.setAttribute('role', 'tabpanel');
+      el.setAttribute('aria-hidden', on ? 'false' : 'true');
+    });
+  }
+
+  function debounce(fn, wait) {
+    let t;
+    return function (...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), wait);
+    };
+  }
+
   function bindEvents() {
-    els.patternForm?.addEventListener('submit', handlePatternScan);
+    els.patternForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const ticker = els.patternTicker.value.trim().toUpperCase();
+      const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
+      fetchAnalyze(ticker, tf);
+    });
     els.quickScanBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       if (els.quickSymbol) {
         els.patternTicker.value = els.quickSymbol.value.trim().toUpperCase();
         els.patternInterval.value = els.quickTimeframe.value;
-        handlePatternScan(e);
+        const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
+        debounce(() => fetchAnalyze(els.patternTicker.value.trim().toUpperCase(), tf), 300)();
       }
     });
     els.patternAddWatchlist?.addEventListener('click', addPatternToWatchlist);
@@ -180,12 +269,11 @@
       </article>`;
   }
 
-// Render analyze chart_url image (no client-side API keys or widgets)
-function renderAnalyzeChartImage(data) {
+// Render analyze chart image (server-provided chart_url). No client-side secrets.
+function renderAnalyzeChartImage(url) {
     const container = document.getElementById('pattern-chart');
     if (!container) return;
     container.innerHTML = '';
-    const url = data?.chart_url;
     if (typeof url === 'string' && url.length > 0) {
       const link = document.createElement('a');
       link.href = url;
@@ -196,7 +284,7 @@ function renderAnalyzeChartImage(data) {
       link.style.borderRadius = '8px';
       const img = document.createElement('img');
       img.src = url;
-      img.alt = `${data?.ticker || ''} ${data?.timeframe || ''} snapshot`;
+      img.alt = 'Analyze snapshot';
       img.style.display = 'block';
       img.style.width = '100%';
       img.style.height = 'auto';
@@ -555,23 +643,7 @@ function renderAnalyzeChartImage(data) {
         { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
       ],
     });
-    // Do not mount pattern chart until analyze completes
-    if (document.getElementById('tv-advanced-chart')) {
-      state.tvWidgets.advanced = new TradingView.widget({
-        container_id: 'tv-advanced-chart',
-        symbol: 'NASDAQ:NVDA',
-        interval: 'D',
-        theme: 'dark',
-        autosize: true,
-        style: '1',
-        withdateranges: true,
-        hide_side_toolbar: false,
-        allow_symbol_change: true,
-        locale: 'en',
-        studies: ['EMA21@tv-basicstudies', 'EMA50@tv-basicstudies', 'EMA200@tv-basicstudies', 'Volume@tv-basicstudies'],
-        toolbar_bg: '#0b0f14',
-      });
-    }
+    // Do not mount any TradingView chart by default on Analyze
     state.tvWidgets.heatmap = new TradingView.widget({
       container_id: 'tv-heatmap',
       width: '100%',
