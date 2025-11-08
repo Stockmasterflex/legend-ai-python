@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
+import subprocess
 import httpx
 import os
 from pathlib import Path
@@ -37,6 +38,17 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Legend AI Bot...")
     logger.info("API_ANALYZE_ENABLED=True")
+    # Report presence of Chart-IMG API key (boolean only)
+    try:
+        logger.info(f"ChartIMG key present: {bool(settings.chartimg_api_key)}")
+    except Exception:
+        logger.info("ChartIMG key present: False")
+    # Compute and expose short build SHA for cache-busting and header
+    try:
+        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        sha = "unknown"
+    os.environ["GIT_COMMIT"] = sha
 
     # Set webhook automatically
     await setup_telegram_webhook()
@@ -111,8 +123,6 @@ app.include_router(risk_router)
 app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
-app.include_router(analyze_pkg.router, prefix="/api", tags=["analyze"])  # explicit mount
-app.include_router(watchlist_pkg.router, prefix="/api", tags=["watchlist"])  # explicit mount
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"
