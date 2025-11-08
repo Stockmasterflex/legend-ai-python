@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 from typing import List, Dict, Any, Optional
 import logging
 import asyncio
@@ -14,6 +15,21 @@ logger = logging.getLogger(__name__)
 
 def _as_floats(values: List[Any]) -> List[float]:
     return [float(v) if v is not None else float("nan") for v in values]
+
+
+def _sanitize_series(values: List[float]) -> List[Optional[float]]:
+    """Replace NaN/Inf with None for JSON compatibility."""
+    out: List[Optional[float]] = []
+    for v in values:
+        try:
+            f = float(v)
+            if f != f or f in (float("inf"), float("-inf")):
+                out.append(None)
+            else:
+                out.append(f)
+        except Exception:
+            out.append(None)
+    return out
 
 
 @router.get("/analyze")
@@ -37,7 +53,7 @@ async def analyze(
             cached["cache"] = {"hit": True, "ttl": 120}
             return cached
 
-        # Fetch price data with jitter backoff
+        # Fetch price data with jitter backoff (max 4 tries)
         ohlcv = None
         for attempt in range(4):
             data = await market_data_service.get_time_series(
@@ -46,13 +62,14 @@ async def analyze(
             if data and data.get("c"):
                 ohlcv = data
                 break
-            # full jitter
+            # exponential backoff with jitter
             base = 0.3
             import random
             await asyncio.sleep(random.uniform(0, base * (2 ** attempt)))
 
         if not ohlcv:
-            raise HTTPException(status_code=404, detail="No price data available")
+            # Contract: if insufficient data, return 400 with {"insufficient":"data"}
+            return JSONResponse(status_code=400, content={"insufficient": "data"})
 
         closes = _as_floats(ohlcv["c"])
         opens = _as_floats(ohlcv.get("o", ohlcv["c"]))
@@ -61,48 +78,22 @@ async def analyze(
         vols = [float(v) for v in ohlcv.get("v", [0] * len(closes))]
         times = ohlcv.get("t", [])
 
-        # Indicators (shown on chart)
-        ema21 = ema(closes, 21)
-        sma50 = sma(closes, 50)
-        sma150_vals = sma(closes, 150)
-        sma200_vals = sma(closes, 200)
-        rsi14 = rsi(closes, 14)
+        # Basic sanity: require at least 50 bars for SMA50 per contract
+        if len(closes) < 50:
+            return JSONResponse(status_code=400, content={"insufficient": "data"})
+
+        # Indicators required by contract
+        ema21 = _sanitize_series(ema(closes, 21))
+        sma50 = _sanitize_series(sma(closes, 50))
+        rsi14 = _sanitize_series(rsi(closes, 14))
         divergences = detect_rsi_divergences(closes, rsi14)
 
-        # RS vs SPY on same interval
-        spy = None
-        for attempt in range(4):
-            try:
-                spy_data = await market_data_service.get_time_series(
-                    ticker="SPY", interval=interval, outputsize=bars
-                )
-                if spy_data and spy_data.get("c"):
-                    spy = _as_floats(spy_data["c"])
-                    break
-            except Exception:
-                pass
-            import random
-            await asyncio.sleep(random.uniform(0, 0.3 * (2 ** attempt)))
-
-        rs_ratio = [None] * len(closes)
-        if spy:
-            m = min(len(closes), len(spy))
-            for i in range(m):
-                if spy[i] and spy[i] != 0:
-                    rs_ratio[i] = closes[i] / spy[i]
-
-        rs_sma50 = sma([x if x is not None else 0.0 for x in rs_ratio], 50) if any(rs_ratio) else [None] * len(closes)
-        rs_slope = [None] * len(closes)
-        for i in range(1, len(closes)):
-            try:
-                a = rs_sma50[i]
-                b = rs_sma50[i-1]
-                rs_slope[i] = (a - b) if a is not None and b is not None else None
-            except Exception:
-                rs_slope[i] = None
+        # Note: RS calculations are not part of the contract output; skipped to keep response minimal
 
         # Patterns (daily + weekly)
-        mini = minervini_trend_template(closes) if interval == "1day" else {"pass": False, "failed_rules": ["computed on daily only"]}
+        mini_raw = minervini_trend_template(closes) if interval == "1day" else {"pass": False, "failed_rules": ["computed on daily only"]}
+        # Contract requires key "passed"
+        mini = {"passed": bool(mini_raw.get("pass", False)), "failed_rules": mini_raw.get("failed_rules", [])}
 
         # For Weinstein, use weekly data; if we are already weekly, reuse; otherwise ask for 1week
         if interval == "1week":
@@ -113,9 +104,6 @@ async def analyze(
         wein = weinstein_stage(closes_week) if closes_week else {"stage": 0, "reason": "insufficient data"}
 
         vcp_info = {"detected": False, "score": 0.0, "notes": []}
-
-        # Relative strength vs SPY (daily), slope of 50-bar SMA of RS
-        rs_ratio, rs_slope = _relative_strength(closes, interval)
 
         # Simple ATR-based plan (14-period true range on selected timeframe)
         atr = _compute_atr(highs, lows, closes, period=14)
@@ -147,12 +135,8 @@ async def analyze(
             "indicators": {
                 "ema21": ema21,
                 "sma50": sma50,
-                "sma150": sma150_vals,
-                "sma200": sma200_vals,
                 "rsi14": rsi14,
                 "rsi_divergences": divergences,
-                "rs_ratio_spy": rs_ratio,
-                "rs_slope": rs_slope,
             },
             "patterns": {
                 "minervini": mini,
@@ -178,7 +162,8 @@ async def analyze(
         raise
     except Exception as e:
         logger.error(f"analyze error for {ticker}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Contract: clear error message
+        raise HTTPException(status_code=500, detail=f"analyze_failed: {str(e)}")
 
 
 def _compute_atr(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> List[float]:
