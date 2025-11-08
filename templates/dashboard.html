@@ -10,14 +10,14 @@
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="/static/js/dashboard.js?v=__VERSION__"></script>
+    <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
 </head>
 <body class="app-shell">
     <main class="container" x-data="{ activeTab: 'analyze' }">
         <header class="hero">
             <div class="hero-content">
                 <div>
-                    <p class="eyebrow">Legend AI <span id="build-version"></span></p>
+                    <p class="eyebrow">Legend AI — BUILD {{ build_sha }}</p>
                     <h1>Pattern Intelligence for Traders</h1>
                     <p>Scan patterns, analyze tickers, build plans. Fast.</p>
                 </div>
