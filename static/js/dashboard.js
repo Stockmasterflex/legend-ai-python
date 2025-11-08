@@ -156,6 +156,7 @@
       </article>`;
   }
 
+// Render analyze chart_url image (no client-side API keys or widgets)
 function renderAnalyzeChartImage(data) {
     const container = document.getElementById('pattern-chart');
     if (!container) return;
