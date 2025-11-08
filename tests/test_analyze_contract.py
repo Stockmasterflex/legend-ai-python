@@ -74,6 +74,12 @@ def test_analyze_contract(monkeypatch):
 
     monkeypatch.setattr(analyze_mod, "get_cache_service", fake_get_cache_service)
 
+    # Stub Chart-IMG rendering to avoid network and assert presence
+    async def fake_build_analyze_chart(*args, **kwargs):
+        return "https://example.com/chart.png"
+
+    monkeypatch.setattr(analyze_mod, "build_analyze_chart", fake_build_analyze_chart)
+
     # Mount only the analyze route to avoid heavy app imports / env
     test_app = FastAPI()
     test_app.include_router(analyze_router)
@@ -107,3 +113,6 @@ def test_analyze_contract(monkeypatch):
     plan = data["plan"]
     for k in ["entry", "stop", "target", "risk_r"]:
         assert k in plan
+
+    # Chart URL present when Chart-IMG is stubbed
+    assert data.get("chart_url") == "https://example.com/chart.png"
