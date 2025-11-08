@@ -116,3 +116,5 @@ def test_analyze_contract(monkeypatch):
 
     # Chart URL present when Chart-IMG is stubbed
     assert data.get("chart_url") == "https://example.com/chart.png"
+    # Key should always exist in contract (value may be None)
+    assert "chart_url" in data
