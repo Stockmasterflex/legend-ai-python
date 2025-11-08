@@ -8,6 +8,7 @@ from app.services.market_data import market_data_service
 from app.core.indicators import ema, sma, rsi, detect_rsi_divergences
 from app.core.classifiers import minervini_trend_template, weinstein_stage
 from app.services.cache import get_cache_service
+from app.infra.chartimg import build_analyze_chart
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 logger = logging.getLogger(__name__)
@@ -127,6 +128,34 @@ async def analyze(
                 "v": vols[i] if i < len(vols) else 0
             })
 
+        # Optional: map divergence indices to minimal drawing hints
+        divergence_markers = []
+        try:
+            for d in divergences[:5]:
+                idx = d.get("index")
+                if idx is None or idx >= len(closes):
+                    continue
+                ts = times[idx] if idx < len(times) else None
+                divergence_markers.append({
+                    "datetime": ts if isinstance(ts, str) else None,
+                    "price": closes[idx],
+                    "type": d.get("type"),
+                })
+        except Exception:
+            divergence_markers = []
+
+        chart_url: Optional[str] = None
+        try:
+            chart_url = await build_analyze_chart(
+                ticker=ticker.upper(),
+                tf="daily" if interval == "1day" else "weekly",
+                plan={"entry": entry, "stop": stop, "target": target},
+                divergence_points=divergence_markers,
+                range_hint=times[-1] if times else None,
+            )
+        except Exception:
+            chart_url = None
+
         result = {
             "ticker": ticker.upper(),
             "timeframe": "daily" if interval == "1day" else "weekly",
@@ -149,6 +178,7 @@ async def analyze(
                 "target": target,
                 "risk_r": risk_r,
             },
+            "chart_url": chart_url,
             "cache": {"hit": False, "ttl": 0}
         }
 
