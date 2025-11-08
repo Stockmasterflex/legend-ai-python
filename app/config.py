@@ -33,10 +33,10 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
 
     # Chart-IMG
-    chartimg_api_key: str = "dev-key"
+    chartimg_api_key: Optional[str] = None
 
     # Market Data APIs
-    twelvedata_api_key: str = "dev-key"
+    twelvedata_api_key: Optional[str] = None
     finnhub_api_key: Optional[str] = None
     alpha_vantage_api_key: Optional[str] = None
 
