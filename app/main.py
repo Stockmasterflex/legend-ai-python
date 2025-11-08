@@ -25,6 +25,7 @@ from app.api.multitimeframe import router as multitf_router
 from app.api.risk import router as risk_router
 from app.api.trades import router as trades_router
 from app.api import analyze as analyze_pkg, watchlist as watchlist_pkg
+from app.api.version import router as version_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -54,7 +55,8 @@ async def lifespan(app: FastAPI):
     logger.info("API_ANALYZE_ENABLED=True")
     # Report presence of Chart-IMG API key (boolean only)
     try:
-        logger.info(f"ChartIMG key present: {bool(settings.chartimg_api_key)}")
+        logger.info("ChartIMG key present: %s", bool(get_settings().chartimg_api_key))
+        logger.info("TwelveData key present: %s", bool(get_settings().twelvedata_api_key))
     except Exception:
         logger.info("ChartIMG key present: False")
     # Compute and expose short build SHA for cache-busting and header
@@ -137,6 +139,7 @@ app.include_router(risk_router)
 app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
+app.include_router(version_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"

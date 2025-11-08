@@ -90,13 +90,13 @@ async def build_analyze_chart(
     last_err: Optional[Exception] = None
     for attempt in range(4):
         try:
-            timeout = httpx.Timeout(15.0)
+            timeout = httpx.Timeout(8.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 for sym in symbol_candidates:
                     payload: Dict[str, Any] = {**base_payload, "symbol": sym}
-                    logger.info(f"Chart-IMG request: symbol={sym} interval={interval}")
+                    logger.info("chartimg_request symbol=%s interval=%s", sym, interval)
                     resp = await client.post(url, json=payload, headers=headers)
-                    logger.info(f"Chart-IMG status: {resp.status_code} symbol={sym} interval={interval}")
+                    logger.info("chartimg_status status=%s symbol=%s interval=%s", resp.status_code, sym, interval)
                     if resp.status_code in (200, 201):
                         try:
                             data = resp.json()
@@ -107,11 +107,11 @@ async def build_analyze_chart(
                     # Non-200
                     body_head = (resp.text or "")[:150]
                     if resp.status_code in (429, 500, 502, 503, 504):
-                        logger.warning(f"Chart-IMG retryable status={resp.status_code} body={body_head}")
+                        logger.info("chartimg_retryable status=%s body=%s", resp.status_code, body_head)
                         # try next candidate this attempt; if all fail we'll backoff
                         continue
                     else:
-                        logger.warning(f"Chart-IMG non-200 status={resp.status_code} body={body_head}")
+                        logger.info("chartimg_non200 status=%s body=%s", resp.status_code, body_head)
                         # Try next candidate; if none succeed, return None (no point backoff on 4xx other than 429)
                         continue
                 # If we exhausted candidates without success, raise to trigger backoff
