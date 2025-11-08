@@ -136,8 +136,8 @@ class MarketDataService:
             cached_data["source"] = DataSource.CACHE
             return cached_data
 
-        # 2. Try TwelveData (primary)
-        if await self._check_rate_limit(DataSource.TWELVE_DATA):
+        # 2. Try TwelveData (primary) only if API key configured
+        if self.settings.twelvedata_api_key and await self._check_rate_limit(DataSource.TWELVE_DATA):
             data = await self._get_from_twelvedata(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.TWELVE_DATA)
@@ -191,7 +191,7 @@ class MarketDataService:
                 "interval": interval,
                 "outputsize": min(outputsize, 5000),
                 "format": "json",
-                "apikey": self.settings.twelvedata_api_key
+                **({"apikey": self.settings.twelvedata_api_key} if self.settings.twelvedata_api_key else {}),
             }
 
             logger.info(f"📡 TwelveData: {ticker}")
