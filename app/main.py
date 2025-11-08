@@ -32,6 +32,20 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+
+def _resolve_build_sha() -> str:
+    try:
+        for key in ("BUILD_SHA", "GIT_COMMIT", "RAILWAY_GIT_COMMIT_SHA"):
+            v = os.getenv(key)
+            if v:
+                s = str(v).strip()
+                return s[:7]
+        import subprocess
+        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+        return sha or "unknown"
+    except Exception:
+        return "unknown"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
@@ -45,7 +59,7 @@ async def lifespan(app: FastAPI):
         logger.info("ChartIMG key present: False")
     # Compute and expose short build SHA for cache-busting and header
     try:
-        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+        sha = _resolve_build_sha()
     except Exception:
         sha = "unknown"
     os.environ["GIT_COMMIT"] = sha
@@ -148,6 +162,10 @@ def version():
         "branch": os.getenv("GIT_BRANCH", "unknown"),
         "commit": os.getenv("GIT_COMMIT", "unknown"),
     }
+
+@app.get("/version")
+def version_simple():
+    return {"build_sha": _resolve_build_sha()}
 
 @app.get("/health")
 async def health():
