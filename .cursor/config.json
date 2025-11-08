@@ -1,0 +1,14 @@
+{
+  "contextFiles": [
+    "docs/MVP_SPEC.md",
+    "docs/ARCHITECTURE_GUIDE.md",
+    "docs/CONTRIBUTING.md",
+    "docs/ROADMAP.md",
+    "TASKS.todo"
+  ],
+  "rules": {
+    "defaultBranch": "claude",
+    "avoidPaths": ["env/", "node_modules/", "venv/", ".venv/"]
+  }
+}
+
