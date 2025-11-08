@@ -47,7 +47,7 @@
     els.patternInterval = document.getElementById('pattern-interval');
     els.patternResults = document.getElementById('pattern-results');
     els.patternLoading = document.getElementById('pattern-loading');
-    els.patternChart = document.getElementById('pattern-chart');
+    els.patternChart = document.getElementById('analyze-chart');
     els.patternAddWatchlist = document.getElementById('pattern-add-watchlist');
     els.patternSnapshot = document.getElementById('pattern-snapshot');
 
@@ -121,7 +121,7 @@
     };
     // Unmount analyze view on leave
     if (state.activeTab === 'analyze' && tab !== 'analyze') {
-      const container = document.getElementById('pattern-chart');
+      const container = document.getElementById('analyze-chart');
       if (container) container.innerHTML = '';
     }
     state.activeTab = tab;
@@ -271,7 +271,7 @@
 
 // Render analyze chart image (server-provided chart_url). No client-side secrets.
 function renderAnalyzeChartImage(url) {
-    const container = document.getElementById('pattern-chart');
+    const container = document.getElementById('analyze-chart');
     if (!container) return;
     container.innerHTML = '';
     if (typeof url === 'string' && url.length > 0) {

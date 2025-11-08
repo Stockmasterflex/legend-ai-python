@@ -37,8 +37,9 @@ async def build_analyze_chart(
         return None
 
     interval = "1D" if tf.lower().startswith("d") else "1W"
-    # Best-effort guess for symbol format; many tickers work without exchange prefix
-    symbol = to_chartimg_symbol(ticker)
+    # Try common US exchanges then fallback to simple uppercase ticker
+    t = (ticker or "").upper()
+    symbol_candidates: List[str] = [f"NASDAQ:{t}", f"NYSE:{t}", to_chartimg_symbol(ticker)]
 
     drawings: List[Dict[str, Any]] = []
     try:
@@ -70,9 +71,8 @@ async def build_analyze_chart(
                 "input": {"datetime": dt, "price": float(price)},
             })
 
-    payload: Dict[str, Any] = {
+    base_payload: Dict[str, Any] = {
         "theme": "dark",
-        "symbol": symbol,
         "interval": interval,
         "studies": [
             {"name": "Volume", "forceOverlay": True},
@@ -92,20 +92,30 @@ async def build_analyze_chart(
         try:
             timeout = httpx.Timeout(15.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
-                resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code in (200, 201):
-                try:
-                    data = resp.json()
-                    # Chart-IMG returns one of these keys depending on endpoint
-                    return data.get("url") or data.get("imageUrl") or data.get("image_url")
-                except Exception:
-                    return None
-            # Retry on 5xx/429
-            if resp.status_code in (429, 500, 502, 503, 504):
-                raise RuntimeError(f"chartimg HTTP {resp.status_code}")
-            # Otherwise, treat as non-retryable
-            logger.warning(f"Chart-IMG non-200: {resp.status_code} {resp.text[:200]}")
-            return None
+                for sym in symbol_candidates:
+                    payload: Dict[str, Any] = {**base_payload, "symbol": sym}
+                    logger.info(f"Chart-IMG request: symbol={sym} interval={interval}")
+                    resp = await client.post(url, json=payload, headers=headers)
+                    logger.info(f"Chart-IMG status: {resp.status_code} symbol={sym} interval={interval}")
+                    if resp.status_code in (200, 201):
+                        try:
+                            data = resp.json()
+                            # Chart-IMG returns one of these keys depending on endpoint
+                            return data.get("url") or data.get("imageUrl") or data.get("image_url")
+                        except Exception:
+                            return None
+                    # Non-200
+                    body_head = (resp.text or "")[:150]
+                    if resp.status_code in (429, 500, 502, 503, 504):
+                        logger.warning(f"Chart-IMG retryable status={resp.status_code} body={body_head}")
+                        # try next candidate this attempt; if all fail we'll backoff
+                        continue
+                    else:
+                        logger.warning(f"Chart-IMG non-200 status={resp.status_code} body={body_head}")
+                        # Try next candidate; if none succeed, return None (no point backoff on 4xx other than 429)
+                        continue
+                # If we exhausted candidates without success, raise to trigger backoff
+                raise RuntimeError("all_symbol_candidates_failed")
         except Exception as e:
             last_err = e
             base = 0.4

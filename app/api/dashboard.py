@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 import os
 import logging
 from pathlib import Path
+import subprocess
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -27,9 +28,12 @@ async def get_dashboard():
     """
     try:
         html_content = TEMPLATE_PATH.read_text(encoding="utf-8")
-        ver = os.getenv("GIT_COMMIT", "unknown")[:7]
-        # Cache-busting for static assets and inline version token
-        html_content = html_content.replace("__VERSION__", ver)
+        # Resolve build SHA for cache-busting and display
+        build_sha = _resolve_build_sha()
+        # Back-compat for any assets using __VERSION__ token elsewhere
+        html_content = html_content.replace("__VERSION__", build_sha)
+        # Inject build sha placeholder for dashboard.js and header text
+        html_content = html_content.replace("{{ build_sha }}", build_sha)
 
         logger.info("📊 Serving dashboard")
         return html_content
@@ -116,3 +120,24 @@ async def dashboard_test():
     </body>
     </html>
     """
+def _resolve_build_sha() -> str:
+    """Resolve a short build SHA for cache-busting and display.
+
+    Order of precedence:
+    1) BUILD_SHA
+    2) GIT_COMMIT
+    3) RAILWAY_GIT_COMMIT_SHA
+    4) `git rev-parse --short HEAD`
+    Fallback: "unknown"
+    """
+    for key in ("BUILD_SHA", "GIT_COMMIT", "RAILWAY_GIT_COMMIT_SHA"):
+        v = os.getenv(key)
+        if v:
+            s = str(v).strip()
+            # If it's a full SHA, keep short 7 chars for display/cache param
+            return s[:7]
+    try:
+        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+        return sha or "unknown"
+    except Exception:
+        return "unknown"
