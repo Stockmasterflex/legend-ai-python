@@ -401,7 +401,15 @@ class MarketDataService:
             }
 
             logger.info(f"📡 Yahoo Finance: {ticker}")
-            response = await self.client.get(url, params=params)
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json, text/plain, */*",
+            }
+            response = await self.client.get(url, params=params, headers=headers)
 
             if response.status_code != 200:
                 return None
