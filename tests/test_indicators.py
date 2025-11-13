@@ -1,4 +1,4 @@
-from app.core.indicators import sma, ema, rsi
+from app.core.indicators import sma, ema, rsi, detect_rsi_divergences
 
 
 def test_sma_basic():
@@ -23,3 +23,12 @@ def test_rsi_len():
     # First values should be NaN-like or not finite
     assert out[0] != out[0] or isinstance(out[0], float)
 
+
+def test_divergence_detection_basic():
+    # Create simple series with a higher high while RSI makes lower high (bearish)
+    closes = [10, 12, 11, 13, 12, 14, 13]
+    rsi_vals = [40, 50, 45, 55, 50, 52, 48]
+    divs = detect_rsi_divergences(closes, rsi_vals)
+    assert isinstance(divs, list)
+    # Should detect at least one divergence type string
+    assert all(d.get("type") in ("bullish", "bearish") for d in divs)

@@ -1,40 +1,67 @@
 # Legend AI Roadmap
 
-This living roadmap extracts the planned phases from the MVP PRD and maps them to discrete deliverables. Each phase builds on the previous one, keeping the product cohesive while allowing incremental releases.
+This living roadmap mirrors the priorities in `docs/Legend_AI_PRD.md` and keeps the team anchored on which capabilities land in each release. Every phase builds on the previous one while honoring the swing-trader feature set, the master improvement plan, and the MVP guardrails.
 
-## Phase 1 – Core Analyze Stack
-- Implement `/api/analyze` with OHLCV, indicators, pattern detection (Minervini, Weinstein, VCP), plan, and `chart_url`.
-- Build the Analyze tab UI: form, async fetch, intel panel, and chart snapshot rendering.
-- Log key presence and Chart-IMG diagnostics; add `/version` and `build_sha` visibility.
-- Tighten tests (`test_analyze_contract.py`, smoke suite) and enforce CI.
+## Release Phase Overview
 
-## Phase 2 – Scanners & Top Setups
-- Deliver `/api/scan` and `/api/top-setups` with bucketed results and caching.
-- Launch Pattern Scanner tab with ranked cards and direct Analyze links.
-- Surface Top Setups as a daily curated list, including quick intel and chart snapshot access.
-- Persist scan metadata and integrate with quick alerts (e.g., Telegram stubs).
+| Phase | Objective | Key Modules (PRD refs) | Exit Criteria |
+|-------|-----------|------------------------|---------------|
+| **Phase 1 – Analyze + Universe Baseline** | Ship the end-to-end analyze workflow and seed our universe data. | `/api/analyze`, Chart-IMG integration, Analyze tab, `/version` + `/health`, S&P 500 + NASDAQ 100 ingestion (PRD §§3,5A,5D,12). | Analyze response <2s, build SHA visible, seeded universe tables, `test_analyze_contract.py` + smoke suite green. |
+| **Phase 2 – Scanners & Top Setups** | Turn the analyzer into nightly scanners with cached outputs and curated picks. | `/api/scan`, `/api/scan/universe`, `/api/top-setups`, scheduler, Pattern Scanner + Top Setups tabs (PRD §§3–5D,12). | 600-symbol EOD scan <20 min, cached buckets feeding UI + Telegram/Sheets digests, scan telemetry logged. |
+| **Phase 3 – Watchlist Intelligence & Market Internals** | Operationalize the watchlist, alerts, and macro dashboards. | Watchlist CRUD/states, 5-min monitor, alert center, Market Internals tab, multi-timeframe overlays (PRD §§3,5E,6,8,12). | Alerts flow to dashboard + Telegram in <60s, market internals widgets live, multi-TF heatmap rendered. |
+| **Phase 4 – Trade Planner, Journal & Risk Engine** | Complete the risk workflow and journaling experience. | `/api/trade/plan/{ticker}`, ATR/Kelly sizing, trade/journal storage + exports, Trade Planner UI, partial exit templates (PRD §§3,5F,6). | Trade plan endpoint returns ATR + 2R/3R targets, journaling persistence enabled, weekly performance summaries generated. |
+| **Phase 5 – AI Guidance & Platform Hardening** | Layer on AI copilots, scoring, and telemetry hardening. | AI Commentary, AI Trade Advisor, AI Journal Coach, Legend Score, AI Council concept, macro/sentiment overlays, CI/CD + observability upgrades (PRD §§5C,5F,8–10,12). | GPT/Claude commentary in app, Legend Score surfaced, telemetry dashboards + rate-limit monitoring online. |
 
-## Phase 3 – Watchlist & Market Internals
-- Provide full watchlist CRUD (server + frontend) with notes, statuses, and re-analyze actions.
-- Populate Market Internals tab with breadth metrics, indices, heatmap, and VIX sections.
-- Lazy-load tab data and ensure tabs unload charts for performance.
-- Improve watchlist persistence via Redis/Postgres bridging.
+## Phase Details
 
-## Phase 4 – AI Commentary & Guidance
-- Introduce AI Commentary module (GPT/Claude via OpenRouter) for convictions and summaries.
-- Ship AI Trade Advisor with alternate plans, risk suggestions, and R-multiple coaching.
-- Add AI Journal Coach exporting insights to Google Sheets, Notion, or Telegram digests.
+### Phase 1 – Analyze + Universe Baseline
+- **Backend**: `/api/analyze`, `/health`, `/version`, Chart-IMG retries/backoff, Redis cache, seeded universe ingestion job.
+- **Frontend**: Analyze tab with async fetch, loading states, intel panel, Chart-IMG render gated on request success, header `BUILD <sha>`.
+- **Data & Ops**: TwelveData→Finnhub→AlphaVantage fallback, log key presence, capture Chart-IMG diagnostics, CI running smoke + contract tests.
+- **Definition of Done**: Analyze responses under 2s on common tickers, tests green in CI, universe tables populated with sector metadata.
 
-## Phase 5 – Platform Expansion & Hardening
-- Build Legend Score composites, macro/sentiment overlays, and portfolio dashboards.
-- Extend CI/CD: smoke tests, linting, deployment tagging with `build_sha`.
-- Document AI Council mode, automated reports, and future automation workflows.
+### Phase 2 – Scanners & Top Setups
+- **APIs**: `/api/scan`, `/api/scan/universe`, `/api/scan/sector/{sector}`, `/api/top-setups?limit=10` with Redis caching (24h TTL) and bucketed payloads.
+- **Scheduling**: Cron at 4:05 PM ET + Sunday refresh. Rate-limit aware batching (chunks of 25) with exponential backoff + jitter.
+- **UI & Distribution**: Pattern Scanner and Top Setups tabs consume cached data, Telegram/Sheets digests pull the same payloads, cards include quick Analyze & chart links.
+- **Definition of Done**: 600-symbol scans finish in <20 minutes, cached JSON drives both UI tabs, telemetry logs batch size/runtime/cache hits.
 
-## Swing Trader Critical Features (from MASTER_IMPROVEMENT_PLAN, SWING_TRADER_FEATURE_ROADMAP)
-- **Real-Time Pattern Alerts**: Monitor watchlist every minute during market hours, send Telegram/email/SMS alerts when strong patterns appear, log R:R, entry, and stop. Toast notifications and alert history on the dashboard.
-- **Multi-Timeframe Confirmation**: Confirm setups across weekly, daily, 4H, and 1H charts; boost confidence when timeframes align. New “Multi-TF Analysis” tab or overlay displays pattern heatmap per timeframe.
-- **Entry/Exit Management**: Trade journal, position sizing, ATR-based stops, partial exits; endpoints like `/api/trades/create`, `/api/trades/open`, `/api/trades/{id}/close` track PnL and R multiple over time.
-- **Universe Scanner & Scheduled Jobs**: Weekly refresh of S&P 500 + NASDAQ 100 universes, scheduled scan at market close, rate-limiting + caching, deliver top 10–20 setups plus sector scanning endpoints.
-- **Watchlist & Alerts**: Full CRUD with states (Watching/Breaking Out/Triggered) and real-time monitoring; integrate with the universe scanner, watchlist-based alerts, and Telegram bot commands (`/watchlist`, `/plan`, `/scan`).
+### Phase 3 – Watchlist Intelligence & Market Internals
+- **Watchlist**: CRUD UI + API, states (Watching/Breaking Out/Triggered), re-analyze actions, Redis/Postgres persistence bridge.
+- **Alerting**: Five-minute monitoring loop during market hours, toast feed, Telegram/email/SMS hooks, `/scan`, `/plan`, `/watchlist` bot commands, alert history log per ticker.
+- **Market Internals**: Breadth metrics, sector heatmap, VIX, indices, multi-timeframe confirmation heatmap + confidence boosts.
+- **Definition of Done**: Alerts flow to dashboard + Telegram in <60 seconds with audit trail, Market Internals tab lazy-loads widgets, multi-TF overlay live in Analyze + dedicated tab.
 
-Track progress by aligning each sprint/PR to a roadmap phase while keeping docs updated.
+### Phase 4 – Trade Plans, Journal & Risk Engine
+- **Endpoints**: `/api/trade/plan/{ticker}` with ATR sizing, fixed % risk, Kelly-lite multiplier, partial exits (2R/3R) and journal prompts.
+- **Data**: PostgreSQL `trades`, `journal_entries`, Sheets/Notion export jobs, weekly stats summarizer powering dashboards + `/stats` command.
+- **UX**: Trade Planner tab for account inputs, AI plan suggestions, journaling notes, and export controls.
+- **Definition of Done**: Trade plan endpoint exercised in CI, planner UI persists entries, weekly performance digest automatically posted.
+
+### Phase 5 – AI Guidance & Platform Hardening
+- **AI Modules**: GPT/Claude commentary + conviction score, AI Trade Advisor for alternates, AI Journal Coach insights, AI Council concept for ensemble voting.
+- **Analytics**: Legend Score composite, macro & sentiment overlays (AAII, VIX, put/call), portfolio dashboards, market briefings.
+- **Platform**: Expanded CI (lint + pytest), telemetry dashboards, rate-limit monitoring, automation of auto setup reports.
+- **Definition of Done**: AI commentary + Legend Score visible in UI, macro overlays shipping, CI/CD adds linting + deployment tagging, observability dashboards live.
+
+## Swing Trader Critical Features
+
+Pulling from the master improvement plan and swing-trader feature roadmap, these initiatives span multiple phases and should always have active owners:
+- **Real-Time Pattern Alerts (Phases 3–4)**: 5-minute watchlist polling, R:R logging, Telegram/email/SMS routing, dashboard toast feed, alert history with retries.
+- **Multi-Timeframe Confirmation (Phases 3–5)**: Weekly/Daily/4H/1H detectors, confidence boosts, Analyze + Multi-TF tabs kept in sync, heatmap visual plus boost badges.
+- **Entry/Exit Management (Phase 4)**: Trade journal CRUD, ATR-based sizing, partial exits, endpoints `/api/trades/create|open|close`, expectancy reporting.
+- **Universe Scanner & Scheduled Jobs (Phases 1–2)**: Weekly symbol refresh, post-close scan, rate-limit + caching discipline, sector-level scans, top setups digest.
+- **Watchlist & Bot Commands (Phase 3)**: CRUD with statuses, Telegram `/watchlist`, `/plan`, `/scan` orchestration, triggered alerts piped into Sheets + Redis audit logs.
+
+## Cross-Cutting Workstreams
+- **Observability & Telemetry (PRD §8)**: Structured logs for Chart-IMG, scan durations, alert emissions; metrics exported to Grafana/Prometheus; error budget reviews every phase.
+- **Data Backbone & Scheduling (PRD §5D)**: Universe ingestion, sector tagging, Redis/Postgres synchronization, scheduler health checks, retry/jitter strategy documented.
+- **Security & Secrets Hygiene**: Railway env audit, no keys client-side, smoke tests ensure missing key warnings are surfaced.
+- **Docs & Alignment**: Keep `Legend_AI_PRD.md`, MVP spec, and roadmap annotated per release; every sprint ties to a row in the phase overview table.
+
+## Tracking & Reporting
+- **Sprint Rituals**: Each PR/Sprint references its phase + acceptance criteria, and updates the “exit criteria” column when completed.
+- **KPIs**: Monitor Analyze <2s, Scan 100 tickers <15s, Alert latency <60s, Universe scan <20 min, Error rate <1% per day.
+- **Change Log**: Append notable milestones (feature flags, AI upgrades, tooling) at the top of the doc as they ship to maintain historical context.
+
+Track progress by aligning every deliverable to its phase row while continuously investing in the cross-cutting workstreams.

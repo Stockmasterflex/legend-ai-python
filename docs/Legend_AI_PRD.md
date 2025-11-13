@@ -12,24 +12,17 @@ Legend AI is an AI-assisted trading intelligence platform for swing traders, ana
 - Chart-IMG snapshots + Plan generation.
 - Expandable pipelines (watchlist, Telegram, Sheets, AI Commentary).
 
+## 1.5 📚 Source Alignment
+
+| Source doc | Key commitments pulled in | Reflected in |
+|-------------|---------------------------|--------------|
+| `docs/Legend_AI_Roadmap.md` | Phase-by-phase trajectory from analyze → scanners → watchlist → AI. | Section 12 release phases + Section 5 module ordering. |
+| `docs/Legend_AI_MVP.md` | MVP contract for `/api/analyze`, scan endpoints, dashboard tabs, logging/testing. | Sections 3–8 (functional modules, UX, telemetry). |
+| `docs/MVP_SPEC.md` | Stable API contracts, in/out-of-scope guardrails, performance bars. | Mission/Scope section, API expectations in Sections 4–9. |
+| `MASTER_IMPROVEMENT_PLAN.md` | Universe scanner backlog, scheduled jobs, trade planner, caching, rate-limit observability. | Section 5 (D–F), release phases, performance/telemetry targets. |
+| `SWING_TRADER_FEATURE_ROADMAP.md` | Real-time alerts, multi-timeframe confirmation, entry/exit management, Telegram workflows. | Section 5E, UX Section 6, release phases + acceptance criteria. |
+
 ## 2️⃣ Core Audiences
-Outlined same as before but add watchers benefit? Keep table maybe include "Quant/Analyst" etc; existing table good; add note referencing watchlist/trade journal? We'll keep existing table but add extra row for "Telegram operators" maybe. We'll not rewrite entire doc due to time? Need improved? existing doc already thorough; we just need to incorporate Master plan features? Maybe add explicit "Phases" inside PRD summarizing master plan align to features; also mention watchlist, Universe, etc already present earlier? restructure to highlight phases? We'll make new section "Phases & Priorities" referencing master plan features & timelines. also include sentinel tasks. We'll integrate new data from MASTER plan such as Universe scanner, charts improvements, trade plan, watchlist, etc. We'll add to 3 maybe reorganize? maybe new section 3 "Priority Workstreams" enumerating features referencing plan. We'll not drastically change but include extra details. Need to ensure patch manageable; but doc 255 lines large so editing heavy. Maybe append new sections summarizing per-phase actions referencing master plan. We'll add new section near end summarizing "Phase Priorities" listing categories derived from master plan. We'll mention customizing features like Universe scanner, scheduled scanning, watchlist, Telegram, etc. We'll add more detail to architecture? (maybe mention watchers). We'll just add new section near bottom summarizing phases similar to new road map. We'll not rewrite entire doc to avoid huge patch. We'll append new section near end describing improvements referencing master plan. Also mention watchers (Phases). plan to add addition near bottom after existing sections, but earlier we already used phases 1-5 there. Need to ensure not too redundant? Already had phases earlier but were generic; we can replace or extend earlier phases with more detail from master plan such as Universe scanner, watchlist, trading plans etc. Could remove old phases? Instead, restructure to include new sections referencing master plan. maybe easiest to replace section "10 Release Phases" with new improved version derived from master plan. For doc autop patch, maybe reorganize? We'll crafted new release phases list (12). We'll modify Section "Release Phases" to include multi-phase plan referencing features from MASTER. We'll adjust to mention Universe scanner, watchlist, etc. We'll also mention "Master plan critical features" etc. We'll patch relevant section near bottom (since there is release phases section). We'll modify to include new bullet lists referencing master plan items. Let's patch positions in doc (maybe around line near bottom "Release Phases" - we created earlier). We'll adjust to include more detail. Need to know existing release phases from doc? earlier we inserted phases at 12? yes release phases table is there; we can update table entries with additional features referencing master plan tasks. We'll patch the table to integrate Universe, watchlist, etc. We'll also mention hooking watchers to Terminal after? we only need modifications to table entries; can add new columns? We'll craft new table row details referencing master plan tasks. We'll patch lines from "## 12 Release Phases" through table. We'll update rows to mention Universe scanning, watchlist, etc. Let's patch accordingly. We'll open patch to replace table. We'll treat as in doc currently 5 phases. We'll replace column content with more detail referencing master plan tasks. Let's patch there. We'll produce patch using apply patch find snippet. Need to include more features referencing master plan items 1.1 etc. We'll patch the table to include new descriptions referencing Universe scanner, watchlist, etc. We'll use patch to replace existing table rows with new text. Let's patch from "## 12 Release Phases" down to the table. Need to know full text? previous part has table with five rows describing phases. We'll patch to new text? We'll craft new table with enriched descriptions referencing features. We'll patch entire section with new text. We'll use apply patch to replace from "## 12 Release Phases" down to "Machine" etc? Current section ends with acceptance criteria summary maybe? earlier final section after 12 maybe acceptance summary. We'll patch final portion to include new table definitions referencing master plan. We'll have to include modifications to doc structure; patch ensures minimal predicted. We'll patch lines covering release phases table and acceptance summary after? We'll craft patch that rewrites "## 12 Release Phases" section to new content while leaving acceptance criteria? there is section 12 and after there acceptance table? yes there is sections up to 12 culminating with acceptance criteria summary table. We'll patch from "## 12 Release Phases" through the table, keeping acceptance table as is (maybe not necessary). We'll patch for portion between "## 12 Release Phases" and preceding? We'll patch with new text. We'll include mention of master plan features though. Let's patch accordingly. We'll produce patch. (Possible conflicts due to long doc but manageable). Need patch with context lines for new contents. We'll patch the table block, replacing with new rows referencing Universe scanner etc. Let's craft patch snippet capturing existing block and new block. We'll set patch to remove existing lines between "## 12 Release Phases" and the acceptance criteria table start? We need exact text. We'll view portion near bottom. We'll search for "## 12 Release Phases". Already earlier we saw table listing 5 phases. We'll patch from "## 12 Release Phases" to "## ✅ Acceptance Criteria Summary" (the next section). We'll replace with new text that includes more details referencing master plan. Let's patch accordingly. We'll craft patch to remove old table and replace with new one. Need to include new plan referencing Universe scanning etc. We'll produce patch accordingly. We'll also mention watchers? yes. We'll craft new table with 5 phases referencing features from master plan. We'll implement patch. We'll include more descriptive deliverables referencing Universe scanners, watchlist, Market internals etc. We'll maintain acceptance criteria section unaffected. Let's patch. We'll craft patch by specifying old block to replace with new block. Need to copy old block for patch context: currently includes table entries as described earlier "## 12 Release Phases" etc. We'll patch to new block, referencing features. We'll also consider updated phases from earlier road map? We'll incorporate new details. We'll patch now. We'll produce new table with same number of rows but new descriptions referencing features. We'll include bullet list for each row? we can include multi-line text within table cells e.g. "Provides /api/analyze, Chart-IMG, Analyze tab" etc. We'll update table accordingly. apply patch. Let's patch from "## 12 Release Phases" section down to the "Acceptance Criteria" header. We'll patch accordingly. Let's craft patch. 
----
-
-## 1️⃣ Mission Statement
-**Legend AI** is a professional-grade, AI-assisted trading intelligence system built for **technical analysts, swing traders, and FinTech developers**.  
-It fuses **pattern recognition, AI-driven insights, and automated trade planning** into a single cohesive ecosystem — designed to match the performance and logic of elite traders like Minervini, O’Neil, and Livermore.
-
-**Core goals:**
-- Deliver real-time, data-backed pattern analysis and trade plans.
-- Provide automated scanning and ranking of stocks by setup quality.
-- Create a clean, intuitive web app deployable on Railway or any FastAPI backend.
-- Integrate AI copilots (GPT, Claude, Gemini) for commentary, scoring, and forecasting.
-- Support modular expansion into Telegram, Google Sheets, and automation workflows.
-
----
-
-## 2️⃣ Core User Profiles
 
 | Profile | Description | Primary Goals |
 |----------|--------------|----------------|
@@ -47,9 +40,12 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
 | **Analyze** | Input ticker → fetch OHLCV → calculate indicators → detect patterns → return trade plan + Chart-IMG snapshot. |
 | **Pattern Scanner** | Batch scans a list of tickers, detecting VCPs, bases, breakouts, pullbacks, and grouping results into buckets. |
 | **Top Setups (Daily Picks)** | Automatically highlights top-ranked setups each day across all pattern classes. |
+| **Scheduled Universe Scans** | Nightly + EOD scan of S&P 500 / NASDAQ 100 with caching, rate-limit aware batching, and Telegram/Sheets digests. |
 | **Market Internals Dashboard** | Displays sector strength, index trends, breadth, and volatility metrics. |
 | **Watchlist Manager** | Allows saving, removing, and analyzing favorite tickers via CRUD interface. |
-| **Telegram Alerts** *(future)* | Sends AI-ranked setups or alerts for breakout events via bot notifications. |
+| **Multi-Timeframe Confirmation** | Shows weekly/daily/4H/1H pattern alignment, confidence boosts, and heatmap visual. |
+| **Trade Planner & Journal** | Builds ATR-based plans, position sizing, and logs executions for expectancy stats + exports. |
+| **Telegram Alerts & Commands** | Sends breakout alerts (Watching → Triggered) and exposes `/scan`, `/plan`, `/watchlist` bot commands. |
 | **AI Commentary** *(future)* | Uses GPT or Claude to summarize market conditions, setups, and confidence levels. |
 | **Trade Journal Export** *(future)* | Syncs executed trades to Google Sheets or Notion for journaling and review. |
 
@@ -64,12 +60,17 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - `/api/scan`
   - `/api/scan_buckets` *(planned for upgrade)*
   - `/api/watchlist`
+  - `/api/trade/plan/{ticker}`
   - `/api/version` (returns build SHA)
 - Services:
   - `market_data`: handles OHLCV via TwelveData/Finnhub/AlphaVantage fallback chain.
   - `chartimg`: interfaces with Chart-IMG API for server-side chart rendering.
   - `patterns`: runs Minervini, Weinstein, and VCP classification logic.
   - `cache`: Redis caching for data reuse and rate-limit mitigation.
+  - `universe`: ingests S&P 500 / NASDAQ 100 lists, annotates sectors, and schedules nightly scans + sector filters.
+  - `alerts`: monitors watchlist states, dispatches Telegram/email/web toasts, and persists alert history.
+  - `trade_planner`: calculates ATR/R-multiple plans, journaling payloads, and export formatting.
+  - `scheduler`: orchestrates cron-style jobs (EOD scan, 5-min watchlist monitor, market briefings).
 
 ### 🎨 Frontend (Web)
 - Built with **Jinja2 templates** + **vanilla JavaScript** (`static/js/dashboard.js`).
@@ -79,6 +80,9 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - Top Setups
   - Market Internals
   - Watchlist
+  - Multi-TF Analysis
+  - Trade Planner
+  - Alert Center
 - Chart-IMG rendering: triggered only after successful /api/analyze request.
 - Dynamic intel panels show:
   - Pattern grades
@@ -86,6 +90,8 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - Stage and RS rank
   - Distances to key MAs
   - R-multiple and plan summary
+  - Multi-timeframe heatmap + confidence boosts
+  - Watchlist status + alert feed pills
 - Cache-busted JS (`?v={{ build_sha }}`) and header build tag (`BUILD <sha>`).
 
 ### 🗄️ Infrastructure
@@ -114,6 +120,8 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - `theme`: dark
   - `studies`: EMA(21), SMA(50), RSI(14), Volume
   - `drawings`: Long Position (entry, stop, target)
+- Multi-timeframe rendering: `/api/charts/multi` accepts `["1W","1D","4H","1H"]` to power the Multi-TF tab.
+- Entry/stop/target overlays re-enabled with trimmed annotations (max 2 drawings) per master plan 1.2.
 - Exponential backoff (max 4 tries) on errors
 - Returns pre-signed `chart_url` → embedded in dashboard
 
@@ -132,6 +140,10 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - Price above pivot +40% avg volume
 - **Flat Bases:**
   - Tight consolidation within 15% range over ≥ 5 weeks
+- **Multi-Timeframe Confirmation:**
+  - Runs detectors on 1W/1D/4H/1H
+  - Applies weighted boosts when higher + lower timeframes align
+  - Outputs heatmap + confidence deltas for UI + alerting
 
 ### C. **AI Modules (Planned Integration)**
 - **AI Commentary Engine:**
@@ -141,6 +153,32 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - Generates alternate plan suggestions (entry/stop/target)
 - **AI Journal Coach:**
   - Reviews user trades and generates insights for consistency improvement
+
+### D. **Universe Scanning & Scheduling**
+- **Data Backbone:**
+  - Weekly ingestion of S&P 500 + NASDAQ 100 with sector/industry tags (PostgreSQL + Redis cache).
+- **Endpoints:**
+  - `POST /api/scan/universe`, `POST /api/scan/sector/{sector}`, `GET /api/top-setups?limit=10`.
+  - Rate-limit aware batching (chunks of 25) with exponential backoff + jitter.
+- **Scheduling:**
+  - Cron job at 4:05 PM ET (post-close) and Sunday refresh.
+  - Stores snapshot JSON for dashboard tabs + Telegram digest.
+- **Outputs:**
+  - Bucketed cards (VCP, Flat Base, Breakout, Pullback), Legend Score, RS rank, `chart_url`.
+
+### E. **Watchlist, Alerts & Telegram Automations**
+- **Watchlist States:** `Watching`, `Breaking Out`, `Triggered` with timestamp + note per ticker.
+- **Monitoring Loop:** Every 5 minutes during market hours, re-runs pattern + price/volume thresholds (>=1.5x avg vol, MA distances).
+- **Alert Channels:** Dashboard toast/history, Telegram bot (photos + Markdown), optional email/SMS stubs.
+- **Bot Commands:** `/scan`, `/scan sector TECH`, `/plan NVDA`, `/watchlist`, `/add TICKER reason`, `/triggered`.
+- **Audit Trail:** Redis list + Sheets tab logging ticker, pattern, confidence, R:R, and response latency.
+
+### F. **Trade Planner, Journal & Risk Engine**
+- **Endpoint:** `POST /api/trade/plan/{ticker}` returns entry, stop, R targets (2R/3R), ATR-based position sizing.
+- **Position Sizing:** Account-size aware, supports fixed % risk and Kelly-lite multiplier.
+- **Partial Exits & Notes:** Allows up to 3 targets, adds journal prompts (“why setup”, “lessons”).
+- **Storage:** PostgreSQL `trades` + `journal_entries`, optional Sheets export for manual review.
+- **Reporting:** Weekly performance summaries (win rate, expectancy, drawdown) feeding dashboard + Telegram `/stats`.
 
 ---
 
@@ -153,8 +191,12 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
 - Tabs always visible; switching tabs unloads charts.
 - Analyze → Image render, plan output, intel panel.
 - Pattern Scanner → Grid of cards with patterns grouped by bucket.
+- Top Setups → Daily list with Telegram share + “Analyze again” CTA.
 - Market Internals → Embedded TradingView widgets (indices, VIX, sector heatmap).
 - Watchlist → Table view with “Analyze Again” quick action.
+- Multi-TF Analysis → Heatmap of timeframe agreement + confidence boost badges.
+- Trade Planner → Form for account size/risk %, AI suggestions, and journal notes.
+- Alert Center → Toast feed with filters (channel, status) + retry/ack controls.
 - Include “BUILD <sha>” header tag for version traceability.
 
 ---
@@ -169,6 +211,11 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
 6. Returns JSON with `chart_url`, `patterns`, and `plan`
 7. Frontend displays chart + intel + action buttons
 
+**Background Jobs**
+- **EOD Universe Scan:** Scheduler → `universe` service → chunked `/api/scan/universe` → cache (Redis) + persist (PostgreSQL) → Top Setups tab + Telegram digest.
+- **Watchlist Monitor:** Scheduler → `alerts` service → pull watchlist states → re-run analyzer → emit alerts (Telegram/API/dashboard) → log to Sheets + Redis queue.
+- **Market Briefing:** Post-close job aggregates internals, risk metrics, and legend scores, then posts to Telegram `/market` and optional Sheets tab.
+
 ---
 
 ## 8️⃣ Logging, Testing, and Telemetry
@@ -181,12 +228,16 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
   - status code
   - truncated response body
 - Log all pattern detections and scan durations.
+- Log universe scan job metadata (batch size, runtime, cache hits) and watchlist alert emissions (channel, status).
+- Emit rate-limit gauges + cache hit rates for Grafana/Prometheus hooks.
 
 ### Testing
 - `pytest -q tests`
   - `test_analyze_contract.py`: verifies JSON schema
   - `test_smoke.py`: startup/healthcheck
   - Future: `test_scan_buckets.py`: verifies bucket assignment logic
+  - Future: `test_trade_plan.py`: validates ATR sizing & R targets
+  - Future: `test_alert_scheduler.py`: simulates watchlist transitions + Telegram payloads
 - CI: fail on pytest errors (no `|| true`)
 
 ---
@@ -200,6 +251,8 @@ It fuses **pattern recognition, AI-driven insights, and automated trade planning
 | Chart-IMG Render | < 1.5 sec |
 | UI Load | < 1 sec |
 | Error Rate | < 1% 500s/day |
+| Alert Latency | < 60 sec from trigger to Telegram toast |
+| EOD Universe Scan | < 20 min for 600 symbols with caching |
 
 ---
 
@@ -228,12 +281,17 @@ Services:
 ├── chartimg.py     → Chart-IMG v2
 ├── patterns.py     → Minervini, Weinstein, VCP logic
 ├── cache.py        → Redis (1h TTL)
+├── universe.py     → Universe ingestion + scheduled scans
+├── alerts.py       → Watchlist monitors + Telegram bot
+├── trade_planner.py→ ATR sizing + journaling payloads
+├── scheduler.py    → Orchestrates cron + workers
 ↓
 Storage / Outputs:
 ├── PostgreSQL (future trades)
 ├── Redis (cache)
-├── Google Sheets (reports)
-└── Telegram Bot (alerts)
+├── Google Sheets (reports/journal)
+├── Telegram Bot (alerts)
+└── Notion / Sheets exports (trade plans)
 
 ---
 
@@ -241,11 +299,11 @@ Storage / Outputs:
 
 | Phase | Objective | Deliverables |
 |--------|------------|---------------|
-| **Phase 1 – Core Analyze & Universe** | Ready the analyze contract, universe data, and trading plans | `/api/analyze`, Chart-IMG snapshots, watchlist CRUD, universe tables (S&P 500 + NASDAQ 100), basic Analyze tab UI, `build_sha` visibility |
-| **Phase 2 – Scanner & Top Setups** | Execute scheduled + ad-hoc scans with ranking | `/api/scan/universe`, `/api/scan/sector/{sector}`, cached top setups, Pattern Scanner + Top Setups tabs, in-dashboard caching indicator, Telegram digest stub |
-| **Phase 3 – Watchlist, Alerts & Internals** | Automate monitoring and provide market context | Watchlist monitoring jobs, `/api/watchlist` webs, market internals (breadth, VIX, sectors), watchlist alerts, Telegram commands, Market Internals tab |
-| **Phase 4 – Trade Plans & Risk Engine** | Deliver detailed trade preparation and sizing | `/api/trade/plan/{ticker}`, ATR-based position sizing, R-multiples, plan export, Trade Planner tab, Journal database schema |
-| **Phase 5 – AI Commentary & Platform Hardening** | Add AI guidance, telemetry, and scaling | GPT/Claude commentary engine, AI trade advisor, Chart-IMG diagnostics, instrumentation (logs/metrics), smart caching, improved CI/CD, `Legend Score` expansions |
+| **Phase 1 – Analyze + Universe Baseline** | Lock in MVP spec + roadmap phase 1 deliverables. | `/api/analyze`, Chart-IMG with entry/stop overlays, Analyze tab, `/health` + `/version`, watchlist CRUD MVP, `build_sha`, and seeded S&P 500 / NASDAQ 100 tables with sector metadata. |
+| **Phase 2 – Scanners, Top Setups & Scheduling** | Execute the master plan 1.1 backlog. | `/api/scan`, `/api/scan/universe`, `/api/scan/sector/{sector}`, scheduled EOD scans + caching (24h TTL), Telegram/Sheets digests, Pattern Scanner + Top Setups tabs pulling from cached data. |
+| **Phase 3 – Watchlist Intelligence & Market Internals** | Merge roadmap phase 3 with swing-trader alert requirements. | Watchlist states (Watching / Breaking Out / Triggered), five-minute monitoring job, toast + Telegram/email alerts, Market Internals tab (breadth, VIX, heatmap), alert history log, multi-timeframe confirmation overlays. |
+| **Phase 4 – Trade Plans, Journal & Risk Engine** | Cover master plan 1.3 plus entry/exit management backlog. | `/api/trade/plan/{ticker}`, ATR/Kelly sizing, R-multiple insights, trade journal schema + CRUD/export, Trade Planner UI, partial exit templates, Sheets/Notion sync jobs. |
+| **Phase 5 – AI Guidance & Platform Hardening** | Incorporate roadmap phases 4–5 and master plan phase 2/3. | GPT/Claude commentary + AI Council, multi-timeframe confidence boosts, Legend Score, market briefings, telemetry dashboards, rate-limit monitoring, CI/CD hardening, portfolio + performance analytics dashboards. |
 
 ---
 
@@ -263,6 +321,9 @@ Storage / Outputs:
 | **Deployment** | Railway auto-deploy on base branch |
 | **Telemetry** | ChartIMG + Analyze logs visible in dashboard |
 | **AI Readiness** | PRD + MVP_SPEC sync completed for automation agents |
+| **Watchlist Alerts** | States transition correctly and alerts propagate to dashboard + Telegram |
+| **Trade Planner** | `/api/trade/plan` returns ATR sizing + 2R/3R targets |
+| **Multi-TF Tab** | Heatmap reflects weekly/daily/4H/1H detector outputs |
 
 ---
 
