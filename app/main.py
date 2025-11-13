@@ -26,6 +26,7 @@ from app.api.risk import router as risk_router
 from app.api.trades import router as trades_router
 from app.api import analyze as analyze_pkg, watchlist as watchlist_pkg
 from app.api.version import router as version_router
+from app.api.scan import router as scan_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -140,6 +141,7 @@ app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
 app.include_router(version_router)
+app.include_router(scan_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"

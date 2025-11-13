@@ -146,7 +146,15 @@ Content-Type: application/json
 }
 ```
 
-### 2. Get Universe Tickers
+### 2. Stable Scan Alias
+```
+POST /api/scan
+```
+Accepts the same payload as `/api/universe/scan` and returns the identical
+contract. Use this endpoint for long-lived clients so backend routing can evolve
+without breaking integrations.
+
+### 3. Get Universe Tickers
 ```
 GET /api/universe/tickers
 ```
@@ -157,6 +165,34 @@ GET /api/universe/tickers
   "sp500_count": 500,
   "nasdaq100_count": 100,
   "total": 600
+}
+```
+
+### 4. Daily Top Setups
+```
+GET /api/top-setups?limit=10
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 10,
+  "min_score": 7.0,
+  "cached": true,
+  "generated_at": "2024-01-01T15:30:00Z",
+  "results": [
+    {
+      "ticker": "NVDA",
+      "pattern": "VCP",
+      "score": 9.1,
+      "entry": 120.5,
+      "stop": 115.2,
+      "target": 140.0,
+      "risk_reward": 4.0,
+      "source": "SP500"
+    }
+  ]
 }
 ```
 
