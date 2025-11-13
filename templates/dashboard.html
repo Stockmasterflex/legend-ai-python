@@ -140,7 +140,22 @@
                 </section>
 
                 <section id="tab-top" class="tab-pane" x-show="activeTab === 'top'" x-cloak>
-                    <p style="color: var(--color-text-secondary)">Top Setups will appear here (daily best 10). Coming shortly.</p>
+                    <div class="top-setups-header">
+                        <div>
+                            <h2 class="eyebrow">Top Setups</h2>
+                            <p>Daily best ideas from S&amp;P 500 + NASDAQ scans. Score ≥ 7.</p>
+                        </div>
+                        <div class="top-setups-actions">
+                            <span id="top-setups-meta" class="top-setups-meta">Waiting for first fetch…</span>
+                            <button id="top-setups-refresh" class="btn btn-secondary" type="button">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="top-setups-loading" class="loading-overlay">
+                        <span class="spinner"></span>
+                        <span>Fetching setups…</span>
+                    </div>
+                    <div id="top-setups-empty" class="top-setups-empty">No setups yet. Run a scan or try again later.</div>
+                    <div id="top-setups-grid" class="results-grid"></div>
                 </section>
 
                 <section id="tab-watchlist" class="tab-pane" x-show="activeTab === 'watchlist'" x-cloak>
