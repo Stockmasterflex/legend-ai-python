@@ -28,10 +28,10 @@ In Railway dashboard, go to your project → Variables, and set:
 
 ```bash
 # Required API Keys
-TELEGRAM_BOT_TOKEN=8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4
-OPENROUTER_API_KEY=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
-TWELVEDATA_API_KEY=14b61f5898d1412681a8dfc878f857b4
-CHARTIMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+OPENROUTER_API_KEY=your-openrouter-api-key
+TWELVEDATA_API_KEY=your-twelvedata-api-key
+CHARTIMG_API_KEY=your-chartimg-api-key
 
 # App Settings
 DEBUG=false
@@ -61,7 +61,7 @@ railway deploy
 After deployment, get your Railway URL and set the webhook:
 
 ```bash
-curl -X POST "https://api.telegram.org/bot8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4/setWebhook" \
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
 -H "Content-Type: application/json" \
 -d '{"url": "https://your-railway-app.railway.app/api/webhook/telegram"}'
 ```
@@ -69,9 +69,9 @@ curl -X POST "https://api.telegram.org/bot8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_
 ### Step 8: Verify Deployment
 Test the bot:
 ```bash
-curl -X POST "https://api.telegram.org/bot8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4/sendMessage" \
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
 -H "Content-Type: application/json" \
--d '{"chat_id": "7815143490", "text": "🤖 Legend AI deployed successfully!"}'
+-d '{"chat_id": "YOUR_CHAT_ID", "text": "🤖 Legend AI deployed successfully!"}'
 ```
 
 ## 🔧 Local Development

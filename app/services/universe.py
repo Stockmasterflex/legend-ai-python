@@ -11,6 +11,7 @@ import asyncio
 
 from app.config import get_settings
 from app.services.cache import get_cache_service
+from app.services.universe_store import universe_store
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -123,6 +124,29 @@ class UniverseService:
             List of ticker dictionaries with metadata
         """
         try:
+            seeded = await universe_store.get_all()
+            if seeded:
+                universe = []
+                seen = set()
+                for meta in seeded.values():
+                    symbol = meta.get("symbol")
+                    if not symbol:
+                        continue
+                    if symbol in seen and dedupe:
+                        continue
+                    seen.add(symbol)
+                    universe.append(
+                        {
+                            "ticker": symbol,
+                            "source": meta.get("universe", "SP500"),
+                            "sector": meta.get("sector"),
+                            "industry": meta.get("industry"),
+                            "added_date": datetime.utcnow().isoformat(),
+                        }
+                    )
+                if universe:
+                    return universe
+
             sp500 = await self.get_sp500_tickers()
             nasdaq100 = await self.get_nasdaq100_tickers()
             
@@ -288,4 +312,3 @@ class UniverseService:
 
 # Global instance
 universe_service = UniverseService()
-

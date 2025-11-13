@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Legend AI — Pattern Intelligence for Traders</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+</head>
+<body class="app-shell">
+    <main class="container" x-data="{ activeTab: 'analyze' }">
+        <header class="hero">
+            <div class="hero-content">
+                <div>
+                    <p class="eyebrow">Legend AI — BUILD {{ build_sha }}</p>
+                    <h1>Pattern Intelligence for Traders</h1>
+                    <p>Scan patterns, analyze tickers, build plans. Fast.</p>
+                </div>
+                <div class="hero-actions">
+                    <label for="quick-symbol-input">Quick symbol</label>
+                    <div class="quick-search">
+                        <input id="quick-symbol-input" type="text" placeholder="NVDA" value="NVDA" />
+                        <button id="quick-scan-button" class="btn btn-primary">Scan</button>
+                    </div>
+                    <div class="quick-search">
+                        <select id="quick-timeframe" class="select">
+                            <option value="1day">Daily</option>
+                            <option value="1week">Weekly</option>
+                        </select>
+                        <button id="quick-snapshot" class="btn btn-secondary">Snapshot</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="tv-card">
+            <div id="tv-ticker-tape" aria-label="Live market ticker"></div>
+        </section>
+
+        <!-- Dev/infra KPI panels removed for trader-first UI -->
+
+        <section class="tabs-container">
+            <nav class="tabs-header">
+                <button class="tab-button" :class="{ 'active': activeTab === 'analyze' }" @click="activeTab = 'analyze'; window.Dashboard.focusTab('analyze');">Analyze</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'scanner' }" @click="activeTab = 'scanner'; window.Dashboard.focusTab('scanner');">Pattern Scanner</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'top' }" @click="activeTab = 'top'; window.Dashboard.focusTab('top');">Top Setups</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'internals' }" @click="activeTab = 'internals'; window.Dashboard.focusTab('internals');">Market Internals</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'watchlist' }" @click="activeTab = 'watchlist'; window.Dashboard.focusTab('watchlist');">Watchlist</button>
+            </nav>
+            <div class="tabs-content">
+                <section id="tab-analyze" class="tab-pane" x-show="activeTab === 'analyze'" x-cloak>
+                    <h2 class="eyebrow">Analyze (Daily or Weekly only – intraday coming later)</h2>
+                    <form id="pattern-form" class="form-grid">
+                        <div class="form-field">
+                            <label for="pattern-ticker">Ticker</label>
+                            <input id="pattern-ticker" type="text" value="NVDA" placeholder="NVDA" />
+                        </div>
+                        <div class="form-field">
+                            <label for="pattern-interval">Interval</label>
+                        <select id="pattern-interval">
+                            <option value="1day">Daily</option>
+                            <option value="1week">Weekly</option>
+                        </select>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" type="submit">Analyze pattern</button>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button id="pattern-add-watchlist" class="btn btn-secondary" type="button">Add to watchlist</button>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button id="pattern-snapshot" class="btn btn-ghost" type="button">Generate snapshot</button>
+                        </div>
+                    </form>
+                    <div id="pattern-loading" class="loading-overlay">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span>Scanning Minervini template…</span>
+                    </div>
+                    <div id="pattern-results" class="results-grid"></div>
+                    <div class="tv-card" id="analyze-chart" aria-label="Analyze chart snapshot"></div>
+                </section>
+
+                <section id="tab-scanner" class="tab-pane" x-show="activeTab === 'scanner'" x-cloak>
+                    <form id="universe-form" class="form-grid">
+                        <div class="form-field">
+                            <label for="universe-source">Universe</label>
+                            <select id="universe-source">
+                                <option value="nasdaq100">NASDAQ 100</option>
+                                <option value="sp500">S&P 500</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="universe-limit">Max tickers</label>
+                            <input id="universe-limit" type="number" value="25" min="5" max="100" />
+                        </div>
+                        <div class="form-field">
+                            <label for="universe-score">Min score</label>
+                            <input id="universe-score" type="number" value="7" min="0" max="10" step="0.5" />
+                        </div>
+                        <div class="form-field">
+                            <label for="universe-rs">Min RS</label>
+                            <input id="universe-rs" type="number" value="60" min="0" max="100" />
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" type="submit">Run scan</button>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button id="universe-export" class="btn btn-secondary" type="button">Export CSV</button>
+                        </div>
+                    </form>
+                    <div id="universe-loading" class="loading-overlay">
+                        <span class="spinner"></span>
+                        <span>Scanning universe…</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table" aria-live="polite">
+                            <thead>
+                                <tr>
+                                    <th>Ticker</th>
+                                    <th>Pattern</th>
+                                    <th>Score</th>
+                                    <th>RS</th>
+                                    <th>ATR%</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="universe-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="tab-top" class="tab-pane" x-show="activeTab === 'top'" x-cloak>
+                    <div class="top-setups-header">
+                        <div>
+                            <h2 class="eyebrow">Top Setups</h2>
+                            <p>Daily best ideas from S&amp;P 500 + NASDAQ scans. Score ≥ 7.</p>
+                        </div>
+                        <div class="top-setups-actions">
+                            <span id="top-setups-meta" class="top-setups-meta">Waiting for first fetch…</span>
+                            <button id="top-setups-refresh" class="btn btn-secondary" type="button">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="top-setups-loading" class="loading-overlay">
+                        <span class="spinner"></span>
+                        <span>Fetching setups…</span>
+                    </div>
+                    <div id="top-setups-empty" class="top-setups-empty">No setups yet. Run a scan or try again later.</div>
+                    <div id="top-setups-grid" class="results-grid"></div>
+                </section>
+
+                <section id="tab-watchlist" class="tab-pane" x-show="activeTab === 'watchlist'" x-cloak>
+                    <form id="watchlist-form" class="form-grid">
+                        <div class="form-field">
+                            <label for="watchlist-symbol">Ticker</label>
+                            <input id="watchlist-symbol" type="text" placeholder="TSLA" />
+                        </div>
+                        <div class="form-field">
+                            <label for="watchlist-reason">Reason</label>
+                            <input id="watchlist-reason" type="text" placeholder="VCP base" />
+                        </div>
+                        <div class="form-field">
+                            <label for="watchlist-tags">Tags</label>
+                            <input id="watchlist-tags" type="text" placeholder="Breakout, Momentum" />
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" type="submit">Add</button>
+                        </div>
+                    </form>
+                    <div class="form-field" style="max-width: 220px;">
+                        <label for="watchlist-filter">Filter</label>
+                        <select id="watchlist-filter">
+                            <option value="all">All statuses</option>
+                            <option value="Watching">Watching</option>
+                            <option value="Setup">Setup building</option>
+                            <option value="Triggered">Triggered</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                    </div>
+                    <div id="watchlist-empty" class="loading-overlay">No watchlist items yet.</div>
+                    <div id="watchlist-list" class="results-grid"></div>
+                </section>
+
+                <section id="tab-internals" class="tab-pane" x-show="activeTab === 'internals'" x-cloak>
+                    <div id="market-loading" class="loading-overlay">
+                        <span class="spinner"></span>
+                        <span>Fetching breadth + volatility…</span>
+                    </div>
+                    <div id="market-results" class="results-grid"></div>
+                    <div class="tv-grid">
+                        <div class="tv-card" id="tv-heatmap"></div>
+                        <div class="tv-card" id="tv-market-overview"></div>
+                        <div class="tv-card" id="tv-calendar"></div>
+                    </div>
+                </section>
+                
+            </div>
+        </section>
+    </main>
+
+    <div id="toast-stack" class="toast-stack"></div>
+    <script async src="https://s3.tradingview.com/tv.js"></script>
+</body>
+</html>
