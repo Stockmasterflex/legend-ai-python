@@ -14,6 +14,13 @@
     universeRows: [],
   };
 
+  const TRADINGVIEW_CTORS = {
+    'ticker-tape': 'tickerTape',
+    'stock-heatmap': 'StockHeatmapWidget',
+    'market-overview': 'MarketOverviewWidget',
+    'economic-calendar': 'EconomicCalendarWidget',
+  };
+
   const els = {};
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -224,7 +231,16 @@
     const vcp = data.patterns?.vcp || { detected: false, score: 0 };
     const p = data.plan || {};
     const minPass = !!(m.passed ?? m.pass);
-    const scorePct = minPass ? 80 : 40; // placeholder gauge
+    const scoreMeta = computeAnalyzeScore({
+      minPass,
+      failedRules: m.failed_rules || [],
+      stage: Number(w.stage || 0),
+      vcpScore: Number(vcp.score || 0),
+      vcpDetected: Boolean(vcp.detected),
+      dist21: Math.abs(d21),
+      riskMultiple: Number(rmult || 0),
+    });
+    const grade = describeScoreGrade(scoreMeta.total);
 
     const lastRow = (data.ohlcv && data.ohlcv.length) ? data.ohlcv[data.ohlcv.length - 1] : {};
     const lastC = Number(lastRow?.c || 0);
@@ -252,9 +268,16 @@
           </div>
         </div>
         <div class="score-gauge">
-          <div class="gauge-bar"><div class="gauge-fill" style="--score:${scorePct}%"></div></div>
-          <div class="score-text">${scorePct}/100</div>
+          <div class="gauge-bar"><div class="gauge-fill" style="--score:${scoreMeta.total}%"></div></div>
+          <div class="score-meta">
+            <div class="score-text">${scoreMeta.total}/100</div>
+            <span class="badge ${grade.badge}">${grade.label}</span>
+            <p class="score-caption">${grade.description}</p>
+          </div>
         </div>
+        <ul class="score-breakdown">
+          ${scoreMeta.breakdown.map((item) => `<li><span>${item.label}</span><strong>${item.points} pts</strong></li>`).join('')}
+        </ul>
         <div class="form-grid">
           <div><div class="kpi-label">Weinstein</div><div>Stage ${w.stage} — ${w.reason || ''}</div></div>
           <div><div class="kpi-label">VCP</div><div>${vcp.detected ? 'Yes' : 'No'} · score ${Number(vcp.score || 0).toFixed(1)}</div></div>
@@ -453,7 +476,7 @@ function renderAnalyzeChartImage(url) {
       const res = await fetch('/api/market/internals');
       const payload = await res.json();
       if (!payload.success) throw new Error(payload.detail || 'Market internals unavailable');
-      renderMarketInternals(payload.data);
+      renderMarketInternals(payload.data, { cached: payload.cached, ttl: payload.cache_ttl_seconds });
     } catch (err) {
       console.error(err);
       toast(err.message, 'error');
@@ -462,8 +485,18 @@ function renderAnalyzeChartImage(url) {
     }
   }
 
-  function renderMarketInternals(data) {
+  function renderMarketInternals(data, meta = {}) {
     if (!data) return;
+    const breadth = data.market_breadth || {};
+    const vol = data.volatility || {};
+    const apiUsage = data.api_usage || {};
+    const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleString() : '';
+    const advDecline = `${breadth.advances ?? '—'} adv / ${breadth.declines ?? '—'} dec`;
+    const advRatio = Number.isFinite(breadth.advance_decline_ratio)
+      ? `${Number(breadth.advance_decline_ratio).toFixed(1)}% adv rate`
+      : 'Advance/decline sample';
+    const cacheLabel = meta.cached ? 'HIT' : 'LIVE';
+    const ttlLabel = meta.ttl ? `${Math.round(meta.ttl / 60)}m ttl` : '—';
     els.marketResults.innerHTML = `
       <article class="result-card">
         <div class="result-header">
@@ -478,22 +511,61 @@ function renderAnalyzeChartImage(url) {
             <p>SMA50 ${Number(data.sma_50 || 0).toFixed(2)} · SMA200 ${Number(data.sma_200 || 0).toFixed(2)}</p>
           </div>
         </div>
+        <p class="kpi-detail">Last updated ${timestamp || 'recently'} · sample ${breadth.sample_size ?? '—'} tickers</p>
+      </article>
+      <article class="result-card">
+        <div class="result-header">
+          <div>
+            <div class="kpi-label">Breadth snapshot</div>
+            <div class="ticker-symbol" style="font-size:1.25rem;">${advDecline}</div>
+            <p>${advRatio}</p>
+          </div>
+          <div>
+            <div class="kpi-label">% Above MAs</div>
+            <div>${Number(breadth.pct_above_50ema ?? 0).toFixed(1)}% / ${Number(breadth.pct_above_200ema ?? 0).toFixed(1)}%</div>
+            <p>50 EMA / 200 EMA</p>
+          </div>
+        </div>
         <div class="form-grid">
           <div>
-            <div class="kpi-label">% Above 50 EMA</div>
-            <div>${Number(data.market_breadth?.pct_above_50ema || 0).toFixed(1)}%</div>
+            <div class="kpi-label">52W Highs</div>
+            <div>${breadth.new_highs_52w ?? '—'}</div>
           </div>
           <div>
-            <div class="kpi-label">New Highs</div>
-            <div>${data.market_breadth?.new_highs || '—'}</div>
+            <div class="kpi-label">52W Lows</div>
+            <div>${breadth.new_lows_52w ?? '—'}</div>
           </div>
           <div>
-            <div class="kpi-label">New Lows</div>
-            <div>${data.market_breadth?.new_lows || '—'}</div>
+            <div class="kpi-label">Advances</div>
+            <div>${breadth.advances ?? '—'}</div>
           </div>
           <div>
-            <div class="kpi-label">VIX</div>
-            <div>${Number(data.vix || 0).toFixed(2)}</div>
+            <div class="kpi-label">Declines</div>
+            <div>${breadth.declines ?? '—'}</div>
+          </div>
+        </div>
+      </article>
+      <article class="result-card">
+        <div class="result-header">
+          <div>
+            <div class="kpi-label">Volatility</div>
+            <div class="ticker-symbol" style="font-size:1.25rem;">${vol.vix_level ? Number(vol.vix_level).toFixed(2) : '—'}</div>
+            <p>${vol.volatility_status || 'Unknown'}</p>
+          </div>
+          <div>
+            <div class="kpi-label">API usage</div>
+            <div>${apiUsage.status || '—'}</div>
+            <p>${apiUsage.requests_remaining ? `${apiUsage.requests_remaining} calls left` : ''}</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div>
+            <div class="kpi-label">Cache</div>
+            <div>${cacheLabel} (${ttlLabel})</div>
+          </div>
+          <div>
+            <div class="kpi-label">Notes</div>
+            <div>${vol.success === false ? 'VIX fallback' : 'Healthy'}</div>
           </div>
         </div>
       </article>`;
@@ -622,44 +694,31 @@ function renderAnalyzeChartImage(url) {
 
   function initTradingViewWidgets() {
     if (state.tvReady) return;
-    if (!window.TradingView) {
-      setTimeout(initTradingViewWidgets, 400);
-      return;
-    }
-    state.tvReady = true;
-    state.tvWidgets.tape = new TradingView.widget({
-      container_id: 'tv-ticker-tape',
-      width: '100%',
-      colorTheme: 'dark',
-      isTransparent: true,
-      autosize: true,
-      displayMode: 'regular',
-      locale: 'en',
-      symbols: [
-        { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
-        { proName: 'NASDAQ:NDX', title: 'Nasdaq 100' },
-        { proName: 'CME_MINI:ES1!', title: 'ES' },
-        { proName: 'COMEX:GC1!', title: 'Gold' },
-        { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
-      ],
-    });
-    // Do not mount any TradingView chart by default on Analyze
-    state.tvWidgets.heatmap = new TradingView.widget({
-      container_id: 'tv-heatmap',
-      width: '100%',
-      height: 500,
-      colorTheme: 'dark',
-      isTransparent: false,
-      autosize: true,
-      locale: 'en',
-      dataSource: 'SPX',
-      widgetType: 'stock-heatmap',
-    });
+    waitForTradingView(() => {
+      if (state.tvReady) return;
+      state.tvReady = true;
+      state.tvWidgets.tape = mountTradingViewWidget('ticker-tape', {
+        container_id: 'tv-ticker-tape',
+        symbols: [
+          { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
+          { proName: 'NASDAQ:NDX', title: 'Nasdaq 100' },
+          { proName: 'CME_MINI:ES1!', title: 'ES' },
+          { proName: 'COMEX:GC1!', title: 'Gold' },
+          { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
+        ],
+        showSymbolLogo: true,
+        displayMode: 'regular',
+        isTransparent: true,
+      });
+      // Do not mount any TradingView chart by default on Analyze
+      state.tvWidgets.heatmap = mountTradingViewWidget('stock-heatmap', {
+        container_id: 'tv-heatmap',
+        height: 520,
+        dataSource: 'SPX',
+      });
 
-    if (TradingView.MarketOverviewWidget) {
-      state.tvWidgets.marketOverview = new TradingView.MarketOverviewWidget({
+      state.tvWidgets.marketOverview = mountTradingViewWidget('market-overview', {
         container_id: 'tv-market-overview',
-        width: '100%',
         height: 500,
         tabs: [
           {
@@ -671,22 +730,101 @@ function renderAnalyzeChartImage(url) {
               { s: 'CME_MINI:RTY1!' }
             ],
           },
+          {
+            title: 'Futures',
+            symbols: [
+              { s: 'CME_MINI:ES1!' },
+              { s: 'CME_MINI:NQ1!' },
+              { s: 'NYMEX:CL1!' },
+              { s: 'COMEX:GC1!' }
+            ],
+          },
         ],
-        theme: 'dark',
-        locale: 'en',
       });
-    }
 
-    state.tvWidgets.calendar = new TradingView.widget({
-      container_id: 'tv-calendar',
+      state.tvWidgets.calendar = mountTradingViewWidget('economic-calendar', {
+        container_id: 'tv-calendar',
+        height: 520,
+        importanceFilter: '-1,0,1',
+        currencyFilter: 'USD',
+      });
+    });
+  }
+
+  function waitForTradingView(callback, attempt = 0) {
+    if (window.TradingView && typeof window.TradingView === 'object') {
+      callback();
+      return;
+    }
+    if (attempt > 25) {
+      console.warn('TradingView never became available; skipping widget mount.');
+      return;
+    }
+    setTimeout(() => waitForTradingView(callback, attempt + 1), 250);
+  }
+
+  function mountTradingViewWidget(type, options) {
+    if (!options?.container_id) {
+      console.warn('Missing container for TradingView widget', type);
+      return null;
+    }
+    const defaults = {
+      autosize: true,
       width: '100%',
-      height: 500,
       colorTheme: 'dark',
       isTransparent: false,
       locale: 'en',
-      importanceFilter: '-1,0,1',
-      currencyFilter: 'USD',
-      widgetType: 'economic-calendar',
-    });
+      ...options,
+    };
+    const ctorName = TRADINGVIEW_CTORS[type];
+    if (!ctorName) {
+      console.warn('Unknown TradingView widget type', type);
+      return null;
+    }
+    const ctor = ctorName === 'widget' ? window.TradingView.widget : window.TradingView[ctorName];
+    if (typeof ctor !== 'function') {
+      console.warn('TradingView constructor unavailable for', type);
+      showTradingViewFallback(options.container_id);
+      return null;
+    }
+    try {
+      return new ctor(defaults);
+    } catch (err) {
+      console.error('TradingView mount failed', type, err);
+      showTradingViewFallback(options.container_id);
+      return null;
+    }
+  }
+
+  function showTradingViewFallback(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '<p class="tv-fallback">TradingView widget unavailable</p>';
+  }
+
+  function computeAnalyzeScore({ minPass, failedRules, stage, vcpScore, vcpDetected, dist21, riskMultiple }) {
+    const trendScore = minPass ? 40 : Math.max(0, 40 - (failedRules.length * 5));
+    const stageScore = stage === 2 ? 25 : stage === 1 ? 18 : stage === 3 ? 10 : stage === 4 ? 4 : 8;
+    const vcpPoints = vcpDetected ? Math.min(20, (Math.max(vcpScore, 0) / 10) * 20) : Math.min(10, (Math.max(vcpScore, 0) / 10) * 10);
+    const baseDist = Math.abs(dist21 || 0);
+    const distScore = baseDist <= 2 ? 10 : baseDist <= 5 ? 6 : baseDist <= 8 ? 3 : 0;
+    const riskScore = riskMultiple >= 2 ? 5 : riskMultiple >= 1.5 ? 3 : riskMultiple > 1 ? 1 : 0;
+    const breakdown = [
+      { label: 'Trend template', points: Math.round(trendScore) },
+      { label: 'Weinstein stage', points: Math.round(stageScore) },
+      { label: 'VCP signal', points: Math.round(vcpPoints) },
+      { label: 'Distance to 21EMA', points: distScore },
+      { label: 'Risk / Reward', points: riskScore },
+    ];
+    const total = Math.max(0, Math.min(100, breakdown.reduce((sum, item) => sum + item.points, 0)));
+    return { total, breakdown };
+  }
+
+  function describeScoreGrade(score) {
+    if (score >= 90) return { label: 'A+', badge: 'success', description: 'Institutional-grade setup' };
+    if (score >= 80) return { label: 'A', badge: 'success', description: 'Strong trend alignment' };
+    if (score >= 70) return { label: 'B', badge: 'warning', description: 'Constructive but monitor volume' };
+    if (score >= 60) return { label: 'C', badge: 'warning', description: 'Needs better trend evidence' };
+    return { label: 'D', badge: 'error', description: 'High risk – fails most rules' };
   }
 })();
