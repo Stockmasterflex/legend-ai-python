@@ -1,0 +1,134 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "#c0c0c0",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "interval": null,
+      "options": {},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(analyze_request_duration_seconds_bucket{interval='1day'}[5m])) by (le)) * 1000",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(analyze_request_duration_seconds_bucket{interval='1day'}[5m])) by (le)) * 1000",
+          "legendFormat": "p95",
+          "refId": "B"
+        }
+      ],
+      "title": "Analyze latency (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {"unit": "ms"},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(scan_request_duration_seconds_bucket{status='ok'}[5m])) by (le)) * 1000",
+          "legendFormat": "p50 (ok)",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(scan_request_duration_seconds_bucket{status='ok'}[5m])) by (le)) * 1000",
+          "legendFormat": "p95 (ok)",
+          "refId": "B"
+        }
+      ],
+      "title": "Scan latency (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {"unit": "ms"},
+        "overrides": []
+      },
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum(rate(detector_runtime_seconds_sum{pattern='VCP'}[5m])) / sum(rate(detector_runtime_seconds_count{pattern='VCP'}[5m])) * 1000",
+          "legendFormat": "mean",
+          "refId": "A"
+        }
+      ],
+      "title": "Detector runtime (VCP)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {"unit": "percent"},
+        "overrides": []
+      },
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 8},
+      "id": 4,
+      "targets": [
+        {
+          "expr": "rate(cache_hits_total{name='scan'}[5m]) / (rate(cache_hits_total{name='scan'}[5m]) + rate(cache_misses_total{name='scan'}[5m])) * 100",
+          "legendFormat": "scan"
+        },
+        {
+          "expr": "rate(cache_hits_total{name='analyze'}[5m]) / (rate(cache_hits_total{name='analyze'}[5m]) + rate(cache_misses_total{name='analyze'}[5m])) * 100",
+          "legendFormat": "analyze"
+        }
+      ],
+      "title": "Cache hit ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {"unit": "percent"},
+        "overrides": []
+      },
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 14},
+      "id": 5,
+      "targets": [
+        {
+          "expr": "(increase(analyze_errors_total[1d]) + increase(scan_errors_total[1d])) / (increase(analyze_request_duration_seconds_count[1d]) + increase(scan_request_duration_seconds_count[1d])) * 100",
+          "legendFormat": "daily error rate"
+        }
+      ],
+      "title": "Daily error budget",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["legend","phase2"],
+  "title": "Legend Phase 2 Telemetry",
+  "uid": "legend-phase2",
+  "version": 1
+}
