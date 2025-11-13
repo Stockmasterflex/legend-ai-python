@@ -3,7 +3,17 @@
  * Vanilla JS + Alpine hooks powering the cyberpunk UI
  */
 (function () {
-  window.Dashboard = window.Dashboard || { focusTab: () => {} };
+  // Initialize Dashboard object immediately to prevent Alpine.js errors
+  window.Dashboard = window.Dashboard || { 
+    focusTab: function(tab) {
+      // Stub function that will be replaced on DOMContentLoaded
+      // This prevents errors if Alpine.js tries to call it before initialization
+      if (document.readyState === 'loading') {
+        console.log('Dashboard not initialized yet, tab:', tab);
+      }
+    },
+    initialized: false
+  };
   const state = {
     activeTab: 'analyze',
     currentTicker: 'NVDA',
@@ -20,14 +30,28 @@
   const els = {};
 
   document.addEventListener('DOMContentLoaded', () => {
-    cacheDom();
-    bindEvents();
-    window.Dashboard = { focusTab: (tab) => switchTab(tab) };
-    initTradingViewWidgets();
-    fetchMarketInternals();
-    loadWatchlist();
-    loadTopSetups();
-    setInterval(fetchMarketInternals, 300000);
+    try {
+      console.log('Dashboard initializing...');
+      cacheDom();
+      bindEvents();
+      window.Dashboard = { 
+        focusTab: (tab) => switchTab(tab),
+        initialized: true
+      };
+      console.log('Dashboard initialized successfully');
+      initTradingViewWidgets();
+      fetchMarketInternals();
+      loadWatchlist();
+      loadTopSetups();
+      setInterval(fetchMarketInternals, 300000);
+    } catch (error) {
+      console.error('Dashboard initialization error:', error);
+      // Show error to user
+      const errorMsg = document.createElement('div');
+      errorMsg.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ef4444;color:white;padding:20px;z-index:10000;font-family:monospace;';
+      errorMsg.innerHTML = `<strong>Dashboard Error:</strong> ${error.message}<br><small>Check browser console (F12) for details.</small>`;
+      document.body.appendChild(errorMsg);
+    }
     // Fetch build version and stamp header
     fetch('/api/version')
       .then(r => r.json())
@@ -102,16 +126,28 @@
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
       const url = `/api/analyze?ticker=${encodeURIComponent(ticker)}&tf=${tf}`;
+      console.log('Fetching analyze:', url);
       const res = await fetch(url, { signal: controller.signal });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.detail || data?.reason || `Analyze failed (${res.status})`);
+      console.log('Analyze response status:', res.status);
+      const data = await res.json().catch((e) => {
+        console.error('JSON parse error:', e);
+        return { error: 'Invalid response from server' };
+      });
+      if (!res.ok) {
+        const errorMsg = data?.detail || data?.reason || data?.error || `Analyze failed (${res.status})`;
+        throw new Error(errorMsg);
+      }
+      console.log('Analyze data received:', Object.keys(data));
       renderAnalyzeIntel(data);
       renderAnalyzeChartImage(data?.chart_url);
       toast(`Analyzed ${ticker}`, 'success');
     } catch (err) {
-      console.error(err);
-      els.patternResults.innerHTML = `<p style=\"color:#ef4444;\">${err.message}</p>`;
-      toast(err.message, 'error');
+      console.error('Analyze error:', err);
+      const errorMsg = err.message || 'Unknown error occurred';
+      if (els.patternResults) {
+        els.patternResults.innerHTML = `<p style="color:#ef4444;padding:20px;">Error: ${errorMsg}</p>`;
+      }
+      toast(errorMsg, 'error');
       renderAnalyzeChartImage(null);
     } finally {
       clearTimeout(timer);
