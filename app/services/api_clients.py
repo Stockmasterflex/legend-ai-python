@@ -47,8 +47,9 @@ class TwelveDataClient:
             return None
 
         try:
-            # Add API key to params
-            params["apikey"] = self.settings.twelvedata_api_key
+            # Add API key to params if configured
+            if self.settings.twelvedata_api_key:
+                params["apikey"] = self.settings.twelvedata_api_key
 
             url = f"{self.base_url}/{endpoint}"
             print(f"📡 TwelveData API call: {endpoint} for {params.get('symbol', 'unknown')}")

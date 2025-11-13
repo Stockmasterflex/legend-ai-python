@@ -1,9 +1,10 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
     # App
     app_name: str = "Legend AI"
     debug: bool = False
@@ -33,10 +34,10 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
 
     # Chart-IMG
-    chartimg_api_key: str = "dev-key"
+    chartimg_api_key: Optional[str] = None
 
     # Market Data APIs
-    twelvedata_api_key: str = "dev-key"
+    twelvedata_api_key: Optional[str] = None
     finnhub_api_key: Optional[str] = None
     alpha_vantage_api_key: Optional[str] = None
 
@@ -63,9 +64,6 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 @lru_cache()
