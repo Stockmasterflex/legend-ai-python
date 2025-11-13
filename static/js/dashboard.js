@@ -12,6 +12,9 @@
     tvWidgets: {},
     cacheStats: null,
     universeRows: [],
+    topSetups: [],
+    topSetupsLoaded: false,
+    topSetupsRefreshing: false,
   };
 
   const els = {};
@@ -23,6 +26,7 @@
     initTradingViewWidgets();
     fetchMarketInternals();
     loadWatchlist();
+    loadTopSetups();
     setInterval(fetchMarketInternals, 300000);
     // Fetch build version and stamp header
     fetch('/api/version')
@@ -64,6 +68,12 @@
     els.watchlistList = document.getElementById('watchlist-list');
     els.watchlistEmpty = document.getElementById('watchlist-empty');
     els.watchlistFilter = document.getElementById('watchlist-filter');
+
+    els.topGrid = document.getElementById('top-setups-grid');
+    els.topEmpty = document.getElementById('top-setups-empty');
+    els.topLoading = document.getElementById('top-setups-loading');
+    els.topMeta = document.getElementById('top-setups-meta');
+    els.topRefresh = document.getElementById('top-setups-refresh');
 
     els.marketResults = document.getElementById('market-results');
     els.marketLoading = document.getElementById('market-loading');
@@ -125,6 +135,9 @@
       if (container) container.innerHTML = '';
     }
     state.activeTab = tab;
+    if (tab === 'top' && !state.topSetupsLoaded) {
+      loadTopSetups();
+    }
     tabs.forEach((btn) => {
       const label = (btn.textContent || '').toLowerCase();
       const isActive = label.includes(tab);
@@ -181,6 +194,8 @@
 
     els.watchlistForm?.addEventListener('submit', handleWatchlistSubmit);
     els.watchlistFilter?.addEventListener('change', loadWatchlist);
+
+    els.topRefresh?.addEventListener('click', () => loadTopSetups(true));
 
     els.chartRefresh?.addEventListener('click', refreshAdvancedChart);
     els.chartMulti?.addEventListener('click', handleMultiTimeframe);
@@ -445,6 +460,110 @@ function renderAnalyzeChartImage(url) {
       toast(`${ticker} queued`, 'success');
       loadWatchlist();
     }).catch((err) => toast(err.message, 'error'));
+  }
+
+  async function loadTopSetups(force = false) {
+    if (!els.topGrid || state.topSetupsRefreshing) return;
+    state.topSetupsRefreshing = true;
+    if (force) state.topSetupsLoaded = false;
+    toggleLoading(els.topLoading, true);
+    els.topEmpty?.classList.remove('active');
+    try {
+      const res = await fetch('/api/top-setups?limit=10');
+      const payload = await res.json();
+      if (!res.ok || payload.success === false) {
+        throw new Error(payload.detail || 'Top setups unavailable');
+      }
+      state.topSetupsLoaded = true;
+      state.topSetups = payload.results || [];
+      renderTopSetups(state.topSetups, payload);
+      if (els.topMeta) {
+        if (payload.count) {
+          const ts = payload.generated_at ? new Date(payload.generated_at) : new Date();
+          const tsLabel = Number.isNaN(ts.getTime()) ? '' : ts.toLocaleTimeString();
+          const freshness = payload.cached ? 'cached' : 'live';
+          els.topMeta.textContent = `Updated ${tsLabel || 'recently'} (${freshness})`;
+        } else {
+          els.topMeta.textContent = `No setups ≥ ${payload.min_score}`;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      if (els.topGrid) {
+        els.topGrid.innerHTML = `<p style="color:#ef4444;">${err.message}</p>`;
+      }
+      if (els.topMeta) {
+        els.topMeta.textContent = err.message;
+      }
+    } finally {
+      state.topSetupsRefreshing = false;
+      toggleLoading(els.topLoading, false);
+      if (!state.topSetups.length) {
+        els.topEmpty?.classList.add('active');
+      } else {
+        els.topEmpty?.classList.remove('active');
+      }
+    }
+  }
+
+  function renderTopSetups(results = []) {
+    if (!els.topGrid) return;
+    if (!results.length) {
+      els.topGrid.innerHTML = '';
+      return;
+    }
+    const cards = results.map((item, idx) => {
+      const score = Number(item.score || 0).toFixed(1);
+      const entry = Number(item.entry || 0).toFixed(2);
+      const stop = Number(item.stop || 0).toFixed(2);
+      const target = Number(item.target || 0).toFixed(2);
+      const riskReward = Number(item.risk_reward || 0).toFixed(2);
+      return `
+        <article class="result-card top-setup-card">
+          <div class="result-header">
+            <div>
+              <div class="ticker-symbol">${item.ticker}</div>
+              <div class="pattern-type">${item.pattern || 'Setup'}</div>
+            </div>
+            <div class="top-score-badge">${score}/10</div>
+          </div>
+          <div class="top-plan-grid">
+            <div><div class="kpi-label">Entry</div><div>$${entry}</div></div>
+            <div><div class="kpi-label">Stop</div><div>$${stop}</div></div>
+            <div><div class="kpi-label">Target</div><div>$${target}</div></div>
+          </div>
+          <div class="top-card-actions">
+            <div>
+              <div class="kpi-label">Risk/Reward</div>
+              <div>${riskReward}R • ${item.source || 'Universe'}</div>
+            </div>
+            <div class="top-card-buttons">
+              <button class="btn btn-primary" data-open-analyze="${item.ticker}">Open in Analyze</button>
+              <button class="btn btn-ghost" data-watch="${item.ticker}">Watchlist</button>
+            </div>
+          </div>
+        </article>`;
+    }).join('');
+    els.topGrid.innerHTML = cards;
+    attachTopSetupActions();
+  }
+
+  function attachTopSetupActions() {
+    els.topGrid?.querySelectorAll('[data-open-analyze]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const ticker = btn.dataset.openAnalyze;
+        if (!ticker) return;
+        switchTab('analyze');
+        if (els.patternTicker) {
+          els.patternTicker.value = ticker;
+          els.patternInterval.value = '1day';
+        }
+        fetchAnalyze(ticker, 'daily');
+      });
+    });
+    els.topGrid?.querySelectorAll('[data-watch]').forEach((btn) => {
+      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch));
+    });
   }
 
   async function fetchMarketInternals() {
