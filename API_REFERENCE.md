@@ -138,6 +138,20 @@ Scans top tickers for speed.
 GET /api/universe/health
 ```
 
+### Stable Scan Alias
+```
+POST /api/scan
+```
+Same body/response as `/api/universe/scan`. Provided for backwards-compatible
+client integrations.
+
+### Top Setups Feed
+```
+GET /api/top-setups?limit=10&min_score=7
+```
+Returns the most recent cached universe results (fallback to quick scan cache)
+for powering the dashboard Top Setups tab.
+
 ---
 
 ## Multi-Timeframe Analysis (3 endpoints)
