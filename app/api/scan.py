@@ -1,17 +1,17 @@
-"""Scan aliases and Top Setups endpoint.
+"""Scan endpoints with telemetry and Top Setups.
 
-Provides a stable `/api/scan` alias plus a cached GET endpoint that powers the
-Top Setups dashboard tab. The alias simply reuses the existing universe scan
-handler so we only maintain the contract in one place.
+Provides both POST/GET `/api/scan` endpoints plus `/api/top-setups` for the dashboard.
+Combines universe scanning with flag-gated VCP scanner and comprehensive telemetry.
 """
 from __future__ import annotations
 
 import json
+import time
 import logging
-from datetime import datetime
-from typing import List
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from app.api.universe import (
@@ -22,17 +22,88 @@ from app.api.universe import (
     quick_scan,
 )
 from app.services.universe import universe_service
+from app.core.flags import get_legend_flags
+from app.services.scanner import scan_service
+from app.telemetry.metrics import (
+    SCAN_ERRORS_TOTAL,
+    SCAN_REQUEST_DURATION_SECONDS,
+)
+from app.utils.build_info import resolve_build_sha
 
 logger = logging.getLogger(__name__)
-
-
 router = APIRouter(prefix="/api", tags=["scan"])
+
+
+def _disabled_payload() -> Dict[str, Any]:
+    return {
+        "as_of": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "universe_size": 0,
+        "results": [],
+        "meta": {
+            "build_sha": resolve_build_sha(),
+            "duration_ms": 0.0,
+            "result_count": 0,
+            "total_hits": 0,
+            "reason": "scanner_disabled",
+        },
+    }
 
 
 @router.post("/scan", response_model=ScanResponse)
 async def scan_alias(request: ScanRequest):
     """Stable alias for the existing universe scan endpoint."""
     return await universe_scan_handler(request)
+
+
+@router.get("/scan")
+async def scan_endpoint(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    sector: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """GET endpoint for flag-gated VCP scanner with telemetry."""
+    started = time.perf_counter()
+    sector_filter = sector.strip() if sector and sector.strip() else None
+    telemetry: Dict[str, Any] = {
+        "event": "scan",
+        "status": "pending",
+        "limit": limit,
+        "sector": sector_filter,
+    }
+    request.state.telemetry = telemetry
+    flags = get_legend_flags()
+    payload: Optional[Dict[str, Any]] = None
+
+    if not flags.enable_scanner:
+        telemetry.update({"status": "disabled", "scan_universe": 0, "scan_results": 0})
+        payload = _disabled_payload()
+        return payload
+
+    try:
+        telemetry["status"] = "running"
+        payload = await scan_service.run_daily_vcp_scan(limit=limit, sector=sector_filter)
+        telemetry.update(
+            {
+                "status": "ok",
+                "scan_universe": payload.get("universe_size"),
+                "scan_results": len(payload.get("results", [])),
+            }
+        )
+        return payload
+    except Exception as exc:
+        telemetry["status"] = "error"
+        SCAN_ERRORS_TOTAL.inc()
+        logger.exception("scan_failed: %s", exc)
+        raise HTTPException(status_code=500, detail="scan_failed") from exc
+    finally:
+        duration = time.perf_counter() - started
+        telemetry["duration_ms"] = round(duration * 1000, 2)
+        universe_size = payload.get("universe_size", 0) if payload else 0
+        status_label = telemetry.get("status", "unknown")
+        SCAN_REQUEST_DURATION_SECONDS.labels(
+            status=status_label,
+            universe_size=str(universe_size),
+        ).observe(duration)
 
 
 class TopSetupsResponse(BaseModel):
@@ -155,4 +226,3 @@ def _to_float(value) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
-

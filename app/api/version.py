@@ -1,24 +1,20 @@
-from fastapi import APIRouter
-import os
-import subprocess
-import logging
+from fastapi import APIRouter, Request
+
+from app.utils.build_info import resolve_build_payload
 
 router = APIRouter()
 
 
-def _resolve_build_sha() -> str:
-    for k in ("BUILD_SHA", "GIT_COMMIT", "RAILWAY_GIT_COMMIT_SHA"):
-        v = os.getenv(k, "").strip()
-        if v:
-            return v[:7]
-    try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-    except Exception:
-        logging.getLogger(__name__).info("version: no git sha available")
-        return "unknown"
+@router.get("/api/version")
+def api_version(request: Request):
+    """Detailed version payload for API clients."""
+    request.state.telemetry = {"event": "version_api", "status": 200}
+    return resolve_build_payload()
 
 
 @router.get("/version")
-def version():
-    return {"build_sha": _resolve_build_sha()}
-
+def version_plain(request: Request):
+    """Shallow version payload for cache-busting and health checks."""
+    payload = resolve_build_payload()
+    request.state.telemetry = {"event": "version_plain", "status": 200}
+    return {"build_sha": payload["build_sha"], "version": payload["version"]}

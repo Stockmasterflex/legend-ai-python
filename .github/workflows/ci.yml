@@ -15,5 +15,47 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install -e .; fi
           pip install pytest
-      - name: Test
-        run: pytest -q tests
+      - name: Verify telemetry env
+        run: python ops/bin/check_env.py
+      - name: Test with telemetry artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          export START_TIME=$(date +%s)
+          set +e
+          pytest --durations=25 tests 2>&1 | tee artifacts/pytest.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          export END_TIME=$(date +%s)
+          export TEST_DURATION=$((END_TIME-START_TIME))
+          python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+summary = {
+    "start_epoch": int(os.environ["START_TIME"]),
+    "end_epoch": int(os.environ["END_TIME"]),
+    "duration_seconds": int(os.environ["TEST_DURATION"]),
+}
+Path("artifacts/test-summary.json").write_text(json.dumps(summary, indent=2))
+PY
+          python - <<'PY'
+from pathlib import Path
+from prometheus_client import generate_latest
+
+# Ensure metric modules are imported so counters exist
+import app.telemetry.metrics  # noqa: F401
+
+Path("artifacts/metrics.prom").write_bytes(generate_latest())
+PY
+          exit $STATUS
+      - name: Print SLO summary
+        if: always()
+        run: python slo_report.py --metrics-file artifacts/metrics.prom
+      - name: Upload telemetry artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legend-ci-telemetry
+          path: artifacts

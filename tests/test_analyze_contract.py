@@ -6,10 +6,14 @@ from fastapi import FastAPI
 
 
 class _StubCache:
+    def __init__(self):
+        self.data = {}
+
     async def get(self, key):
-        return None
+        return self.data.get(key)
 
     async def set(self, key, value, ttl=0):
+        self.data[key] = value
         return True
 
 
@@ -77,6 +81,19 @@ def test_analyze_contract(monkeypatch):
 
     monkeypatch.setattr(analyze_mod, "get_cache_service", fake_get_cache_service)
 
+    # Patch universe store cache/memory to avoid redis/file IO
+    import app.services.universe_store as uni_mod
+    uni_mod.universe_store.cache = _StubCache()
+    uni_mod.universe_store._memory = {
+        "TSLA": {
+            "symbol": "TSLA",
+            "name": "Tesla Inc.",
+            "sector": "Consumer Discretionary",
+            "industry": "Automobile Manufacturers",
+            "universe": "SP500",
+        }
+    }
+
     # Stub Chart-IMG rendering to avoid network and assert presence
     async def fake_build_analyze_chart(*args, **kwargs):
         return "https://example.com/chart.png"
@@ -114,8 +131,23 @@ def test_analyze_contract(monkeypatch):
 
     # Plan
     plan = data["plan"]
-    for k in ["entry", "stop", "target", "risk_r"]:
+    for k in ["entry", "stop", "target", "risk_r", "atr14", "atr_percent"]:
         assert k in plan
+
+    # RS metrics
+    rs = data.get("relative_strength")
+    assert isinstance(rs, dict)
+    assert "series" in rs
+
+    # Intel surface
+    intel = data.get("intel")
+    assert isinstance(intel, dict)
+    assert "rule_failures" in intel
+
+    # Universe metadata
+    universe_meta = data.get("universe")
+    assert isinstance(universe_meta, dict)
+    assert universe_meta.get("symbol") == "TSLA"
 
     # Chart URL present when Chart-IMG is stubbed
     assert data.get("chart_url") == "https://example.com/chart.png"
