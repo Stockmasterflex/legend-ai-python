@@ -6,9 +6,18 @@ Provides endpoints for scanning S&P 500 and NASDAQ 100 for pattern setups.
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 import logging
 
 from app.services.universe import universe_service
+from app.services.universe_data import (
+    get_nasdaq,
+    get_sp500,
+    get_quick_scan_universe,
+)
+from app.services.market_data import market_data_service
+from app.services.cache import get_cache_service
+from app.core.pattern_detector import PatternDetector, PatternResult
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +52,15 @@ class ScanResponse(BaseModel):
     total_found: int
     cached: bool
     scan_time: Optional[float] = None
+
+
+class QuickScanRequest(BaseModel):
+    """Request payload for the quick scan endpoint"""
+
+    universe: str = "nasdaq100"
+    limit: int = 25
+    min_score: float = 7.0
+    min_rs: float = 60.0
 
 
 @router.get("/health")
@@ -143,71 +161,136 @@ async def scan_universe(request: ScanRequest):
         )
 
 
-@router.post("/scan/quick")
-async def quick_scan():
-    """
-    Quick scan of top 50 most liquid stocks
-    
-    Faster alternative to full universe scan for quick insights.
-    Uses cached data when available.
-    
-    Returns:
-        Top 10 setups from high-volume stocks
-    """
+def _compute_atr_percent(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> Optional[float]:
+    """Calculate ATR as a percent of the latest close price."""
+
     try:
-        # Define top 50 most liquid stocks
-        top_50 = [
-            "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK.B",
-            "V", "UNH", "JPM", "WMT", "MA", "PG", "HD", "CVX",
-            "ABBV", "KO", "PEP", "COST", "MRK", "ADBE", "CSCO", "TMO",
-            "ACN", "NFLX", "ABT", "WFC", "DHR", "BAC", "NKE", "TXN",
-            "DIS", "VZ", "QCOM", "INTC", "INTU", "ORCL", "AMD", "CMCSA",
-            "CRM", "RTX", "HON", "AMGN", "NEE", "COP", "IBM", "LOW",
-            "CAT", "SPGI"
-        ]
-        
-        from app.core.pattern_detector import PatternDetector
+        if not highs or not lows or not closes or len(closes) <= period:
+            return None
+
+        true_ranges = []
+        for idx in range(1, len(closes)):
+            high = highs[idx]
+            low = lows[idx]
+            prev_close = closes[idx - 1]
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            true_ranges.append(tr)
+
+        if len(true_ranges) < period:
+            return None
+
+        recent_tr = true_ranges[-period:]
+        atr = sum(recent_tr) / period if recent_tr else 0
+        latest_close = closes[-1]
+
+        if not latest_close:
+            return None
+
+        return round((atr / latest_close) * 100, 2)
+    except Exception:
+        return None
+
+
+@router.post("/scan/quick")
+async def quick_scan(request: QuickScanRequest):
+    """Responsive quick scan aligned with dashboard contract."""
+
+    universe_map = {
+        "nasdaq100": ("NASDAQ 100", get_nasdaq),
+        "sp500": ("S&P 500", get_sp500),
+        "focus": ("Focus", get_quick_scan_universe),
+    }
+
+    try:
+        universe_key = request.universe.lower().strip()
+        label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
+        tickers = universe_fn()
+        scan_limit = max(5, min(request.limit, len(tickers)))
+        tickers_to_scan = tickers[:scan_limit]
+
         detector = PatternDetector()
-        results = []
-        
-        for ticker in top_50[:30]:  # Scan first 30 for speed
+        cache = get_cache_service()
+        spy_data = await market_data_service.get_time_series("SPY", "1day", 400)
+
+        stats = {
+            "universe": label,
+            "requested_universe": request.universe,
+            "candidates": len(tickers),
+            "scanned": len(tickers_to_scan),
+            "cache_hits": 0,
+            "min_score": request.min_score,
+            "min_rs": request.min_rs,
+        }
+
+        rows: List[Dict[str, Any]] = []
+
+        for ticker in tickers_to_scan:
+            price_data = None
+            pattern_result = None
+
             try:
-                # Check cache
-                from app.services.cache import get_cache_service
-                cache = get_cache_service()
                 cached_pattern = await cache.get_pattern(ticker, "1day")
-                
                 if cached_pattern:
-                    from app.core.pattern_detector import PatternResult
-                    from datetime import datetime
+                    stats["cache_hits"] += 1
                     if isinstance(cached_pattern.get("timestamp"), str):
                         cached_pattern["timestamp"] = datetime.fromisoformat(cached_pattern["timestamp"])
-                    
+
                     pattern_result = PatternResult(**cached_pattern)
-                    
-                    if pattern_result.score >= 7.0:
-                        results.append({
-                            "ticker": ticker,
-                            "pattern": pattern_result.pattern,
-                            "score": pattern_result.score,
-                            "entry": pattern_result.entry,
-                            "stop": pattern_result.stop,
-                            "target": pattern_result.target
-                        })
-                        
-            except Exception as e:
-                logger.debug(f"Quick scan {ticker} error: {e}")
+
+                if pattern_result is None:
+                    price_data = await market_data_service.get_time_series(ticker, "1day", 400)
+                    if not price_data:
+                        continue
+
+                    pattern_result = await detector.analyze_ticker(ticker, price_data, spy_data)
+
+                    if pattern_result:
+                        await cache.set_pattern(ticker, "1day", pattern_result.to_dict())
+
+                if pattern_result is None:
+                    continue
+
+                if pattern_result.score < request.min_score:
+                    continue
+
+                rs_rating = pattern_result.rs_rating
+                if request.min_rs and (rs_rating is None or rs_rating < request.min_rs):
+                    continue
+
+                if price_data is None:
+                    price_data = await market_data_service.get_time_series(ticker, "1day", 200)
+
+                atr_percent = None
+                if price_data and all(k in price_data for k in ("h", "l", "c")):
+                    atr_percent = _compute_atr_percent(price_data["h"], price_data["l"], price_data["c"])
+
+                rows.append({
+                    "ticker": ticker,
+                    "pattern": pattern_result.pattern,
+                    "score": pattern_result.score,
+                    "entry": pattern_result.entry,
+                    "stop": pattern_result.stop,
+                    "target": pattern_result.target,
+                    "rs_rating": rs_rating,
+                    "atr_percent": atr_percent,
+                    "current_price": pattern_result.current_price,
+                    "source": label,
+                })
+
+            except Exception as ticker_error:
+                logger.debug(f"Quick scan error for {ticker}: {ticker_error}")
                 continue
-        
-        results.sort(key=lambda x: x["score"], reverse=True)
-        
+
+        rows.sort(key=lambda item: item.get("score", 0), reverse=True)
+        limited_rows = rows[: scan_limit]
+
         return {
             "success": True,
-            "results": results[:10],
-            "scanned": len(top_50[:30]),
-            "message": "Quick scan of top liquid stocks (cached data)"
+            "data": limited_rows,
+            "stats": stats,
+            "message": f"Quick scan completed for {label}",
         }
-        
+
     except Exception as e:
         logger.error(f"Quick scan error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
