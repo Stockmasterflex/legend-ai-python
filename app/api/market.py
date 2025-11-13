@@ -251,7 +251,17 @@ async def get_market_internals():
         # Get market breadth (this can be slow, so we cache heavily)
         try:
             from app.services.universe import universe_service
-            sp500_list = universe_service.get_sp500()
+
+            # UniverseService exposes async helpers for ticker lists
+            try:
+                sp500_list = await universe_service.get_sp500_tickers()
+            except AttributeError:
+                # Legacy fallback to static data module if service API changes
+                from app.services import universe_data
+
+                logger.warning("UniverseService missing get_sp500_tickers(); using static fallback list")
+                sp500_list = universe_data.get_sp500()
+
             breadth = await _calculate_market_breadth(sp500_list[:30])  # Sample 30 for speed
         except Exception as e:
             logger.warning(f"Market breadth calculation failed: {e}")
