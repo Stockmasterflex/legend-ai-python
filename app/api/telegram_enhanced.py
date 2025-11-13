@@ -268,7 +268,10 @@ RS Rating: {result.rs_rating:.0f}
         """Handle /watchlist command"""
         try:
             # Get watchlist from API
-            response = await self.client.get(f"{settings.auto_webhook_url}/api/watchlist")
+            response = await self.client.get(
+                f"{settings.auto_webhook_url}/api/watchlist",
+                params={"user_id": chat_id},
+            )
             data = response.json()
 
             if not data.get("success") or not data.get("items"):
@@ -279,7 +282,11 @@ RS Rating: {result.rs_rating:.0f}
 
             for item in items:
                 message += f"• *{item['ticker']}* - {item.get('reason', 'N/A')}\n"
-                message += f"  _Added: {item.get('added_date', 'Unknown')[:10]}_\n\n"
+                tags = item.get("tags")
+                if tags:
+                    message += f"  Tags: {tags}\n"
+                added = item.get("added_at") or item.get("added_date") or "Unknown"
+                message += f"  _Added: {added[:10]}_\n\n"
 
             message += "\n_Use /remove TICKER to remove stocks_"
 
@@ -299,7 +306,11 @@ RS Rating: {result.rs_rating:.0f}
         try:
             response = await self.client.post(
                 f"{settings.auto_webhook_url}/api/watchlist/add",
-                json={"ticker": ticker, "reason": reason or "Monitoring"}
+                json={
+                    "ticker": ticker,
+                    "reason": reason or "Monitoring",
+                    "user_id": chat_id,
+                }
             )
             data = response.json()
 
@@ -321,7 +332,8 @@ RS Rating: {result.rs_rating:.0f}
 
         try:
             response = await self.client.delete(
-                f"{settings.auto_webhook_url}/api/watchlist/{ticker}"
+                f"{settings.auto_webhook_url}/api/watchlist/{ticker}",
+                params={"user_id": chat_id},
             )
             data = response.json()
 

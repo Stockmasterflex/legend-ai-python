@@ -166,7 +166,7 @@ GET /api/universe/tickers
 
 ### 1. Get Watchlist
 ```
-GET /api/watchlist
+GET /api/watchlist?user_id={chat_id}
 ```
 
 **Response:**
@@ -191,7 +191,9 @@ Content-Type: application/json
 
 {
   "ticker": "NVDA",
-  "reason": "VCP Breakout Setup"
+  "reason": "VCP Breakout Setup",
+  "tags": "Momentum, Earnings",
+  "user_id": "123456789"
 }
 ```
 
@@ -205,7 +207,7 @@ Content-Type: application/json
 
 ### 3. Remove from Watchlist
 ```
-DELETE /api/watchlist/remove/{ticker}
+DELETE /api/watchlist/remove/{ticker}?user_id={chat_id}
 ```
 
 **Response:**

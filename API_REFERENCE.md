@@ -234,9 +234,9 @@ GET /api/risk/health
 
 ### Get Watchlist
 ```
-GET /api/watchlist
+GET /api/watchlist?user_id={chat_id}
 ```
-Returns all symbols in watchlist.
+Returns all symbols in the specified user's watchlist. `user_id` defaults to `default` when omitted.
 
 ### Add to Watchlist
 ```
@@ -245,13 +245,15 @@ Content-Type: application/json
 
 {
   "ticker": "NVDA",
-  "notes": "Strong uptrend pattern"
+  "reason": "Strong uptrend pattern",
+  "tags": "VCP, Earnings",
+  "user_id": "123456789"
 }
 ```
 
 ### Remove from Watchlist
 ```
-DELETE /api/watchlist/remove/{ticker}
+DELETE /api/watchlist/remove/{ticker}?user_id={chat_id}
 ```
 
 ### Check Watchlist Status

@@ -398,7 +398,15 @@ function renderAnalyzeChartImage(url) {
       return;
     }
     els.watchlistEmpty.style.display = 'none';
-    els.watchlistList.innerHTML = filtered.map((item) => `
+    els.watchlistList.innerHTML = filtered.map((item) => {
+      const tags = (item.tags || '')
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      const tagHtml = tags.length
+        ? `<div class="tag-row">${tags.map((tag) => `<span class="tag-chip">${tag}</span>`).join('')}</div>`
+        : '';
+      return `
       <article class="result-card">
         <div class="result-header">
           <div>
@@ -408,8 +416,10 @@ function renderAnalyzeChartImage(url) {
           <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
         </div>
         <p>${item.reason || 'No notes yet.'}</p>
+        ${tagHtml}
         <small>${new Date(item.added_date || item.added_at || Date.now()).toLocaleString()}</small>
-      </article>`).join('');
+      </article>`;
+    }).join('');
     els.watchlistList.querySelectorAll('[data-remove]').forEach((btn) => btn.addEventListener('click', () => removeWatchlist(btn.dataset.remove)));
   }
 

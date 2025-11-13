@@ -201,6 +201,22 @@
     font-size: var(--font-size-lg);
 }
 
+.tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    margin: var(--spacing-sm) 0;
+}
+
+.tag-chip {
+    border-radius: var(--radius-full);
+    padding: 2px 10px;
+    font-size: var(--font-size-xs);
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--color-neon-aqua);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
 /* Chart Container */
 .chart-container {
     background: rgba(55, 65, 81, 0.8);
