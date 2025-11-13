@@ -76,8 +76,12 @@ def test_market_internals_caches_results(monkeypatch):
 def test_calculate_market_breadth_counts(monkeypatch):
     import app.api.market as market_mod
 
-    up = {"c": [10, 11, 12, 13, 14, 15], "h": [15] * 6, "l": [9] * 6}
-    down = {"c": [20, 19, 18, 17, 16, 15], "h": [22] * 6, "l": [14] * 6}
+    # Need at least 50 data points for EMA50 calculation
+    up_closes = list(range(10, 60))  # 50 points trending up: [10, 11, ..., 59]
+    down_closes = list(range(60, 10, -1))  # 50 points trending down: [60, 59, ..., 11]
+
+    up = {"c": up_closes, "h": [max(up_closes)] * len(up_closes), "l": [min(up_closes)] * len(up_closes)}
+    down = {"c": down_closes, "h": [max(down_closes)] * len(down_closes), "l": [min(down_closes)] * len(down_closes)}
 
     class _BreadthMarketData:
         async def get_time_series(self, ticker, *_args, **_kwargs):

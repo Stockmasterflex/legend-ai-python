@@ -238,6 +238,9 @@ class ChartingService:
         # Ensure we always have at least Volume
         if not any(s.get("name") == "Volume" for s in studies):
             studies.insert(0, studies_config["Volume"])
+            # If adding Volume pushed us over limit, remove the last study
+            if len(studies) > self.MAX_PARAMETERS - 1:
+                studies.pop()
 
         return studies
 
