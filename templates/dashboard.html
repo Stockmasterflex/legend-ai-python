@@ -46,11 +46,11 @@
 
         <section class="tabs-container">
             <nav class="tabs-header">
-                <button class="tab-button" :class="{ 'active': activeTab === 'analyze' }" @click="activeTab = 'analyze'; window.Dashboard.focusTab('analyze');">Analyze</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'scanner' }" @click="activeTab = 'scanner'; window.Dashboard.focusTab('scanner');">Pattern Scanner</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'top' }" @click="activeTab = 'top'; window.Dashboard.focusTab('top');">Top Setups</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'internals' }" @click="activeTab = 'internals'; window.Dashboard.focusTab('internals');">Market Internals</button>
-                <button class="tab-button" :class="{ 'active': activeTab === 'watchlist' }" @click="activeTab = 'watchlist'; window.Dashboard.focusTab('watchlist');">Watchlist</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'analyze' }" @click="activeTab = 'analyze'; if (window.Dashboard && window.Dashboard.focusTab) window.Dashboard.focusTab('analyze');">Analyze</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'scanner' }" @click="activeTab = 'scanner'; if (window.Dashboard && window.Dashboard.focusTab) window.Dashboard.focusTab('scanner');">Pattern Scanner</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'top' }" @click="activeTab = 'top'; if (window.Dashboard && window.Dashboard.focusTab) window.Dashboard.focusTab('top');">Top Setups</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'internals' }" @click="activeTab = 'internals'; if (window.Dashboard && window.Dashboard.focusTab) window.Dashboard.focusTab('internals');">Market Internals</button>
+                <button class="tab-button" :class="{ 'active': activeTab === 'watchlist' }" @click="activeTab = 'watchlist'; if (window.Dashboard && window.Dashboard.focusTab) window.Dashboard.focusTab('watchlist');">Watchlist</button>
             </nav>
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" x-show="activeTab === 'analyze'" x-cloak>
