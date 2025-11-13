@@ -1,9 +1,10 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
     # App
     app_name: str = "Legend AI"
     debug: bool = False
@@ -63,9 +64,6 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 
 @lru_cache()

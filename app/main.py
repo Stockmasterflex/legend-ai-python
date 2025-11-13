@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
-import subprocess
 import httpx
 import os
 from pathlib import Path
@@ -26,7 +25,11 @@ from app.api.risk import router as risk_router
 from app.api.trades import router as trades_router
 from app.api import analyze as analyze_pkg, watchlist as watchlist_pkg
 from app.api.version import router as version_router
+from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
+from app.services.universe_store import universe_store
+from app.middleware.structured_logging import StructuredLoggingMiddleware
+from app.utils.build_info import resolve_build_sha
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -34,19 +37,6 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-
-def _resolve_build_sha() -> str:
-    try:
-        for key in ("BUILD_SHA", "GIT_COMMIT", "RAILWAY_GIT_COMMIT_SHA"):
-            v = os.getenv(key)
-            if v:
-                s = str(v).strip()
-                return s[:7]
-        import subprocess
-        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
-        return sha or "unknown"
-    except Exception:
-        return "unknown"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,16 +46,27 @@ async def lifespan(app: FastAPI):
     logger.info("API_ANALYZE_ENABLED=True")
     # Report presence of Chart-IMG API key (boolean only)
     try:
-        logger.info("ChartIMG key present: %s", bool(get_settings().chartimg_api_key))
-        logger.info("TwelveData key present: %s", bool(get_settings().twelvedata_api_key))
-    except Exception:
-        logger.info("ChartIMG key present: False")
+        logger.info(
+            "key_presence chartimg=%s twelvedata=%s finnhub=%s alpha_vantage=%s redis=%s",
+            bool(settings.chartimg_api_key),
+            bool(settings.twelvedata_api_key),
+            bool(settings.finnhub_api_key),
+            bool(settings.alpha_vantage_api_key),
+            bool(settings.redis_url),
+        )
+    except Exception as exc:
+        logger.info("key_presence_error %s", exc)
     # Compute and expose short build SHA for cache-busting and header
     try:
-        sha = _resolve_build_sha()
+        sha = resolve_build_sha()
     except Exception:
         sha = "unknown"
     os.environ["GIT_COMMIT"] = sha
+
+    try:
+        await universe_store.seed()
+    except Exception as exc:
+        logger.warning("universe_seed skipped: %s", exc)
 
     # Set webhook automatically
     await setup_telegram_webhook()
@@ -116,6 +117,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Structured logging sits at the top of the stack to capture everything
+app.add_middleware(StructuredLoggingMiddleware)
+
 # Add CORS middleware to allow dashboard JavaScript to call APIs
 app.add_middleware(
     CORSMiddleware,
@@ -141,6 +145,10 @@ app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
 app.include_router(version_router)
+<<<<<<< HEAD
+=======
+app.include_router(metrics_router)
+>>>>>>> d9d08f3 (feat: Phase 1 MVP completion + Phase 2 scanner foundations)
 app.include_router(scan_router)
 
 # Mount static files if they exist
@@ -150,8 +158,9 @@ if static_path.exists():
     logger.info(f"📁 Static files mounted from {static_path}")
 
 @app.get("/")
-async def root():
+async def root(request: Request):
     """Root endpoint - redirects to dashboard"""
+    request.state.telemetry = {"event": "root", "status": 200}
     return {
         "status": "running",
         "service": "Legend AI",
@@ -160,20 +169,8 @@ async def root():
         "docs": "/docs"
     }
 
-@app.get("/api/version")
-def version():
-    import os
-    return {
-        "branch": os.getenv("GIT_BRANCH", "unknown"),
-        "commit": os.getenv("GIT_COMMIT", "unknown"),
-    }
-
-@app.get("/version")
-def version_simple():
-    return {"build_sha": _resolve_build_sha()}
-
 @app.get("/health")
-async def health():
+async def health(request: Request):
     """Detailed health check - resilient to missing services"""
     # Test Telegram connectivity (non-blocking)
     telegram_status = "unknown"
@@ -201,14 +198,38 @@ async def health():
         logger.debug(f"Redis health check failed: {e}")
         redis_status = "disconnected"
 
+    # Universe dataset
+    try:
+        universe_snapshot = await universe_store.get_all()
+        universe_status = {"seeded": bool(universe_snapshot), "symbols": len(universe_snapshot)}
+    except Exception as exc:
+        universe_status = {"seeded": False, "error": str(exc)}
+
+    key_presence = {
+        "chartimg": bool(settings.chartimg_api_key),
+        "twelvedata": bool(settings.twelvedata_api_key),
+        "finnhub": bool(settings.finnhub_api_key),
+        "alpha_vantage": bool(settings.alpha_vantage_api_key),
+    }
+
     # Always return healthy status - individual services can be down
-    return {
+    payload = {
         "status": "healthy",
         "telegram": telegram_status,
         "redis": redis_status,
-        "version": "1.0.0",
-        "webhook_url": settings.telegram_webhook_url if settings.telegram_webhook_url else None
+        "version": resolve_build_sha(),
+        "webhook_url": settings.telegram_webhook_url if settings.telegram_webhook_url else None,
+        "universe": universe_status,
+        "keys": key_presence,
+        "analyze": {"cache_ttl": 3600},
     }
+    request.state.telemetry = {
+        "event": "health",
+        "status": payload["status"],
+        "symbol": None,
+        "interval": None,
+    }
+    return payload
 
 if __name__ == "__main__":
     import uvicorn

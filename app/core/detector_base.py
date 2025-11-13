@@ -120,6 +120,7 @@ class Detector(ABC):
         """
         self.name = name
         self.params = kwargs
+        self._config = kwargs
 
     @abstractmethod
     def find(self, ohlcv: pd.DataFrame, timeframe: str, symbol: str) -> List[PatternResult]:
@@ -139,7 +140,11 @@ class Detector(ABC):
     @property
     def config(self):
         """Return configuration object for this detector"""
-        return self.params
+        return getattr(self, "_config", self.params)
+
+    @config.setter
+    def config(self, value):
+        self._config = value
 
 
 # ============================================================================

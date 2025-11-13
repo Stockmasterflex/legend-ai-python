@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 import asyncio
@@ -7,6 +8,7 @@ import httpx
 
 from app.config import get_settings
 from app.infra.symbols import to_chartimg_symbol
+from app.services.cache import get_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,16 @@ async def build_analyze_chart(
     url = "https://api.chart-img.com/v2/tradingview/advanced-chart"
     headers = {"x-api-key": api_key}
 
+    # Cache hit short-circuits expensive renders
+    cache = get_cache_service()
+    try:
+        cached = await cache.get_chart(t, interval)
+        if cached:
+            logger.info("chartimg_cache_hit symbol=%s interval=%s", t, interval)
+            return cached
+    except Exception as exc:
+        logger.debug("chartimg cache get failed: %s", exc)
+
     # Backoff with jitter up to 4 tries
     last_err: Optional[Exception] = None
     for attempt in range(4):
@@ -94,14 +106,29 @@ async def build_analyze_chart(
             async with httpx.AsyncClient(timeout=timeout) as client:
                 for sym in symbol_candidates:
                     payload: Dict[str, Any] = {**base_payload, "symbol": sym}
-                    logger.info("chartimg_request symbol=%s interval=%s", sym, interval)
+                    start = time.perf_counter()
+                    logger.info("chartimg_attempt_start symbol=%s interval=%s attempt=%s", sym, interval, attempt + 1)
                     resp = await client.post(url, json=payload, headers=headers)
-                    logger.info("chartimg_status status=%s symbol=%s interval=%s", resp.status_code, sym, interval)
+                    duration_ms = (time.perf_counter() - start) * 1000
+                    logger.info(
+                        "chartimg_attempt_complete symbol=%s interval=%s status=%s duration_ms=%.1f attempt=%s",
+                        sym,
+                        interval,
+                        resp.status_code,
+                        duration_ms,
+                        attempt + 1,
+                    )
                     if resp.status_code in (200, 201):
                         try:
                             data = resp.json()
                             # Chart-IMG returns one of these keys depending on endpoint
-                            return data.get("url") or data.get("imageUrl") or data.get("image_url")
+                            chart_url = data.get("url") or data.get("imageUrl") or data.get("image_url")
+                            if chart_url:
+                                try:
+                                    await cache.set_chart(t, interval, chart_url, ttl=900)
+                                except Exception as exc:
+                                    logger.debug("chartimg cache set failed: %s", exc)
+                            return chart_url
                         except Exception:
                             return None
                     # Non-200

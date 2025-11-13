@@ -5,7 +5,7 @@
 (function () {
   window.Dashboard = window.Dashboard || { focusTab: () => {} };
   const state = {
-    activeTab: 'scanner',
+    activeTab: 'analyze',
     currentTicker: 'NVDA',
     currentInterval: '1day',
     tvReady: false,
@@ -238,18 +238,22 @@
     const w = data.patterns?.weinstein || { stage: 0, reason: '' };
     const vcp = data.patterns?.vcp || { detected: false, score: 0 };
     const p = data.plan || {};
+    const intel = data.intel || {};
+    const rs = data.relative_strength || {};
+    const meta = data.universe || {};
     const minPass = !!(m.passed ?? m.pass);
-    const scorePct = minPass ? 80 : 40; // placeholder gauge
+    const rsRank = Number(rs.rank ?? 0);
+    const scorePct = rsRank ? rsRank : (minPass ? 75 : 35);
+    const ma = data.indicators?.ma_distances || {};
+    const dist21 = typeof ma.vs_ema21_pct === 'number' ? `${ma.vs_ema21_pct >= 0 ? '+' : ''}${ma.vs_ema21_pct.toFixed(2)}%` : '—';
+    const dist50 = typeof ma.vs_sma50_pct === 'number' ? `${ma.vs_sma50_pct >= 0 ? '+' : ''}${ma.vs_sma50_pct.toFixed(2)}%` : '—';
+    const rmult = Number(p.risk_r || intel.r_multiple || 0);
+    const atrPct = typeof p.atr_percent === 'number' ? `${p.atr_percent.toFixed(2)}%` : '—';
 
-    const lastRow = (data.ohlcv && data.ohlcv.length) ? data.ohlcv[data.ohlcv.length - 1] : {};
-    const lastC = Number(lastRow?.c || 0);
-    const ema21Last = Number((data.indicators?.ema21 || []).slice(-1)[0] || 0);
-    const sma50Last = Number((data.indicators?.sma50 || []).slice(-1)[0] || 0);
-    const d21 = ema21Last ? ((lastC - ema21Last) / ema21Last) * 100 : 0;
-    const d50 = sma50Last ? ((lastC - sma50Last) / sma50Last) * 100 : 0;
-    const rmult = Number(p.risk_r || 0);
-
-    const failed = (m.failed_rules || []).slice(0, 5).join(', ');
+    const failureList = (intel.rule_failures?.length ? intel.rule_failures : m.failed_rules || [])
+      .slice(0, 5)
+      .map((rule) => `<li>${rule}</li>`)
+      .join('');
 
     const snapshotLink = typeof data.chart_url === 'string' && data.chart_url.length > 0
       ? `<a class="btn btn-secondary" href="${data.chart_url}" target="_blank" rel="noopener">Open full snapshot</a>`
@@ -260,7 +264,8 @@
         <div class="result-header">
           <div>
             <div class="ticker-symbol">${data.ticker}</div>
-            <div class="pattern-type">Minervini: ${minPass ? 'PASS' : 'FAIL'}</div>
+            <div class="pattern-type">${data.timeframe?.toUpperCase() || ''} · ${meta.universe || 'Off-universe'}</div>
+            <small>${meta.sector || 'Sector N/A'}</small>
           </div>
           <div>
             ${snapshotLink}
@@ -271,16 +276,19 @@
           <div class="score-text">${scorePct}/100</div>
         </div>
         <div class="form-grid">
+          <div><div class="kpi-label">Minervini</div><div>${minPass ? 'PASS ✅' : 'FAIL ⚠️'}</div></div>
           <div><div class="kpi-label">Weinstein</div><div>Stage ${w.stage} — ${w.reason || ''}</div></div>
           <div><div class="kpi-label">VCP</div><div>${vcp.detected ? 'Yes' : 'No'} · score ${Number(vcp.score || 0).toFixed(1)}</div></div>
-          <div><div class="kpi-label">Dist to 21EMA</div><div>${d21 >= 0 ? '+' : ''}${d21.toFixed(2)}%</div></div>
-          <div><div class="kpi-label">Dist to 50SMA</div><div>${d50 >= 0 ? '+' : ''}${d50.toFixed(2)}%</div></div>
+          <div><div class="kpi-label">RS Rank</div><div>${rs.rank ?? '—'} (${typeof rs.delta_vs_spy === 'number' ? `${rs.delta_vs_spy.toFixed(2)} pts vs SPY` : 'vs SPY N/A'})</div></div>
+          <div><div class="kpi-label">Dist to 21EMA</div><div>${dist21}</div></div>
+          <div><div class="kpi-label">Dist to 50SMA</div><div>${dist50}</div></div>
           <div><div class="kpi-label">R Multiple</div><div>${rmult.toFixed(2)}R</div></div>
+          <div><div class="kpi-label">ATR%</div><div>${atrPct}</div></div>
           <div><div class="kpi-label">Entry</div><div>$${Number(p.entry || 0).toFixed(2)}</div></div>
           <div><div class="kpi-label">Stop</div><div>$${Number(p.stop || 0).toFixed(2)}</div></div>
           <div><div class="kpi-label">Target</div><div>$${Number(p.target || 0).toFixed(2)}</div></div>
         </div>
-        ${failed ? `<p style="margin-top:8px;color:var(--color-text-secondary)">Failed: ${failed}</p>` : ''}
+        ${failureList ? `<div class="rule-failures"><div class="kpi-label">Failed Rules</div><ul>${failureList}</ul></div>` : ''}
       </article>`;
   }
 
@@ -420,12 +428,23 @@ function renderAnalyzeChartImage(url) {
             <div class="ticker-symbol">${item.ticker}</div>
             <div class="pattern-type">${item.status}</div>
           </div>
-          <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
+          <div class="button-row">
+            <button class="btn btn-ghost" data-analyze="${item.ticker}">Analyze Again</button>
+            <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
+          </div>
         </div>
         <p>${item.reason || 'No notes yet.'}</p>
+        ${item.tags ? `<small>Tags: ${item.tags}</small>` : ''}
         <small>${new Date(item.added_date || item.added_at || Date.now()).toLocaleString()}</small>
       </article>`).join('');
     els.watchlistList.querySelectorAll('[data-remove]').forEach((btn) => btn.addEventListener('click', () => removeWatchlist(btn.dataset.remove)));
+    els.watchlistList.querySelectorAll('[data-analyze]').forEach((btn) => btn.addEventListener('click', () => {
+      const ticker = btn.dataset.analyze;
+      if (!ticker) return;
+      els.patternTicker.value = ticker;
+      const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
+      fetchAnalyze(ticker, tf);
+    }));
   }
 
   async function removeWatchlist(ticker) {

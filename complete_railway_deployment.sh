@@ -38,16 +38,15 @@ railway add postgres
 echo "Adding Redis cache..."
 railway add redis
 
-# Set environment variables
+# Set environment variables (use your own values)
 echo "Setting environment variables..."
-railway variables set TELEGRAM_BOT_TOKEN="8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4"
-railway variables set OPENROUTER_API_KEY="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"
-railway variables set TWELVEDATA_API_KEY="14b61f5898d1412681a8dfc878f857b4"
-railway variables set CHARTIMG_API_KEY="tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU"
-railway variables set GOOGLE_SHEETS_ID="1g6vBpp3-d9C-fMYFz4P7BU_Vq5FNDd-VBzxDjw2kDLk"
+railway variables set TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-your-telegram-bot-token}"
+railway variables set OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-your-openrouter-api-key}"
+railway variables set TWELVEDATA_API_KEY="${TWELVEDATA_API_KEY:-your-twelvedata-api-key}"
+railway variables set CHARTIMG_API_KEY="${CHARTIMG_API_KEY:-your-chartimg-api-key}"
 railway variables set APP_NAME="Legend AI"
 railway variables set DEBUG="false"
-railway variables set SECRET_KEY="af10148245a5421e4df19595b6d530434ed6b4c1266636371814bad48a0b775d"
+railway variables set SECRET_KEY="${SECRET_KEY:-change-me}"
 
 echo "✅ Environment variables set"
 
