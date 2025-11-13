@@ -145,10 +145,7 @@ app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
 app.include_router(version_router)
-<<<<<<< HEAD
-=======
 app.include_router(metrics_router)
->>>>>>> d9d08f3 (feat: Phase 1 MVP completion + Phase 2 scanner foundations)
 app.include_router(scan_router)
 
 # Mount static files if they exist
