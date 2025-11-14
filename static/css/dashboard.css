@@ -115,13 +115,8 @@
     padding: var(--spacing-2xl);
 }
 
-.tab-pane {
-    display: none;
-}
-
-.tab-pane.active {
-    display: block;
-    animation: fadeIn 0.3s ease;
+.tab-pane[hidden] {
+    display: none !important;
 }
 
 /* Results Grid */
@@ -576,14 +571,6 @@ textarea:focus {
     color: var(--color-neon-aqua);
     border-bottom-color: var(--color-neon-aqua);
     background: rgba(32, 240, 255, 0.04);
-}
-
-.tab-pane[x-cloak] {
-    display: none !important;
-}
-
-[x-cloak] {
-    display: none !important;
 }
 
 .table {
