@@ -9,8 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <!-- Load dashboard.js BEFORE Alpine.js to ensure window.Dashboard exists -->
+    <script src="/static/js/dashboard.js?v={{ build_sha }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
 </head>
 <body class="app-shell">
     <main class="container" x-data="{ activeTab: 'analyze' }">
