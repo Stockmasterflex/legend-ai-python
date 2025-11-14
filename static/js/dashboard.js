@@ -34,6 +34,7 @@
       console.log('Dashboard initializing...');
       cacheDom();
       bindEvents();
+      initTabNavigation();
       window.Dashboard = { 
         focusTab: (tab) => switchTab(tab),
         initialized: true
@@ -110,6 +111,26 @@
     els.toastStack = document.getElementById('toast-stack');
   }
 
+  function initTabNavigation() {
+    const tabs = document.querySelectorAll('.tabs-header .tab-button');
+    tabs.forEach((btn) => {
+      const tabKey = btn.dataset.tabTarget;
+      if (!tabKey) return;
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        switchTab(tabKey);
+      });
+      btn.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          btn.click();
+        }
+      });
+    });
+    document.querySelectorAll('[x-cloak]').forEach((el) => el.removeAttribute('x-cloak'));
+    switchTab(state.activeTab || 'analyze');
+  }
+
   // New: fetch /api/analyze with timeout and loading guards
   async function fetchAnalyze(ticker, tf) {
     if (!ticker) {
@@ -175,23 +196,21 @@
       loadTopSetups();
     }
     tabs.forEach((btn) => {
-      const label = (btn.textContent || '').toLowerCase();
-      const isActive = label.includes(tab);
+      const tabKey = btn.dataset.tabTarget || (btn.textContent || '').toLowerCase();
+      const isActive = tabKey === tab;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       btn.setAttribute('role', 'tab');
       btn.setAttribute('tabindex', isActive ? '0' : '-1');
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          btn.click();
-        }
-      });
     });
     Object.entries(panes).forEach(([key, el]) => {
       if (!el) return;
       const on = key === tab;
-      el.style.display = on ? '' : 'none';
+      if (on) {
+        el.removeAttribute('hidden');
+      } else {
+        el.setAttribute('hidden', 'true');
+      }
       el.setAttribute('role', 'tabpanel');
       el.setAttribute('aria-hidden', on ? 'false' : 'true');
     });
