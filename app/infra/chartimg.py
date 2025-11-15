@@ -73,15 +73,26 @@ async def build_analyze_chart(
                 "input": {"datetime": dt, "price": float(price)},
             })
 
+    # Chart-IMG Pro has a limit of 5 parameters total (studies + drawings combined)
+    # Prioritize: Volume, EMA 21, SMA 50, then Long Position drawing if available
+    studies = [
+        {"name": "Volume", "forceOverlay": True},
+        {"name": "Moving Average Exponential", "input": {"length": 21, "source": "close"}},
+        {"name": "Moving Average", "input": {"length": 50, "source": "close"}},
+    ]
+
+    # Calculate remaining parameter budget (max 5 total, 3 studies used so far)
+    params_used = len(studies) + len(drawings)
+    if params_used > 5:
+        # Prioritize Long Position over divergence markers
+        # Keep only Long Position if we have it, drop divergence markers
+        drawings = [d for d in drawings if d.get("name") == "Long Position"][:1]
+        logger.warning(f"Chart-IMG parameter limit: reduced from {params_used} to {len(studies) + len(drawings)} params")
+
     base_payload: Dict[str, Any] = {
         "theme": "dark",
         "interval": interval,
-        "studies": [
-            {"name": "Volume", "forceOverlay": True},
-            {"name": "Relative Strength Index", "input": {"length": 14}},
-            {"name": "Moving Average Exponential", "input": {"length": 21}},
-            {"name": "Moving Average", "input": {"length": 50}},
-        ],
+        "studies": studies,
         "drawings": drawings,
     }
 
