@@ -5,7 +5,7 @@ Provides endpoints for scanning S&P 500 and NASDAQ 100 for pattern setups.
 """
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 from datetime import datetime
 import logging
 
@@ -19,6 +19,38 @@ from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
 from app.services.universe_store import universe_store
 from app.core.pattern_detector import PatternDetector, PatternResult
+
+PATTERN_ALIAS_MAP: Dict[str, Set[str]] = {
+    "vcp": {"vcp", "volatility contraction"},
+    "cup & handle": {"cup & handle", "cup handle", "cup-and-handle"},
+    "flat base": {"flat base"},
+    "breakout": {"breakout"},
+    "21 ema pullback": {
+        "21 ema pullback",
+        "ema pullback",
+        "pullback to 21 ema",
+        "21ema pullback",
+    },
+    "50 sma pullback": {
+        "50 sma pullback",
+        "pullback to 50 sma",
+        "pullback to 50",
+        "pullback to 50-day",
+    },
+    "rising wedge": {"rising wedge", "ascending wedge"},
+    "falling wedge": {"falling wedge", "descending wedge"},
+    "ascending triangle": {"ascending triangle", "flat top triangle"},
+    "symmetrical triangle": {"symmetrical triangle", "sym triangle", "triangle"},
+    "head & shoulders": {"head & shoulders", "head and shoulders", "hs"},
+    "inverse head & shoulders": {
+        "inverse head & shoulders",
+        "inverse hs",
+        "inverse h&s",
+        "inverted head & shoulders",
+        "inverted hs",
+        "inverted h&s",
+    },
+}
 
 logger = logging.getLogger(__name__)
 
@@ -59,15 +91,48 @@ class QuickScanRequest(BaseModel):
     """Request payload for the quick scan endpoint"""
 
     universe: str = "nasdaq100"
-    limit: int = 25
-    min_score: float = 7.0
-    min_rs: float = 60.0
+    limit: int = 40
+    min_score: float = 6.5
+    min_rs: float = 55.0
     pattern_types: Optional[List[str]] = None
     timeframe: str = "1day"
     sector: Optional[str] = None
     max_atr_percent: Optional[float] = None
 
 
+def _normalize_pattern_filters(patterns: Optional[List[str]]) -> Set[str]:
+    """Map UI pattern labels to internal detector names."""
+    if not patterns:
+        return set()
+
+    normalized: Set[str] = set()
+    for raw in patterns:
+        canonical = _canonicalize_pattern_name(raw)
+        if canonical and canonical != "all":
+            normalized.add(canonical)
+    return normalized
+
+
+def _canonicalize_pattern_name(raw_name: Optional[str]) -> Optional[str]:
+    """Normalize any human-readable pattern label to our canonical slug."""
+    if not raw_name:
+        return None
+
+    slug = (
+        raw_name.replace("&amp;", "&")
+        .replace("-", " ")
+        .strip()
+        .lower()
+    )
+    if not slug:
+        return None
+    slug = " ".join(slug.split())
+
+    for canonical, aliases in PATTERN_ALIAS_MAP.items():
+        if slug == canonical or slug in aliases:
+            return canonical
+
+    return slug
 @router.get("/health")
 async def health():
     """Health check for universe service"""
@@ -211,14 +276,26 @@ async def quick_scan(request: QuickScanRequest):
         sector_filter = (request.sector or "").strip().lower() or None
         requested_interval = (request.timeframe or "1day").lower()
         interval = "1week" if "week" in requested_interval else "1day"
-        stats["timeframe"] = interval
-        if sector_filter:
-            stats["sector_filter"] = sector_filter
+        normalized_patterns = _normalize_pattern_filters(request.pattern_types)
 
         universe_key = request.universe.lower().strip()
         label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
         tickers = universe_fn()
-        stats["candidates"] = len(tickers)
+
+        stats = {
+            "universe": label,
+            "requested_universe": request.universe,
+            "candidates": len(tickers),
+            "scanned": 0,
+            "cache_hits": 0,
+            "min_score": request.min_score,
+            "min_rs": request.min_rs,
+            "timeframe": interval,
+        }
+        if sector_filter:
+            stats["sector_filter"] = sector_filter
+        if normalized_patterns:
+            stats["pattern_filters"] = sorted(normalized_patterns)
 
         def _matches_sector(symbol: str) -> bool:
             if not sector_filter:
@@ -240,16 +317,8 @@ async def quick_scan(request: QuickScanRequest):
         cache = get_cache_service()
         spy_data = await market_data_service.get_time_series("SPY", "1day", 400)
 
-        stats = {
-            "universe": label,
-            "requested_universe": request.universe,
-            "candidates": len(filtered_universe),
-            "scanned": len(tickers_to_scan),
-            "cache_hits": 0,
-            "min_score": request.min_score,
-            "min_rs": request.min_rs,
-            "timeframe": interval,
-        }
+        stats["candidates"] = len(filtered_universe)
+        stats["scanned"] = len(tickers_to_scan)
 
         rows: List[Dict[str, Any]] = []
 
@@ -287,11 +356,9 @@ async def quick_scan(request: QuickScanRequest):
                 if request.min_rs and (rs_rating is None or rs_rating < request.min_rs):
                     continue
 
-                if request.pattern_types:
-                    allowed = {p.strip().lower() for p in request.pattern_types if p and p.strip().lower() != "all"}
-                    pattern_name = (pattern_result.pattern or "").strip().lower()
-                    if allowed and pattern_name not in allowed:
-                        continue
+                pattern_slug = _canonicalize_pattern_name(pattern_result.pattern)
+                if normalized_patterns and pattern_slug not in normalized_patterns:
+                    continue
 
                 if price_data is None:
                     price_data = await market_data_service.get_time_series(ticker, interval, 200)

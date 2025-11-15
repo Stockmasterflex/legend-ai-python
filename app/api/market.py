@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 import logging
+import asyncio
 from typing import Dict, Any
 from datetime import datetime
 from app.services.cache import get_cache_service
@@ -30,7 +31,10 @@ async def _calculate_market_breadth(universe_tickers: list, max_tickers: int = 5
         for ticker in sampled:
             try:
                 # Get price data (non-blocking with timeout)
-                data = await market_data_service.get_time_series(ticker, "1day", 252, timeout=5.0)
+                data = await asyncio.wait_for(
+                    market_data_service.get_time_series(ticker, "1day", 252),
+                    timeout=5.0,
+                )
                 
                 if not data or not data.get("c"):
                     continue
@@ -170,7 +174,10 @@ async def _fetch_vix_level() -> Dict[str, Any]:
     """
     try:
         # Try to get VIX data (^VIX or TVIX)
-        vix_data = await market_data_service.get_quote("^VIX", timeout=5.0)
+        vix_data = await asyncio.wait_for(
+            market_data_service.get_quote("^VIX"),
+            timeout=5.0,
+        )
         
         if vix_data and "last_price" in vix_data:
             vix_price = float(vix_data["last_price"])
