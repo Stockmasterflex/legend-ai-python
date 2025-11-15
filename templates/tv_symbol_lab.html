@@ -11,54 +11,70 @@
             color: var(--color-text-primary, #e5e7eb);
             font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
             min-height: 100vh;
-            padding: var(--spacing-2xl, 32px);
+            padding: clamp(1rem, 4vw, 3rem);
+        }
+        .tv-lab {
+            max-width: 1400px;
+            margin: 0 auto;
         }
         .tv-lab-header {
             display: flex;
             flex-wrap: wrap;
-            align-items: baseline;
+            align-items: center;
             justify-content: space-between;
             gap: var(--spacing-lg);
             margin-bottom: var(--spacing-2xl, 32px);
         }
         .tv-lab-header h1 {
             margin: 0;
-            font-size: clamp(1.5rem, 2vw, 2.25rem);
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
             background: linear-gradient(135deg, #60a5fa, #d946ef);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .tv-lab-symbol {
-            font-size: var(--font-size-lg, 1.25rem);
-            font-weight: var(--font-weight-semibold, 600);
-            letter-spacing: 0.1em;
+        .tv-symbol-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: 0.35rem 1rem;
+            border-radius: var(--radius-full, 999px);
+            border: 1px solid rgba(96, 165, 250, 0.4);
+            background: rgba(15, 23, 42, 0.7);
+            letter-spacing: 0.12em;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .tv-lab-stack {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xl, 28px);
         }
         .tv-lab-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: var(--spacing-xl, 24px);
-            margin-top: var(--spacing-xl, 24px);
-        }
-        .tv-lab-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
-            gap: var(--spacing-xl, 24px);
-            margin-top: var(--spacing-xl, 24px);
         }
         .tv-lab-card {
-            background: rgba(15, 23, 42, 0.8);
-            border-radius: var(--radius-2xl, 20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 23, 42, 0.85);
+            border-radius: var(--radius-2xl, 24px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             padding: var(--spacing-lg, 24px);
-            min-height: 320px;
+            box-shadow: 0 25px 45px rgba(3, 7, 18, 0.45);
+            min-height: 280px;
         }
         .tv-lab-card h2 {
             margin-top: 0;
             margin-bottom: var(--spacing-md, 16px);
-            font-size: 1rem;
+            font-size: 0.95rem;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: var(--color-text-secondary, #9ca3af);
+        }
+        .tv-card--wide {
+            min-height: 600px;
+        }
+        .tv-card--snapshot {
+            min-height: auto;
         }
         .tradingview-widget-container {
             width: 100%;
@@ -67,216 +83,139 @@
         .tv-snapshot {
             display: flex;
             flex-direction: column;
-            gap: var(--spacing-md, 16px);
+            gap: var(--spacing-md);
             align-items: center;
             justify-content: center;
         }
         .tv-snapshot img {
             width: 100%;
-            max-width: 100%;
-            border-radius: var(--radius-xl, 16px);
+            border-radius: var(--radius-xl, 20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
         .tv-snapshot-empty {
             text-align: center;
             color: var(--color-text-secondary, #9ca3af);
         }
-        @media (max-width: 640px) {
-            body.tv-symbol-lab {
-                padding: var(--spacing-lg, 24px);
-            }
-        }
     </style>
 </head>
-<body class="tv-symbol-lab">
-    <header class="tv-lab-header">
-        <div>
-            <p class="eyebrow">Legend AI</p>
-            <h1>TradingView Symbol Lab</h1>
-            <p class="tv-lab-symbol" data-testid="tv-lab-symbol-label">__TV_SYMBOL__</p>
-        </div>
-        <div>
-            <a href="/dashboard" class="btn btn-secondary" data-testid="tv-lab-back-link">← Back to dashboard</a>
-        </div>
-    </header>
+<body class="tv-symbol-lab" data-default-tv-symbol="__DEFAULT_TV_SYMBOL__">
+    <div class="tv-lab">
+        <header class="tv-lab-header">
+            <div>
+                <p class="eyebrow">Legend AI</p>
+                <h1>TradingView Symbol Lab</h1>
+                <p class="tv-symbol-pill" data-testid="tv-lab-symbol-label" data-tv-symbol-label>NASDAQ:AAPL</p>
+            </div>
+            <div class="tv-header-actions">
+                <a href="/dashboard" class="btn btn-secondary" data-testid="tv-lab-back-link">← Back to dashboard</a>
+            </div>
+        </header>
 
-    <section class="tv-lab-card" style="min-height:120px;">
-        <h2>Ticker tape</h2>
-        <div class="tradingview-widget-container" data-testid="tv-lab-ticker-tape">
-          <div class="tradingview-widget-container__widget"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-          {
-            "symbols": [
-              { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
-              { "proName": "NASDAQ:NDX", "title": "Nasdaq 100" },
-              { "proName": "DJI", "title": "Dow 30" },
-              { "proName": "NASDAQ:QQQ", "title": "QQQ" },
-              { "title": "__TV_SYMBOL__", "proName": "__TV_SYMBOL__" }
-            ],
-            "colorTheme": "dark",
-            "isTransparent": false,
-            "displayMode": "adaptive",
-            "width": "100%",
-            "height": 96,
-            "locale": "en"
-          }
-          </script>
-        </div>
-    </section>
+        <section class="tv-lab-stack">
+            <article class="tv-lab-card" data-testid="tv-lab-ticker-tape">
+                <div class="tv-card-header">
+                    <p class="eyebrow">Market tape</p>
+                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                </div>
+                <div data-tv-widget-target="tv-template-ticker-tape"></div>
+            </article>
 
-    <section class="tv-lab-grid">
-        <div class="tv-lab-card">
-            <h2>Symbol info</h2>
-            <div class="tradingview-widget-container" data-testid="tv-lab-symbol-info">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
-              {
-                "symbol": "__TV_SYMBOL__",
-                "width": "100%",
-                "locale": "en",
-                "colorTheme": "dark",
-                "isTransparent": false
-              }
-              </script>
-            </div>
-        </div>
-        <div class="tv-lab-card">
-            <h2>Company profile</h2>
-            <div class="tradingview-widget-container" data-testid="tv-lab-profile">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js" async>
-              {
-                "symbol": "__TV_SYMBOL__",
-                "height": "100%",
-                "colorTheme": "dark",
-                "isTransparent": false,
-                "locale": "en"
-              }
-              </script>
-            </div>
-        </div>
-    </section>
+            <article class="tv-lab-card tv-card--wide" data-testid="tv-lab-advanced-chart">
+                <div class="tv-card-header">
+                    <p class="eyebrow">Advanced chart</p>
+                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                </div>
+                <div data-tv-widget-target="tv-template-advanced-chart"></div>
+            </article>
 
-    <section class="tv-lab-row">
-        <div class="tv-lab-card" style="grid-column: span 2;">
-            <h2>Advanced chart</h2>
-            <div class="tradingview-widget-container" data-testid="tv-lab-advanced-chart">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-              {
-                "symbol": "__TV_SYMBOL__",
-                "interval": "D",
-                "timezone": "America/New_York",
-                "theme": "dark",
-                "style": "1",
-                "locale": "en",
-                "allow_symbol_change": true,
-                "calendar": true,
-                "studies": [
-                  "MAExp@tv-basicstudies",
-                  "MASimple@tv-basicstudies",
-                  "RelativeStrengthIndex@tv-basicstudies"
-                ],
-                "support_host": "https://www.tradingview.com",
-                "hide_side_toolbar": false,
-                "height": 620,
-                "width": "100%"
-              }
-              </script>
+            <div class="tv-lab-grid">
+                <article class="tv-lab-card" data-testid="tv-lab-symbol-info">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Symbol info</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-symbol-info"></div>
+                </article>
+                <article class="tv-lab-card" data-testid="tv-lab-profile">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Company profile</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-company-profile"></div>
+                </article>
+                <article class="tv-lab-card" data-testid="tv-lab-fundamentals">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Fundamentals</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-fundamentals"></div>
+                </article>
+                <article class="tv-lab-card" data-testid="tv-lab-technical">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Technical analysis</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-technical-analysis"></div>
+                </article>
             </div>
-        </div>
-    </section>
 
-    <section class="tv-lab-grid">
-        <div class="tv-lab-card">
-            <h2>Fundamentals</h2>
-            <div class="tradingview-widget-container" data-testid="tv-lab-fundamentals">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js" async>
-              {
-                "symbol": "__TV_SYMBOL__",
-                "height": "100%",
-                "colorTheme": "dark",
-                "isTransparent": false,
-                "locale": "en",
-                "mode": "financials"
-              }
-              </script>
-            </div>
-        </div>
-        <div class="tv-lab-card">
-            <h2>Technical analysis</h2>
-            <div class="tradingview-widget-container" data-testid="tv-lab-technical">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-              {
-                "interval": "1D",
-                "symbol": "__TV_SYMBOL__",
-                "showIntervalTabs": true,
-                "width": "100%",
-                "height": "100%",
-                "isTransparent": false,
-                "colorTheme": "dark",
-                "locale": "en"
-              }
-              </script>
-            </div>
-        </div>
-    </section>
+            <article class="tv-lab-card tv-card--wide" data-testid="tv-lab-news">
+                <div class="tv-card-header">
+                    <p class="eyebrow">Top stories</p>
+                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                </div>
+                <div data-tv-widget-target="tv-template-news-timeline"></div>
+            </article>
 
-    <section class="tv-lab-grid">
-        <div class="tv-lab-card">
-            <h2>Top stories</h2>
-            <div class="tradingview-widget-container" data-testid="tv-lab-news">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
-              {
-                "feedMode": "symbol",
-                "symbol": "__TV_SYMBOL__",
-                "colorTheme": "dark",
-                "isTransparent": false,
-                "displayMode": "adaptive",
-                "width": "100%",
-                "height": 480,
-                "locale": "en"
-              }
-              </script>
-            </div>
-        </div>
-        <div class="tv-lab-card tv-lab-card--snapshot">
-            <h2>Legend AI Chart-IMG snapshot</h2>
-            <div class="tv-snapshot" data-testid="tv-lab-snapshot">
-                <img id="chartimg-snapshot" alt="Legend AI snapshot" style="display:none;" />
-                <div id="chartimg-status" class="tv-snapshot-empty">Generating snapshot…</div>
-            </div>
-        </div>
-    </section>
+            <article class="tv-lab-card tv-card--snapshot">
+                <h2>Legend AI Chart-IMG snapshot</h2>
+                <div class="tv-snapshot" data-testid="tv-lab-snapshot">
+                    <img id="chartimg-snapshot" alt="Legend AI snapshot" style="display:none;" />
+                    <div id="chartimg-status" class="tv-snapshot-empty">Generating snapshot…</div>
+                </div>
+            </article>
+        </section>
+    </div>
 
+    <!-- Shared TradingView templates -->
+    <!--TV_WIDGET_TEMPLATES-->
+
+    <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script>
       (function() {
-        const tvSymbol = '__TV_SYMBOL__';
-        const ticker = tvSymbol.includes(':') ? tvSymbol.split(':')[1] : tvSymbol;
-        const statusEl = document.getElementById('chartimg-status');
-        const imgEl = document.getElementById('chartimg-snapshot');
-
-        fetch('/api/charts/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ticker, interval: '1D' })
-        })
-        .then((res) => res.json())
-        .then((payload) => {
-          if (payload?.success && payload.chart_url) {
-            imgEl.src = payload.chart_url;
-            imgEl.style.display = 'block';
-            statusEl.textContent = 'Snapshot synced via Chart-IMG';
-          } else {
-            statusEl.textContent = 'Snapshot unavailable (Chart-IMG limit or symbol unsupported)';
-          }
-        })
-        .catch(() => {
-          statusEl.textContent = 'Snapshot unavailable (network error)';
-        });
+        function normalizeTicker(symbol) {
+          if (!symbol) return null;
+          const parts = symbol.split(':');
+          return parts[parts.length - 1];
+        }
+        function renderSnapshot(symbol) {
+          const ticker = normalizeTicker(symbol);
+          const statusEl = document.getElementById('chartimg-status');
+          const imgEl = document.getElementById('chartimg-snapshot');
+          if (!ticker || !statusEl || !imgEl) return;
+          statusEl.textContent = 'Generating snapshot…';
+          imgEl.style.display = 'none';
+          fetch('/api/charts/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker, interval: '1D' })
+          })
+          .then((res) => res.json())
+          .then((payload) => {
+            if (payload?.success && payload.chart_url) {
+              imgEl.src = payload.chart_url;
+              imgEl.style.display = 'block';
+              statusEl.textContent = `Snapshot synced for ${ticker}`;
+            } else {
+              statusEl.textContent = 'Snapshot unavailable (limit or unsupported symbol)';
+            }
+          })
+          .catch(() => {
+            statusEl.textContent = 'Snapshot unavailable (network error)';
+          });
+        }
+        document.addEventListener('legend-tv:ready', (event) => renderSnapshot(event.detail?.symbol));
+        document.addEventListener('legend-tv:symbol-changed', (event) => renderSnapshot(event.detail?.symbol));
       })();
     </script>
 </body>

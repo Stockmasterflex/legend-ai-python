@@ -11,6 +11,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # Resolve the dashboard template relative to the repository root so it works
 # locally and inside Railway containers.
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
+TV_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "partials" / "tv_widget_templates.html"
 
 
 @router.get("", response_class=HTMLResponse)
@@ -34,6 +35,7 @@ async def get_dashboard():
         html_content = html_content.replace("__VERSION__", build_sha)
         # Inject build sha placeholder for dashboard.js and header text
         html_content = html_content.replace("{{ build_sha }}", build_sha)
+        html_content = _inject_tv_templates(html_content)
 
         logger.info("📊 Serving dashboard")
         return html_content
@@ -141,3 +143,14 @@ def _resolve_build_sha() -> str:
         return sha or "unknown"
     except Exception:
         return "unknown"
+
+
+def _inject_tv_templates(html: str) -> str:
+    """Insert shared TradingView templates into the page."""
+    if "<!--TV_WIDGET_TEMPLATES-->" not in html:
+        return html
+    try:
+        partial = TV_TEMPLATE_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        partial = ""
+    return html.replace("<!--TV_WIDGET_TEMPLATES-->", partial)
