@@ -72,6 +72,7 @@
       bindEvents();
       initTabNavigation();
       initTagControls();
+      initWatchlistDensity();
       hydrateAnalyzeFromTv();
       window.Dashboard = { 
         focusTab: (tab) => switchTab(tab),
@@ -119,6 +120,7 @@
     els.patternSnapshot = document.getElementById('pattern-snapshot');
     els.analyzeChartStatus = document.getElementById('analyze-chart-status');
     els.analyzeChartTitle = document.getElementById('analyze-chart-title');
+    els.analyzeStatusLive = document.getElementById('analyze-status-live');
 
     els.quickSymbol = document.getElementById('quick-symbol-input');
     els.quickTimeframe = document.getElementById('quick-timeframe');
@@ -142,6 +144,8 @@
     els.watchlistSubmit = document.getElementById('watchlist-submit');
     els.watchlistCancel = document.getElementById('watchlist-cancel');
     els.watchlistModeIndicator = document.getElementById('watchlist-mode-indicator');
+    els.watchlistDensityButtons = document.querySelectorAll('[data-density]');
+    els.watchlistTableWrapper = document.querySelector('.watchlist-table-wrapper');
     if (els.watchlistCancel) {
       els.watchlistCancel.hidden = true;
     }
@@ -200,6 +204,21 @@
           onChange(readTagSelection(container));
         }
       });
+    });
+  }
+
+  function initWatchlistDensity() {
+    if (!els.watchlistDensityButtons || !els.watchlistDensityButtons.length || !els.watchlistTableWrapper) {
+      return;
+    }
+    const setDensity = (density) => {
+      els.watchlistTableWrapper.classList.toggle('compact', density === 'compact');
+      els.watchlistDensityButtons.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.density === density);
+      });
+    };
+    els.watchlistDensityButtons.forEach((btn) => {
+      btn.addEventListener('click', () => setDensity(btn.dataset.density));
     });
   }
 
@@ -644,9 +663,9 @@
       const target = formatCurrency(row.target);
       const atrPercent = typeof row.atr_percent === 'number' ? `${row.atr_percent.toFixed(2)}%` : '—';
       const risk = computeRiskReward(row.entry, row.stop, row.target);
-      const chartContent = row.chart_url
-        ? `<img src="${row.chart_url}" alt="${row.ticker} chart" class="scanner-thumb" loading="lazy" />`
-        : `<button class="btn btn-ghost" type="button" data-scan-chart="${row.ticker}">Preview</button>`;
+      const previewMarkup = row.chart_url
+        ? `<img src="${row.chart_url}" alt="${row.ticker} chart" class="preview-thumb" loading="lazy" />`
+        : '<p class="chart-empty compact">Use Preview chart to render.</p>';
       return `
         <tr>
           <td>
@@ -663,8 +682,11 @@
           <td>${target}</td>
           <td>${risk}</td>
           <td>
-            <div class="scanner-chart-slot" data-slot="${row.ticker}">
-              ${chartContent}
+            <div class="preview-block">
+              <div class="scanner-chart-slot" data-slot="${row.ticker}">
+                ${previewMarkup}
+              </div>
+              <button class="btn btn-ghost btn-compact" type="button" data-scan-chart="${row.ticker}">Preview chart</button>
             </div>
           </td>
           <td>
@@ -703,16 +725,16 @@
     if (!ticker) return;
     const slot = els.universeTable?.querySelector(`[data-slot="${ticker}"]`);
     if (!slot) return;
-    slot.innerHTML = '<p class="chart-empty">Generating…</p>';
+    slot.innerHTML = '<p class="chart-empty compact">Generating…</p>';
     const row = state.universeRows.find((item) => item.ticker === ticker);
     if (!row) return;
     const tf = row.timeframe === '1week' ? '1week' : '1day';
     fetchChartImage(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
-        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
+        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="preview-thumb" loading="lazy" />`;
       })
       .catch((error) => {
-        slot.innerHTML = `<p class="chart-empty">${error.message || 'Chart unavailable'}</p>`;
+        slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
       });
   }
 
@@ -906,7 +928,16 @@
       const added = formatWatchlistDate(item.added_date || item.added_at);
       const status = item.status || 'Watching';
       const tags = normalizeTags(item.tags);
+      const rsLabel = typeof item.rs_rating === 'number'
+        ? item.rs_rating.toFixed(0)
+        : (item.rs || '—');
+      const atrLabel = typeof item.atr_percent === 'number'
+        ? `${item.atr_percent.toFixed(2)}%`
+        : '—';
       const statusKey = status.toLowerCase().replace(/\s+/g, '-') || 'watching';
+      const previewMarkup = item.chart_url
+        ? `<img src="${item.chart_url}" alt="${item.ticker} preview" class="preview-thumb" loading="lazy" />`
+        : '<p class="chart-empty compact">Use Preview to load chart.</p>';
       const tagsMarkup = tags.length
         ? tags.map((tag) => `<span class="tag-pill">${tag}</span>`).join('')
         : '<span class="tag-pill tag-pill-muted">No tags</span>';
@@ -917,6 +948,8 @@
             <small>${item.pattern || item.status || ''}</small>
           </td>
           <td><span class="status-pill status-${statusKey}" data-status="${statusKey}">${status}</span></td>
+          <td>${rsLabel || '—'}</td>
+          <td>${atrLabel}</td>
           <td>${item.reason || 'No notes yet.'}</td>
           <td><div class="tag-stack">${tagsMarkup}</div></td>
           <td>${added}</td>
@@ -924,9 +957,11 @@
             <div class="button-row">
               <button class="btn btn-primary btn-compact" data-analyze="${item.ticker}">Analyze</button>
               <button class="btn btn-secondary btn-compact" data-edit="${item.ticker}">Edit</button>
+              <button class="btn btn-ghost btn-compact" data-preview="${item.ticker}">Preview</button>
               <a class="btn btn-tv btn-compact" data-tv-link="${item.ticker}" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
               <button class="btn btn-danger btn-compact" data-remove="${item.ticker}">Remove</button>
             </div>
+            <div class="watchlist-preview preview-block" data-watch-preview="${item.ticker}">${previewMarkup}</div>
           </td>
         </tr>`;
     }).join('');
@@ -951,6 +986,9 @@
     });
     els.watchlistList?.querySelectorAll('[data-edit]').forEach((btn) => {
       btn.addEventListener('click', () => enterWatchlistEdit(btn.dataset.edit));
+    });
+    els.watchlistList?.querySelectorAll('[data-preview]').forEach((btn) => {
+      btn.addEventListener('click', () => handleWatchlistPreview(btn.dataset.preview));
     });
   }
 
@@ -1058,8 +1096,8 @@
       const target = Number(item.target || 0).toFixed(2);
       const riskReward = Number(item.risk_reward || 0).toFixed(2);
       const chartContent = item.chart_url
-        ? `<img src="${item.chart_url}" alt="${item.ticker} chart" class="scanner-thumb" loading="lazy" />`
-        : '<p class="chart-empty">Tap Preview chart to load a fresh snapshot.</p>';
+        ? `<img src="${item.chart_url}" alt="${item.ticker} chart" class="preview-thumb" loading="lazy" />`
+        : '<p class="chart-empty compact">Use Preview chart to sync a fresh snapshot.</p>';
       return `
         <article class="result-card top-setup-card">
           <div class="result-header">
@@ -1086,8 +1124,10 @@
               <a class="btn btn-tv" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
             </div>
           </div>
-          <div class="scanner-chart-slot top-card-preview" data-top-slot="${item.ticker}">
-            ${chartContent}
+          <div class="top-card-preview">
+            <div class="scanner-chart-slot" data-top-slot="${item.ticker}">
+              ${chartContent}
+            </div>
           </div>
         </article>`;
     }).join('');
@@ -1120,15 +1160,29 @@
     if (!ticker) return;
     const slot = els.topGrid?.querySelector(`[data-top-slot="${ticker}"]`);
     if (!slot) return;
-    slot.innerHTML = '<p class="chart-empty">Generating…</p>';
+    slot.innerHTML = '<p class="chart-empty compact">Generating…</p>';
     const row = state.topSetups.find((item) => item.ticker === ticker);
     if (!row) return;
     fetchChartImage(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
-        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
+        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="preview-thumb" loading="lazy" />`;
       })
       .catch((error) => {
-        slot.innerHTML = `<p class="chart-empty">${error.message || 'Chart unavailable'}</p>`;
+        slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
+      });
+  }
+
+  function handleWatchlistPreview(ticker) {
+    if (!ticker) return;
+    const slot = els.watchlistList?.querySelector(`[data-watch-preview="${ticker}"]`);
+    if (!slot) return;
+    slot.innerHTML = '<p class="chart-empty compact">Loading…</p>';
+    fetchChartImage(ticker, els.patternInterval?.value || '1day')
+      .then((url) => {
+        slot.innerHTML = `<img src="${url}" alt="${ticker} preview" class="preview-thumb" loading="lazy" />`;
+      })
+      .catch((error) => {
+        slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
       });
   }
 
@@ -1222,6 +1276,37 @@
   function toggleLoading(el, show) {
     if (!el) return;
     el.classList.toggle('active', Boolean(show));
+  }
+
+  async function safeFetch(url, options = {}, { silent = false } = {}) {
+    try {
+      const response = await fetch(url, options);
+      const contentType = response.headers.get('content-type') || '';
+      const expectsJson = contentType.includes('application/json');
+      const data = expectsJson ? await response.json().catch(() => ({})) : {};
+      if (!response.ok) {
+        const message = data?.detail || data?.error || `Request failed (${response.status})`;
+        throw new Error(message);
+      }
+      return data;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      if (!silent && error.name !== 'AbortError') {
+        toast(error.message || 'Network error occurred', 'error');
+      }
+      throw error;
+    }
+  }
+
+  function disableButtonTemporarily(button, busyText = 'Working…') {
+    if (!button) return () => {};
+    const previous = button.textContent;
+    button.disabled = true;
+    button.textContent = busyText;
+    return () => {
+      button.disabled = false;
+      button.textContent = previous;
+    };
   }
 
   function toast(message, type = 'info', timeout = 3500) {
