@@ -718,10 +718,13 @@
 .btn-ghost {
     background: transparent;
     color: var(--color-text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .btn-ghost:hover {
     color: var(--color-text-primary);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .input,
@@ -845,10 +848,16 @@ textarea:focus {
     margin-bottom: var(--spacing-lg);
 }
 
+.watchlist-form .full {
+    grid-column: 1 / -1;
+}
+
 .watchlist-toolbar {
     display: flex;
     justify-content: flex-end;
     margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
 }
 
 .watchlist-empty {
@@ -866,6 +875,26 @@ textarea:focus {
 
 .watchlist-table td {
     vertical-align: middle;
+}
+
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-xxs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(32, 240, 255, 0.35);
+    background: rgba(32, 240, 255, 0.1);
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-primary);
 }
 
 .spinner {
