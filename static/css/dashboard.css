@@ -117,7 +117,7 @@
 
 .analyze-panels {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(480px, 1.2fr);
     gap: var(--spacing-2xl);
     margin-top: var(--spacing-xl);
     align-items: start;
@@ -218,7 +218,7 @@
 }
 
 .chart-shell {
-    min-height: 360px;
+    min-height: 500px;
     border-radius: var(--radius-xl);
     border: 1px solid var(--color-border-subtle);
     background: radial-gradient(circle at top, rgba(32, 240, 255, 0.08), rgba(15, 23, 42, 0.9));
