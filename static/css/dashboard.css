@@ -115,6 +115,189 @@
     padding: var(--spacing-2xl);
 }
 
+.analyze-panels {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    gap: var(--spacing-2xl);
+    margin-top: var(--spacing-xl);
+    align-items: start;
+}
+
+.analyze-chart-panel {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-2xl);
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.analyze-results {
+    min-width: 0;
+}
+
+.scanner-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: var(--spacing-2xl);
+    margin-bottom: var(--spacing-xl);
+    align-items: start;
+}
+
+.scanner-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.scanner-form .full {
+    grid-column: 1 / -1;
+}
+
+.scanner-form select[multiple] {
+    min-height: 140px;
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--color-border-subtle);
+}
+
+.form-field.form-actions,
+.scanner-form .form-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: flex-end;
+}
+
+.scanner-meta-panel {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-2xl);
+    background: rgba(15, 23, 42, 0.8);
+    padding: var(--spacing-xl);
+}
+
+.scanner-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.scanner-meta-grid strong {
+    font-family: var(--font-mono);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-lg);
+}
+
+.meta-label {
+    display: block;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.08em;
+}
+
+.scanner-table-wrapper {
+    margin-top: var(--spacing-lg);
+}
+
+.scanner-table td,
+.scanner-table th {
+    vertical-align: middle;
+}
+
+.scanner-chart-slot {
+    min-width: 160px;
+}
+
+.scanner-thumb {
+    width: 160px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.chart-shell {
+    min-height: 360px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border-subtle);
+    background: radial-gradient(circle at top, rgba(32, 240, 255, 0.08), rgba(15, 23, 42, 0.9));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.chart-shell.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent, rgba(32, 240, 255, 0.08), transparent);
+    animation: shimmer 2s infinite;
+}
+
+.chart-shell img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: inherit;
+}
+
+.chart-status {
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+}
+
+.chart-status.muted {
+    color: var(--color-text-secondary);
+}
+
+.chart-status.loading {
+    color: var(--color-neon-aqua);
+}
+
+.chart-status.error {
+    color: var(--color-error);
+}
+
+.chart-status.success {
+    color: var(--color-success);
+}
+
+.chart-hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.chart-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: var(--spacing-md);
+}
+
+@media (max-width: 1200px) {
+    .analyze-panels {
+        grid-template-columns: 1fr;
+    }
+
+    .analyze-chart-panel {
+        order: 2;
+    }
+
+    .scanner-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .scanner-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .tab-pane[hidden] {
     display: none !important;
 }
@@ -270,6 +453,51 @@
     display: flex;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
+}
+
+.internals-summary-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.internals-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.internals-summary .summary-card {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-2xl);
+    padding: var(--spacing-lg);
+}
+
+.internals-summary h3 {
+    margin: 0;
+}
+
+.api-usage {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.api-usage span {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.internals-minis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--spacing-lg);
+    margin: var(--spacing-xl) 0;
+}
+
+.mini-card {
+    min-height: 180px;
 }
 
 /* Chart Container */
@@ -610,6 +838,36 @@ textarea:focus {
     display: inline-flex;
 }
 
+.watchlist-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.watchlist-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-md);
+}
+
+.watchlist-empty {
+    padding: var(--spacing-lg);
+    border: 1px dashed var(--color-border-subtle);
+    border-radius: var(--radius-xl);
+    text-align: center;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-lg);
+}
+
+.watchlist-table-wrapper {
+    overflow-x: auto;
+}
+
+.watchlist-table td {
+    vertical-align: middle;
+}
+
 .spinner {
     width: 18px;
     height: 18px;
@@ -622,6 +880,18 @@ textarea:focus {
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(100%);
     }
 }
 

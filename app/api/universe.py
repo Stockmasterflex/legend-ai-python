@@ -17,6 +17,7 @@ from app.services.universe_data import (
 )
 from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
+from app.services.universe_store import universe_store
 from app.core.pattern_detector import PatternDetector, PatternResult
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,10 @@ class QuickScanRequest(BaseModel):
     limit: int = 25
     min_score: float = 7.0
     min_rs: float = 60.0
+    pattern_types: Optional[List[str]] = None
+    timeframe: str = "1day"
+    sector: Optional[str] = None
+    max_atr_percent: Optional[float] = None
 
 
 @router.get("/health")
@@ -202,11 +207,34 @@ async def quick_scan(request: QuickScanRequest):
     }
 
     try:
+        metadata_map = await universe_store.get_all()
+        sector_filter = (request.sector or "").strip().lower() or None
+        requested_interval = (request.timeframe or "1day").lower()
+        interval = "1week" if "week" in requested_interval else "1day"
+        stats["timeframe"] = interval
+        if sector_filter:
+            stats["sector_filter"] = sector_filter
+
         universe_key = request.universe.lower().strip()
         label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
         tickers = universe_fn()
-        scan_limit = max(5, min(request.limit, len(tickers)))
-        tickers_to_scan = tickers[:scan_limit]
+        stats["candidates"] = len(tickers)
+
+        def _matches_sector(symbol: str) -> bool:
+            if not sector_filter:
+                return True
+            meta = metadata_map.get(symbol.upper())
+            if not meta or not meta.get("sector"):
+                return False
+            return meta["sector"].strip().lower() == sector_filter
+
+        filtered_universe = [ticker for ticker in tickers if _matches_sector(ticker)]
+        if not filtered_universe:
+            filtered_universe = tickers
+
+        scan_limit = max(5, min(request.limit, len(filtered_universe)))
+        pool_size = min(len(filtered_universe), max(scan_limit * 2, scan_limit + 10))
+        tickers_to_scan = filtered_universe[:pool_size]
 
         detector = PatternDetector()
         cache = get_cache_service()
@@ -215,11 +243,12 @@ async def quick_scan(request: QuickScanRequest):
         stats = {
             "universe": label,
             "requested_universe": request.universe,
-            "candidates": len(tickers),
+            "candidates": len(filtered_universe),
             "scanned": len(tickers_to_scan),
             "cache_hits": 0,
             "min_score": request.min_score,
             "min_rs": request.min_rs,
+            "timeframe": interval,
         }
 
         rows: List[Dict[str, Any]] = []
@@ -229,7 +258,8 @@ async def quick_scan(request: QuickScanRequest):
             pattern_result = None
 
             try:
-                cached_pattern = await cache.get_pattern(ticker, "1day")
+                cache_interval = interval
+                cached_pattern = await cache.get_pattern(ticker, cache_interval)
                 if cached_pattern:
                     stats["cache_hits"] += 1
                     if isinstance(cached_pattern.get("timestamp"), str):
@@ -238,14 +268,14 @@ async def quick_scan(request: QuickScanRequest):
                     pattern_result = PatternResult(**cached_pattern)
 
                 if pattern_result is None:
-                    price_data = await market_data_service.get_time_series(ticker, "1day", 400)
+                    price_data = await market_data_service.get_time_series(ticker, interval, 400)
                     if not price_data:
                         continue
 
                     pattern_result = await detector.analyze_ticker(ticker, price_data, spy_data)
 
                     if pattern_result:
-                        await cache.set_pattern(ticker, "1day", pattern_result.to_dict())
+                        await cache.set_pattern(ticker, cache_interval, pattern_result.to_dict())
 
                 if pattern_result is None:
                     continue
@@ -257,12 +287,23 @@ async def quick_scan(request: QuickScanRequest):
                 if request.min_rs and (rs_rating is None or rs_rating < request.min_rs):
                     continue
 
+                if request.pattern_types:
+                    allowed = {p.strip().lower() for p in request.pattern_types if p and p.strip().lower() != "all"}
+                    pattern_name = (pattern_result.pattern or "").strip().lower()
+                    if allowed and pattern_name not in allowed:
+                        continue
+
                 if price_data is None:
-                    price_data = await market_data_service.get_time_series(ticker, "1day", 200)
+                    price_data = await market_data_service.get_time_series(ticker, interval, 200)
 
                 atr_percent = None
                 if price_data and all(k in price_data for k in ("h", "l", "c")):
                     atr_percent = _compute_atr_percent(price_data["h"], price_data["l"], price_data["c"])
+
+                if request.max_atr_percent and atr_percent and atr_percent > request.max_atr_percent:
+                    continue
+
+                meta = metadata_map.get(ticker.upper())
 
                 rows.append({
                     "ticker": ticker,
@@ -275,6 +316,9 @@ async def quick_scan(request: QuickScanRequest):
                     "atr_percent": atr_percent,
                     "current_price": pattern_result.current_price,
                     "source": label,
+                    "sector": meta.get("sector") if meta else None,
+                    "timeframe": interval,
+                    "chart_url": pattern_result.chart_url,
                 })
 
             except Exception as ticker_error:
@@ -322,4 +366,3 @@ async def get_nasdaq100():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
