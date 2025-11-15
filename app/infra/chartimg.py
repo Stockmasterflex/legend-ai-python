@@ -96,7 +96,8 @@ async def build_analyze_chart(
         "drawings": drawings,
     }
 
-    url = "https://api.chart-img.com/v2/tradingview/advanced-chart"
+    # Use /storage endpoint to get a URL (not raw PNG)
+    url = "https://api.chart-img.com/v2/tradingview/advanced-chart/storage"
     headers = {"x-api-key": api_key}
 
     # Cache hit short-circuits expensive renders
