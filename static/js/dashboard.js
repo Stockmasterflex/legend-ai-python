@@ -18,8 +18,6 @@
     activeTab: 'analyze',
     currentTicker: 'NVDA',
     currentInterval: '1day',
-    tvReady: false,
-    tvWidgets: {},
     cacheStats: null,
     universeRows: [],
     topSetups: [],
@@ -45,6 +43,10 @@
     'First pullback',
     'Late-stage base',
     'Extended',
+    'Gap up',
+    'Base-on-base',
+    'Short squeeze',
+    'Power trend',
   ];
 
   function mapTickerToTvSymbol(ticker, source) {
@@ -70,12 +72,12 @@
       bindEvents();
       initTabNavigation();
       initTagControls();
+      hydrateAnalyzeFromTv();
       window.Dashboard = { 
         focusTab: (tab) => switchTab(tab),
         initialized: true
       };
       console.log('Dashboard initialized successfully');
-      initTradingViewWidgets();
       fetchMarketInternals();
       loadWatchlist();
       loadTopSetups();
@@ -200,6 +202,23 @@
     });
   }
 
+  function hydrateAnalyzeFromTv() {
+    if (!window.LegendTV || typeof window.LegendTV.getSymbol !== 'function') return;
+    const symbol = window.LegendTV.getSymbol();
+    if (!symbol) return;
+    const ticker = symbol.split(':').pop();
+    if (!ticker) return;
+    if (els.patternTicker) els.patternTicker.value = ticker;
+    if (els.quickSymbol) els.quickSymbol.value = ticker;
+  }
+
+  function syncTradingViewSymbol(ticker, source) {
+    if (!ticker || !window.LegendTV || typeof window.LegendTV.setSymbol !== 'function') return;
+    const tvSymbol = mapTickerToTvSymbol(ticker, source);
+    if (!tvSymbol) return;
+    window.LegendTV.setSymbol(tvSymbol);
+  }
+
   function readTagSelection(container) {
     return Array.from(container?.querySelectorAll('.tag-toggle.active') || [])
       .map((btn) => btn.dataset.tag)
@@ -267,6 +286,7 @@
       renderAnalyzeIntel(data);
       const hasSnapshot = typeof data.chart_url === 'string' && data.chart_url.length > 0;
       loadAnalyzeChart(ticker, tf, data?.plan || {}, hasSnapshot ? data.chart_url : null);
+      syncTradingViewSymbol(ticker, data?.universe?.source || data?.universe?.exchange);
       toast(`Analyzed ${ticker}`, 'success');
     } catch (err) {
       console.error('Analyze error:', err);
@@ -361,10 +381,7 @@
     els.marketRefresh?.addEventListener('click', () => fetchMarketInternals());
     els.patternChart?.addEventListener('click', handleChartShellClick);
 
-    els.chartRefresh?.addEventListener('click', refreshAdvancedChart);
     els.chartMulti?.addEventListener('click', handleMultiTimeframe);
-    document.querySelectorAll('[data-timeframe]')
-      .forEach((btn) => btn.addEventListener('click', () => setAdvancedTimeframe(btn.dataset.timeframe)));
   }
 
   function renderAnalyzeIntel(data) {
@@ -394,7 +411,7 @@
       ? `<a class="btn btn-secondary btn-compact" href="${data.chart_url}" target="_blank" rel="noopener">Snapshot</a>`
       : '<span style="color:var(--color-text-secondary)">Snapshot unavailable</span>';
     const tvHref = buildTvLabLink(data.ticker, meta.source || meta.exchange);
-    const tvLink = `<a class="btn btn-ghost btn-compact" href="${tvHref}" target="_blank" rel="noopener">TV</a>`;
+    const tvLink = `<a class="btn btn-tv btn-compact" href="${tvHref}" target="_blank" rel="noopener">TV</a>`;
 
     els.patternResults.innerHTML = `
       <article class="result-card">
@@ -646,7 +663,7 @@
             <div class="button-row">
               <button class="btn btn-primary btn-compact" type="button" data-scan-analyze="${row.ticker}">Analyze</button>
               <button class="btn btn-secondary btn-compact" type="button" data-scan-watch="${row.ticker}">Watch</button>
-              <a class="btn btn-ghost btn-compact" href="${buildTvLabLink(row.ticker, row.source)}" target="_blank" rel="noopener">TV</a>
+              <a class="btn btn-tv btn-compact" href="${buildTvLabLink(row.ticker, row.source)}" target="_blank" rel="noopener">TV</a>
             </div>
           </td>
         </tr>`;
@@ -899,7 +916,7 @@
             <div class="button-row">
               <button class="btn btn-primary btn-compact" data-analyze="${item.ticker}">Analyze</button>
               <button class="btn btn-secondary btn-compact" data-edit="${item.ticker}">Edit</button>
-              <a class="btn btn-secondary btn-compact" data-tv-link="${item.ticker}" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
+              <a class="btn btn-tv btn-compact" data-tv-link="${item.ticker}" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
               <button class="btn btn-danger btn-compact" data-remove="${item.ticker}">Remove</button>
             </div>
           </td>
@@ -1058,7 +1075,7 @@
               <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
               <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
               <button class="btn btn-primary" data-top-chart="${item.ticker}">Preview chart</button>
-              <a class="btn btn-secondary" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
+              <a class="btn btn-tv" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
             </div>
           </div>
           <div class="scanner-chart-slot top-card-preview" data-top-slot="${item.ticker}">
@@ -1260,80 +1277,4 @@
     }
   }
 
-  function refreshAdvancedChart() {
-    const ticker = els.chartTicker.value.trim().toUpperCase();
-    if (!ticker || !state.tvWidgets.advanced) return;
-    state.tvWidgets.advanced.onChartReady(() => {
-      state.tvWidgets.advanced.chart().setSymbol(ticker, () => toast(`Chart synced to ${ticker}`, 'success'));
-    });
-  }
-
-  function setAdvancedTimeframe(resolution) {
-    if (!state.tvWidgets.advanced) return;
-    state.tvWidgets.advanced.onChartReady(() => {
-      state.tvWidgets.advanced.chart().setResolution(resolution, () => toast(`Timeframe → ${resolution}`, 'success'));
-    });
-  }
-
-  function updatePatternChart(ticker, interval) {
-    if (!state.tvWidgets.pattern) return;
-    const resolutionMap = { '1day': 'D', '1week': 'W', '60min': '60', '15min': '15' };
-    const resolution = resolutionMap[interval] || 'D';
-    state.tvWidgets.pattern.onChartReady(() => {
-      state.tvWidgets.pattern.chart().setSymbol(ticker, () => {
-        state.tvWidgets.pattern.chart().setResolution(resolution);
-      });
-    });
-  }
-
-  function initTradingViewWidgets() {
-    if (state.tvReady) return;
-    if (!window.TradingView) {
-      setTimeout(initTradingViewWidgets, 400);
-      return;
-    }
-    state.tvReady = true;
-    if (document.getElementById('tv-ticker-tape')) {
-      state.tvWidgets.tape = new TradingView.widget({
-        container_id: 'tv-ticker-tape',
-        width: '100%',
-        colorTheme: 'dark',
-        isTransparent: true,
-        autosize: true,
-        displayMode: 'regular',
-        locale: 'en',
-        symbols: [
-          { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
-          { proName: 'NASDAQ:NDX', title: 'Nasdaq 100' },
-          { proName: 'CME_MINI:ES1!', title: 'ES' },
-          { proName: 'COMEX:GC1!', title: 'Gold' },
-          { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
-        ],
-      });
-    }
-    const miniConfigs = [
-      { id: 'tv-mini-spy', symbol: 'AMEX:SPY' },
-      { id: 'tv-mini-qqq', symbol: 'NASDAQ:QQQ' },
-      { id: 'tv-mini-iwm', symbol: 'NYSEARCA:IWM' },
-      { id: 'tv-mini-vix', symbol: 'CBOE:VIX' },
-    ];
-    miniConfigs.forEach((cfg) => {
-      if (!document.getElementById(cfg.id)) return;
-      state.tvWidgets[cfg.id] = new TradingView.widget({
-        container_id: cfg.id,
-        symbol: cfg.symbol,
-        interval: 'D',
-        width: '100%',
-        height: 260,
-        timezone: 'Etc/UTC',
-        theme: 'dark',
-        style: '1',
-        locale: 'en',
-        toolbar_bg: '#080b12',
-        hide_side_toolbar: true,
-        allow_symbol_change: false,
-      });
-    });
-    // Do not mount any TradingView chart by default on Analyze
-  }
 })();
