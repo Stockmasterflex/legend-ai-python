@@ -550,6 +550,8 @@
 
   async function fetchChartImage(ticker, tf, plan = {}) {
     const interval = mapTimeframeToInterval(tf);
+    console.log(`[Chart Preview] Fetching chart for ${ticker} (${interval})`, plan);
+
     const res = await fetch('/api/charts/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -561,23 +563,68 @@
         target: plan.target,
       }),
     });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok || !payload.success || !payload.chart_url) {
-      throw new Error(payload.error || `Chart unavailable (${res.status})`);
+
+    console.log(`[Chart Preview] Response status: ${res.status}`);
+
+    const payload = await res.json().catch((jsonError) => {
+      console.error('[Chart Preview] JSON parse error:', jsonError);
+      return { success: false, error: 'Invalid server response' };
+    });
+
+    console.log('[Chart Preview] Payload:', payload);
+
+    if (!res.ok) {
+      const errorMsg = payload.error || payload.detail || `HTTP ${res.status}`;
+      console.error(`[Chart Preview] Request failed: ${errorMsg}`);
+      throw new Error(errorMsg);
     }
+
+    if (!payload.success) {
+      const errorMsg = payload.error || payload.detail || 'Chart generation failed';
+      console.error(`[Chart Preview] Chart generation failed: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    if (!payload.chart_url || typeof payload.chart_url !== 'string') {
+      console.error('[Chart Preview] Missing or invalid chart_url in response');
+      throw new Error('Chart URL not provided by server');
+    }
+
+    console.log(`[Chart Preview] Success: ${payload.chart_url}`);
     return payload.chart_url;
   }
 
   function renderPreviewImage(slot, url, altLabel = 'Chart preview') {
-    if (!slot) return;
+    if (!slot) {
+      console.warn('[Chart Preview] No slot element provided for rendering');
+      return;
+    }
+
+    if (!url || typeof url !== 'string') {
+      console.error('[Chart Preview] Invalid URL provided:', url);
+      slot.innerHTML = '<p class="chart-empty compact">Invalid chart URL</p>';
+      return;
+    }
+
+    console.log(`[Chart Preview] Rendering image: ${url}`);
+
     const img = document.createElement('img');
     img.src = url;
     img.alt = altLabel;
     img.loading = 'lazy';
     img.className = 'preview-thumb';
-    img.addEventListener('error', () => {
-      slot.innerHTML = '<p class="chart-empty compact">Chart unavailable</p>';
+
+    // Handle image load errors (broken URLs, 404s, invalid images)
+    img.addEventListener('error', (event) => {
+      console.error(`[Chart Preview] Image failed to load: ${url}`, event);
+      slot.innerHTML = '<p class="chart-empty compact">Chart image unavailable (broken URL or network error)</p>';
     }, { once: true });
+
+    // Optional: Log successful loads
+    img.addEventListener('load', () => {
+      console.log(`[Chart Preview] Image loaded successfully: ${url}`);
+    }, { once: true });
+
     slot.innerHTML = '';
     slot.appendChild(img);
   }
@@ -736,19 +783,38 @@
   }
 
   function handleScannerChartPreview(ticker) {
-    if (!ticker) return;
+    if (!ticker) {
+      console.warn('[Scanner Preview] No ticker provided');
+      return;
+    }
+
     const slot = els.universeTable?.querySelector(`[data-slot="${ticker}"]`);
-    if (!slot) return;
-    slot.innerHTML = '<p class="chart-empty compact">Generating…</p>';
+    if (!slot) {
+      console.error(`[Scanner Preview] Slot not found for ticker: ${ticker}`);
+      return;
+    }
+
+    slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
+    console.log(`[Scanner Preview] Starting preview for ${ticker}`);
+
     const row = state.universeRows.find((item) => item.ticker === ticker);
-    if (!row) return;
+    if (!row) {
+      console.error(`[Scanner Preview] Row data not found for ${ticker}`);
+      slot.innerHTML = '<p class="chart-empty compact">Setup data not found</p>';
+      return;
+    }
+
     const tf = row.timeframe === '1week' ? '1week' : '1day';
-    fetchChartImage(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
+    const plan = { entry: row.entry, stop: row.stop, target: row.target };
+
+    fetchChartImage(ticker, tf, plan)
       .then((url) => {
         renderPreviewImage(slot, url, `${ticker} chart preview`);
       })
       .catch((error) => {
-        slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
+        console.error(`[Scanner Preview] Error for ${ticker}:`, error);
+        const errorMsg = error.message || 'Chart generation failed';
+        slot.innerHTML = `<p class="chart-empty compact">${errorMsg}</p>`;
       });
   }
 
@@ -1180,32 +1246,75 @@
   }
 
   function handleTopSetupChartPreview(ticker) {
-    if (!ticker) return;
+    if (!ticker) {
+      console.warn('[Top Setup Preview] No ticker provided');
+      return;
+    }
+
     const slot = els.topGrid?.querySelector(`[data-top-slot="${ticker}"]`);
-    if (!slot) return;
-    slot.innerHTML = '<p class="chart-empty compact">Generating…</p>';
+    if (!slot) {
+      console.error(`[Top Setup Preview] Slot not found for ticker: ${ticker}`);
+      return;
+    }
+
+    slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
+    console.log(`[Top Setup Preview] Starting preview for ${ticker}`);
+
     const row = state.topSetups.find((item) => item.ticker === ticker);
-    if (!row) return;
-    fetchChartImage(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
+    if (!row) {
+      console.error(`[Top Setup Preview] Setup data not found for ${ticker}`);
+      slot.innerHTML = '<p class="chart-empty compact">Setup data not found</p>';
+      return;
+    }
+
+    const plan = { entry: row.entry, stop: row.stop, target: row.target };
+
+    fetchChartImage(ticker, '1day', plan)
       .then((url) => {
         renderPreviewImage(slot, url, `${ticker} chart preview`);
       })
       .catch((error) => {
-        slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
+        console.error(`[Top Setup Preview] Error for ${ticker}:`, error);
+        const errorMsg = error.message || 'Chart generation failed';
+        slot.innerHTML = `<p class="chart-empty compact">${errorMsg}</p>`;
       });
   }
 
   function handleWatchlistPreview(ticker) {
-    if (!ticker) return;
+    if (!ticker) {
+      console.warn('[Watchlist Preview] No ticker provided');
+      return;
+    }
+
     const slot = els.watchlistList?.querySelector(`[data-watch-preview="${ticker}"]`);
-    if (!slot) return;
-    slot.innerHTML = '<p class="chart-empty compact">Loading…</p>';
-    fetchChartImage(ticker, els.patternInterval?.value || '1day')
+    if (!slot) {
+      console.error(`[Watchlist Preview] Slot not found for ticker: ${ticker}`);
+      return;
+    }
+
+    slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
+    console.log(`[Watchlist Preview] Starting preview for ${ticker}`);
+
+    // Use the current timeframe from pattern interval, defaulting to 1day
+    const timeframe = els.patternInterval?.value || '1day';
+    console.log(`[Watchlist Preview] Using timeframe: ${timeframe}`);
+
+    // Watchlist items may have entry/stop/target from when they were added
+    const watchItem = state.watchlistItems?.find((item) => item.ticker === ticker);
+    const plan = watchItem ? {
+      entry: watchItem.entry,
+      stop: watchItem.stop,
+      target: watchItem.target,
+    } : {};
+
+    fetchChartImage(ticker, timeframe, plan)
       .then((url) => {
         renderPreviewImage(slot, url, `${ticker} preview`);
       })
       .catch((error) => {
-        slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
+        console.error(`[Watchlist Preview] Error for ${ticker}:`, error);
+        const errorMsg = error.message || 'Chart generation failed';
+        slot.innerHTML = `<p class="chart-empty compact">${errorMsg}</p>`;
       });
   }
 
