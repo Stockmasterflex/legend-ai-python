@@ -322,8 +322,8 @@
                             <button id="top-setups-refresh" class="btn btn-secondary" type="button">Refresh</button>
                         </div>
                     </div>
-                    <div id="top-setups-loading" class="loading-overlay">
-                        <span class="spinner"></span>
+                    <div id="top-setups-loading" class="loading-overlay" role="status" aria-live="polite">
+                        <span class="spinner" aria-hidden="true"></span>
                         <span>Fetching setups…</span>
                     </div>
                     <div id="top-setups-empty" class="top-setups-empty">No setups yet. Run a scan or try again later.</div>
@@ -389,6 +389,13 @@
                             <div id="watchlist-tag-filter" class="tag-toggle-group tag-toggle-filter" role="group" aria-label="Filter by tag"></div>
                             <small>Filters apply immediately; click again to clear.</small>
                         </div>
+                        <div class="watchlist-density" role="group" aria-label="Watchlist density">
+                            <span class="meta-label">Density</span>
+                            <div class="watchlist-density-toggle">
+                                <button type="button" class="btn btn-ghost btn-compact active" data-density="comfortable">Comfortable</button>
+                                <button type="button" class="btn btn-ghost btn-compact" data-density="compact">Compact</button>
+                            </div>
+                        </div>
                     </div>
                     <div id="watchlist-empty" class="watchlist-empty">No watchlist items yet.</div>
                     <div class="table-wrapper watchlist-table-wrapper">
@@ -397,6 +404,8 @@
                                 <tr>
                                     <th>Ticker</th>
                                     <th>Status</th>
+                                    <th>RS</th>
+                                    <th>ATR%</th>
                                     <th>Reason</th>
                                     <th>Tags</th>
                                     <th>Added</th>
@@ -417,8 +426,8 @@
                         <button id="market-refresh" class="btn btn-secondary" type="button">Refresh data</button>
                     </div>
                     <div class="internals-summary-stack">
-                        <div id="market-loading" class="loading-overlay">
-                            <span class="spinner"></span>
+                        <div id="market-loading" class="loading-overlay" role="status" aria-live="polite">
+                            <span class="spinner" aria-hidden="true"></span>
                             <span>Fetching breadth + volatility…</span>
                         </div>
                         <div id="market-results" class="internals-summary"></div>
@@ -431,7 +440,7 @@
                                 <h3>TradingView market overview</h3>
                             </div>
                         </div>
-                        <div class="tv-card tv-market-overview" id="tv-market-overview" data-testid="tv-market-overview" data-tv-widget-target="tv-template-market-overview"></div>
+                        <div class="tv-card tv-card--wide tv-market-overview" id="tv-market-overview" data-testid="tv-market-overview" data-tv-widget-target="tv-template-market-overview"></div>
                     </section>
 
                     <section class="internals-section internals-grid">
@@ -470,7 +479,7 @@
                             <div>
                                 <p class="eyebrow">Screeners</p>
                                 <h3>TradingView stock screener</h3>
-                                <small>Use this for quick scans—Legend AI still applies the full Minervini Trend Template server-side.</small>
+                                <small>Use this liquidity + momentum pre-filter; the backend still enforces the full Minervini Trend Template.</small>
                             </div>
                         </div>
                         <div class="tv-card tv-card--screener" data-testid="tv-screener" data-tv-widget-target="tv-template-screener"></div>
