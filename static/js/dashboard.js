@@ -123,6 +123,7 @@
     els.quickSymbol = document.getElementById('quick-symbol-input');
     els.quickTimeframe = document.getElementById('quick-timeframe');
     els.quickScanBtn = document.getElementById('quick-scan-button');
+    els.quickScanForm = document.getElementById('quick-scan-form');
     els.quickSnapshot = document.getElementById('quick-snapshot');
 
     els.universeForm = document.getElementById('universe-form');
@@ -357,6 +358,13 @@
       const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
       fetchAnalyze(ticker, tf);
     });
+
+    // Quick search form submit (supports Enter key)
+    els.quickScanForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      els.quickScanBtn?.click();
+    });
+
     els.quickScanBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       if (els.quickSymbol) {
@@ -1220,7 +1228,18 @@
     if (!els.toastStack) return;
     const toastEl = document.createElement('div');
     toastEl.className = `toast ${type}`;
-    toastEl.textContent = message;
+
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message;
+    toastEl.appendChild(messageSpan);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close';
+    closeBtn.setAttribute('aria-label', 'Dismiss notification');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => toastEl.remove());
+    toastEl.appendChild(closeBtn);
+
     els.toastStack.appendChild(toastEl);
     setTimeout(() => toastEl.remove(), timeout);
   }
