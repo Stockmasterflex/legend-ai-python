@@ -36,12 +36,6 @@
             </div>
         </header>
 
-        <section class="tv-card">
-            <div id="tv-ticker-tape" aria-label="Live market ticker"></div>
-        </section>
-
-        <!-- Dev/infra KPI panels removed for trader-first UI -->
-
         <section class="tabs-container">
             <nav class="tabs-header" role="tablist">
                 <button class="tab-button active" type="button" data-tab-target="analyze" aria-controls="tab-analyze" aria-selected="true" role="tab">Analyze</button>
@@ -78,50 +72,131 @@
                             <button id="pattern-snapshot" class="btn btn-ghost" type="button">Generate snapshot</button>
                         </div>
                     </form>
-                    <div id="pattern-loading" class="loading-overlay">
-                        <span class="spinner" aria-hidden="true"></span>
-                        <span>Scanning Minervini template…</span>
+                    <div class="analyze-panels">
+                        <div class="analyze-results">
+                            <div id="pattern-loading" class="loading-overlay">
+                                <span class="spinner" aria-hidden="true"></span>
+                                <span>Scanning Minervini template…</span>
+                            </div>
+                            <div id="pattern-results" class="results-grid"></div>
+                        </div>
+                        <aside class="analyze-chart-panel">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="eyebrow">Chart View</p>
+                                    <h3 id="analyze-chart-title">Waiting for scan</h3>
+                                </div>
+                                <span id="analyze-chart-status" class="chart-status">Idle</span>
+                            </div>
+                            <div class="chart-shell" id="analyze-chart" aria-live="polite"></div>
+                            <p class="chart-hint">Charts auto-sync after each analysis. Use Snapshot for a shareable link.</p>
+                        </aside>
                     </div>
-                    <div id="pattern-results" class="results-grid"></div>
-                    <div class="tv-card" id="analyze-chart" aria-label="Analyze chart snapshot"></div>
                 </section>
 
                 <section id="tab-scanner" class="tab-pane" data-tab-panel="scanner" hidden>
-                    <form id="universe-form" class="form-grid">
-                        <div class="form-field">
-                            <label for="universe-source">Universe</label>
-                            <select id="universe-source">
-                                <option value="nasdaq100">NASDAQ 100</option>
-                                <option value="sp500">S&P 500</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label for="universe-limit">Max tickers</label>
-                            <input id="universe-limit" type="number" value="25" min="5" max="100" />
-                        </div>
-                        <div class="form-field">
-                            <label for="universe-score">Min score</label>
-                            <input id="universe-score" type="number" value="7" min="0" max="10" step="0.5" />
-                        </div>
-                        <div class="form-field">
-                            <label for="universe-rs">Min RS</label>
-                            <input id="universe-rs" type="number" value="60" min="0" max="100" />
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button class="btn btn-primary" type="submit">Run scan</button>
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button id="universe-export" class="btn btn-secondary" type="button">Export CSV</button>
-                        </div>
-                    </form>
+                    <div class="scanner-controls">
+                        <form id="universe-form" class="scanner-form">
+                            <div class="form-field">
+                                <label for="universe-source">Universe</label>
+                                <select id="universe-source">
+                                    <option value="nasdaq100">NASDAQ 100</option>
+                                    <option value="sp500">S&P 500</option>
+                                    <option value="focus">Focus List</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="scanner-timeframe">Timeframe</label>
+                                <select id="scanner-timeframe">
+                                    <option value="1day">Daily</option>
+                                    <option value="1week">Weekly</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="universe-limit">Universe slice</label>
+                                <input id="universe-limit" type="number" value="30" min="5" max="120" />
+                                <small>More symbols = slower scans</small>
+                            </div>
+                            <div class="form-field">
+                                <label for="universe-score">Min legend score</label>
+                                <input id="universe-score" type="number" value="7" min="0" max="10" step="0.5" />
+                            </div>
+                            <div class="form-field">
+                                <label for="universe-rs">Min RS rating</label>
+                                <input id="universe-rs" type="number" value="60" min="0" max="100" />
+                            </div>
+                            <div class="form-field">
+                                <label for="scanner-atr">Max ATR%</label>
+                                <input id="scanner-atr" type="number" placeholder="5.0" min="0" step="0.5" />
+                            </div>
+                            <div class="form-field full">
+                                <label for="scanner-patterns">Pattern focus</label>
+                                <select id="scanner-patterns" multiple size="4">
+                                    <option value="all" selected>All patterns</option>
+                                    <option value="VCP">Volatility Contraction</option>
+                                    <option value="Flat Base">Flat Base</option>
+                                    <option value="Cup &amp; Handle">Cup &amp; Handle</option>
+                                    <option value="Breakout">Breakout</option>
+                                </select>
+                                <small>Use Cmd/Ctrl-click to select multiple patterns.</small>
+                            </div>
+                            <div class="form-field">
+                                <label for="scanner-sector">Sector filter</label>
+                                <select id="scanner-sector">
+                                    <option value="all">Any sector</option>
+                                    <option value="information technology">Information Technology</option>
+                                    <option value="health care">Health Care</option>
+                                    <option value="consumer discretionary">Consumer Discretionary</option>
+                                    <option value="industrials">Industrials</option>
+                                    <option value="financials">Financials</option>
+                                    <option value="communication services">Communication Services</option>
+                                    <option value="energy">Energy</option>
+                                    <option value="materials">Materials</option>
+                                    <option value="utilities">Utilities</option>
+                                    <option value="real estate">Real Estate</option>
+                                </select>
+                            </div>
+                            <div class="form-field form-actions">
+                                <button class="btn btn-primary" type="submit">Run scan</button>
+                                <button id="universe-export" class="btn btn-secondary" type="button">Export CSV</button>
+                            </div>
+                        </form>
+                        <aside class="scanner-meta-panel">
+                            <p class="eyebrow">Scan stats</p>
+                            <div id="universe-meta" class="scanner-meta-grid">
+                                <div>
+                                    <span class="meta-label">Universe</span>
+                                    <strong data-meta="universe">—</strong>
+                                </div>
+                                <div>
+                                    <span class="meta-label">Timeframe</span>
+                                    <strong data-meta="timeframe">—</strong>
+                                </div>
+                                <div>
+                                    <span class="meta-label">Scanned</span>
+                                    <strong data-meta="scanned">—</strong>
+                                </div>
+                                <div>
+                                    <span class="meta-label">Cache hits</span>
+                                    <strong data-meta="cache">—</strong>
+                                </div>
+                                <div>
+                                    <span class="meta-label">Score ≥</span>
+                                    <strong data-meta="score">—</strong>
+                                </div>
+                                <div>
+                                    <span class="meta-label">RS ≥</span>
+                                    <strong data-meta="rs">—</strong>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
                     <div id="universe-loading" class="loading-overlay">
                         <span class="spinner"></span>
                         <span>Scanning universe…</span>
                     </div>
-                    <div class="table-wrapper">
-                        <table class="table" aria-live="polite">
+                    <div class="table-wrapper scanner-table-wrapper">
+                        <table class="table scanner-table" aria-live="polite">
                             <thead>
                                 <tr>
                                     <th>Ticker</th>
@@ -129,6 +204,12 @@
                                     <th>Score</th>
                                     <th>RS</th>
                                     <th>ATR%</th>
+                                    <th>Sector</th>
+                                    <th>Entry</th>
+                                    <th>Stop</th>
+                                    <th>Target</th>
+                                    <th>R:R</th>
+                                    <th>Chart</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -157,14 +238,14 @@
                 </section>
 
                 <section id="tab-watchlist" class="tab-pane" data-tab-panel="watchlist" hidden>
-                    <form id="watchlist-form" class="form-grid">
+                    <form id="watchlist-form" class="watchlist-form">
                         <div class="form-field">
                             <label for="watchlist-symbol">Ticker</label>
                             <input id="watchlist-symbol" type="text" placeholder="TSLA" />
                         </div>
                         <div class="form-field">
                             <label for="watchlist-reason">Reason</label>
-                            <input id="watchlist-reason" type="text" placeholder="VCP base" />
+                            <input id="watchlist-reason" type="text" placeholder="VCP base, post-earnings drift…" />
                         </div>
                         <div class="form-field">
                             <label for="watchlist-tags">Tags</label>
@@ -172,32 +253,56 @@
                         </div>
                         <div class="form-field">
                             <label>&nbsp;</label>
-                            <button class="btn btn-primary" type="submit">Add</button>
+                            <button class="btn btn-primary" type="submit">Add to watchlist</button>
                         </div>
                     </form>
-                    <div class="form-field" style="max-width: 220px;">
-                        <label for="watchlist-filter">Filter</label>
-                        <select id="watchlist-filter">
-                            <option value="all">All statuses</option>
-                            <option value="Watching">Watching</option>
-                            <option value="Setup">Setup building</option>
-                            <option value="Triggered">Triggered</option>
-                            <option value="Closed">Closed</option>
-                        </select>
+                    <div class="watchlist-toolbar">
+                        <div class="form-field">
+                            <label for="watchlist-filter">Filter</label>
+                            <select id="watchlist-filter">
+                                <option value="all">All statuses</option>
+                                <option value="Watching">Watching</option>
+                                <option value="Setup">Setup building</option>
+                                <option value="Triggered">Triggered</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
                     </div>
-                    <div id="watchlist-empty" class="loading-overlay">No watchlist items yet.</div>
-                    <div id="watchlist-list" class="results-grid"></div>
+                    <div id="watchlist-empty" class="watchlist-empty">No watchlist items yet.</div>
+                    <div class="table-wrapper watchlist-table-wrapper">
+                        <table class="table watchlist-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticker</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                    <th>Tags</th>
+                                    <th>Added</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="watchlist-list"></tbody>
+                        </table>
+                    </div>
                 </section>
 
                 <section id="tab-internals" class="tab-pane" data-tab-panel="internals" hidden>
-                    <div id="market-loading" class="loading-overlay">
-                        <span class="spinner"></span>
-                        <span>Fetching breadth + volatility…</span>
+                    <div class="internals-summary-stack">
+                        <div id="market-loading" class="loading-overlay">
+                            <span class="spinner"></span>
+                            <span>Fetching breadth + volatility…</span>
+                        </div>
+                        <div id="market-results" class="internals-summary"></div>
                     </div>
-                    <div id="market-results" class="results-grid"></div>
+                    <div class="internals-minis">
+                        <div class="tv-card mini-card" id="tv-ticker-tape" aria-label="Live market ticker"></div>
+                        <div class="tv-card mini-card" id="tv-mini-spy" aria-label="SPY mini chart"></div>
+                        <div class="tv-card mini-card" id="tv-mini-qqq" aria-label="QQQ mini chart"></div>
+                        <div class="tv-card mini-card" id="tv-mini-iwm" aria-label="IWM mini chart"></div>
+                    </div>
                     <div class="tv-grid">
-                        <div class="tv-card" id="tv-heatmap"></div>
                         <div class="tv-card" id="tv-market-overview"></div>
+                        <div class="tv-card" id="tv-heatmap"></div>
                         <div class="tv-card" id="tv-calendar"></div>
                     </div>
                 </section>
