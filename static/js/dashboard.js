@@ -25,6 +25,7 @@
     topSetups: [],
     topSetupsLoaded: false,
     topSetupsRefreshing: false,
+    chartRequestId: 0,
   };
 
   const els = {};
@@ -79,6 +80,8 @@
     els.patternChart = document.getElementById('analyze-chart');
     els.patternAddWatchlist = document.getElementById('pattern-add-watchlist');
     els.patternSnapshot = document.getElementById('pattern-snapshot');
+    els.analyzeChartStatus = document.getElementById('analyze-chart-status');
+    els.analyzeChartTitle = document.getElementById('analyze-chart-title');
 
     els.quickSymbol = document.getElementById('quick-symbol-input');
     els.quickTimeframe = document.getElementById('quick-timeframe');
@@ -93,6 +96,7 @@
     els.watchlistList = document.getElementById('watchlist-list');
     els.watchlistEmpty = document.getElementById('watchlist-empty');
     els.watchlistFilter = document.getElementById('watchlist-filter');
+    els.scannerMeta = document.getElementById('universe-meta');
 
     els.topGrid = document.getElementById('top-setups-grid');
     els.topEmpty = document.getElementById('top-setups-empty');
@@ -109,6 +113,8 @@
     els.chartsResults = document.getElementById('charts-results');
 
     els.toastStack = document.getElementById('toast-stack');
+    setAnalyzeChartTitle('Waiting for scan');
+    setAnalyzeChartStatus('Idle', 'muted');
   }
 
   function initTabNavigation() {
@@ -160,7 +166,8 @@
       }
       console.log('Analyze data received:', Object.keys(data));
       renderAnalyzeIntel(data);
-      renderAnalyzeChartImage(data?.chart_url);
+      const hasSnapshot = typeof data.chart_url === 'string' && data.chart_url.length > 0;
+      loadAnalyzeChart(ticker, tf, data?.plan || {}, hasSnapshot ? data.chart_url : null);
       toast(`Analyzed ${ticker}`, 'success');
     } catch (err) {
       console.error('Analyze error:', err);
@@ -169,7 +176,7 @@
         els.patternResults.innerHTML = `<p style="color:#ef4444;padding:20px;">Error: ${errorMsg}</p>`;
       }
       toast(errorMsg, 'error');
-      renderAnalyzeChartImage(null);
+      renderAnalyzeChartImage(null, { placeholder: 'Chart unavailable' });
     } finally {
       clearTimeout(timer);
       toggleLoading(els.patternLoading, false);
@@ -258,35 +265,6 @@
       .forEach((btn) => btn.addEventListener('click', () => setAdvancedTimeframe(btn.dataset.timeframe)));
   }
 
-  async function handlePatternScan(event) {
-    event?.preventDefault();
-    const ticker = els.patternTicker.value.trim().toUpperCase();
-    const interval = els.patternInterval.value;
-    if (!ticker) {
-      return toast('Enter a ticker to scan.', 'error');
-    }
-    state.currentTicker = ticker;
-    state.currentInterval = interval;
-    toggleLoading(els.patternLoading, true);
-    try {
-      const tf = interval === '1week' ? 'weekly' : 'daily';
-      const res = await fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}&tf=${tf}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.detail || data?.reason || `Analyze failed (${res.status})`);
-      }
-      renderAnalyzeIntel(data);
-      renderAnalyzeChartImage(data);
-      toast(`Analyzed ${ticker}`, 'success');
-    } catch (err) {
-      console.error(err);
-      els.patternResults.innerHTML = `<p style="color:#ef4444;">${err.message}</p>`;
-      toast(err.message, 'error');
-    } finally {
-      toggleLoading(els.patternLoading, false);
-    }
-  }
-
   function renderAnalyzeIntel(data) {
     if (!data) return;
     const m = data.patterns?.minervini || { passed: false, failed_rules: [] };
@@ -347,34 +325,98 @@
       </article>`;
   }
 
-// Render analyze chart image (server-provided chart_url). No client-side secrets.
-function renderAnalyzeChartImage(url) {
-    const container = document.getElementById('analyze-chart');
-    if (!container) return;
-    container.innerHTML = '';
+  // Render analyze chart image (ChartIMG URL). No client-side secrets.
+  function renderAnalyzeChartImage(url, options = {}) {
+    if (!els.patternChart) return;
+    setChartShellLoading(false);
+    els.patternChart.innerHTML = '';
     if (typeof url === 'string' && url.length > 0) {
       const link = document.createElement('a');
       link.href = url;
       link.target = '_blank';
       link.rel = 'noopener';
-      link.style.display = 'block';
-      link.style.background = '#0b0f14';
-      link.style.borderRadius = '8px';
       const img = document.createElement('img');
       img.src = url;
       img.alt = 'Analyze snapshot';
-      img.style.display = 'block';
-      img.style.width = '100%';
-      img.style.height = 'auto';
       img.loading = 'lazy';
       link.appendChild(img);
-      container.appendChild(link);
+      els.patternChart.appendChild(link);
     } else {
-      const p = document.createElement('p');
-      p.textContent = 'Chart snapshot unavailable';
-      p.style.color = 'var(--color-text-secondary)';
-      container.appendChild(p);
+      const msg = document.createElement('p');
+      msg.className = 'chart-empty';
+      msg.textContent = options.placeholder || 'Chart snapshot unavailable';
+      els.patternChart.appendChild(msg);
     }
+  }
+
+  function setAnalyzeChartTitle(text) {
+    if (els.analyzeChartTitle) {
+      els.analyzeChartTitle.textContent = text || 'Chart View';
+    }
+  }
+
+  function setAnalyzeChartStatus(message, tone = 'muted') {
+    if (!els.analyzeChartStatus) return;
+    const classes = ['chart-status'];
+    if (tone) classes.push(tone);
+    els.analyzeChartStatus.className = classes.join(' ');
+    els.analyzeChartStatus.textContent = message;
+  }
+
+  function setChartShellLoading(isLoading) {
+    if (!els.patternChart) return;
+    els.patternChart.classList.toggle('loading', Boolean(isLoading));
+  }
+
+  async function requestAnalyzeChart(ticker, tf, plan = {}) {
+    const intervalMap = { weekly: '1W', daily: '1D', intraday: '60', '1week': '1W', '1day': '1D' };
+    const interval = intervalMap[tf] || (state.currentInterval === '1week' ? '1W' : '1D');
+    const res = await fetch('/api/charts/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticker,
+        interval,
+        entry: plan.entry,
+        stop: plan.stop,
+        target: plan.target,
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!payload.success || !payload.chart_url) {
+      throw new Error(payload.error || 'Chart unavailable');
+    }
+    return payload.chart_url;
+  }
+
+  function loadAnalyzeChart(ticker, tf, plan = {}, fallbackUrl = null) {
+    const timeframeLabel = tf === 'weekly' ? '1W' : '1D';
+    setAnalyzeChartTitle(`${ticker} • ${timeframeLabel}`);
+    const requestId = ++state.chartRequestId;
+    if (fallbackUrl) {
+      renderAnalyzeChartImage(fallbackUrl);
+      setAnalyzeChartStatus('Snapshot updated', 'success');
+      return;
+    }
+    setAnalyzeChartStatus('Generating chart…', 'loading');
+    setChartShellLoading(true);
+    requestAnalyzeChart(ticker, tf, plan)
+      .then((url) => {
+        if (requestId !== state.chartRequestId) return;
+        renderAnalyzeChartImage(url);
+        setAnalyzeChartStatus('Chart synced', 'success');
+      })
+      .catch((error) => {
+        if (requestId !== state.chartRequestId) return;
+        console.error('Analyze chart error:', error);
+        renderAnalyzeChartImage(null, { placeholder: 'Chart unavailable' });
+        setAnalyzeChartStatus(error.message || 'Chart unavailable', 'error');
+      })
+      .finally(() => {
+        if (requestId === state.chartRequestId) {
+          setChartShellLoading(false);
+        }
+      });
   }
 
   async function handleUniverseScan(event) {
@@ -383,16 +425,33 @@ function renderAnalyzeChartImage(url) {
     const limit = Number(document.getElementById('universe-limit').value || 25);
     const minScore = Number(document.getElementById('universe-score').value || 7);
     const minRs = Number(document.getElementById('universe-rs').value || 60);
+    const timeframe = document.getElementById('scanner-timeframe')?.value || '1day';
+    const sector = document.getElementById('scanner-sector')?.value || 'all';
+    const atrCapRaw = document.getElementById('scanner-atr')?.value;
+    const patternSelect = document.getElementById('scanner-patterns');
+    const patternTypes = Array.from(patternSelect?.selectedOptions || [])
+      .map((opt) => opt.value)
+      .filter((val) => val && val !== 'all');
     toggleLoading(els.universeLoading, true);
     els.universeTable.innerHTML = '';
     try {
       const res = await fetch('/api/universe/scan/quick', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ universe, limit, min_score: minScore, min_rs: minRs }),
+        body: JSON.stringify({
+          universe,
+          limit,
+          min_score: minScore,
+          min_rs: minRs,
+          timeframe,
+          sector: sector === 'all' ? null : sector,
+          pattern_types: patternTypes.length ? patternTypes : null,
+          max_atr_percent: atrCapRaw ? Number(atrCapRaw) : null,
+        }),
       });
       const payload = await res.json();
       if (!payload.success) throw new Error(payload.error || 'Universe scan failed');
+      renderScannerMeta(payload.stats || {});
       renderUniverseTable(payload.data || []);
     } catch (err) {
       console.error(err);
@@ -406,30 +465,127 @@ function renderAnalyzeChartImage(url) {
   function renderUniverseTable(rows) {
     state.universeRows = rows;
     if (!rows.length) {
-      els.universeTable.innerHTML = '<tr><td colspan="6">No setups found.</td></tr>';
+      els.universeTable.innerHTML = '<tr><td colspan="11">No setups found.</td></tr>';
       return;
     }
     els.universeTable.innerHTML = rows.map((row) => {
-      const score = Math.round((row.score || 0) * 10);
+      const score = Number(row.score || 0).toFixed(1);
+      const entry = formatCurrency(row.entry);
+      const stop = formatCurrency(row.stop);
+      const target = formatCurrency(row.target);
+      const atrPercent = typeof row.atr_percent === 'number' ? `${row.atr_percent.toFixed(2)}%` : '—';
+      const risk = computeRiskReward(row.entry, row.stop, row.target);
+      const chartContent = row.chart_url
+        ? `<img src="${row.chart_url}" alt="${row.ticker} chart" class="scanner-thumb" loading="lazy" />`
+        : `<button class="btn btn-ghost" type="button" data-scan-chart="${row.ticker}">Preview</button>`;
       return `
         <tr>
-          <td>${row.ticker}</td>
+          <td>
+            <div class="ticker-symbol">${row.ticker}</div>
+            <small>${row.source || 'Universe'}</small>
+          </td>
           <td>${row.pattern || '—'}</td>
           <td>${score}</td>
           <td>${row.rs_rating ?? '—'}</td>
-          <td>${row.atr_percent ? row.atr_percent.toFixed(2) + '%' : '—'}</td>
+          <td>${atrPercent}</td>
+          <td>${row.sector || '—'}</td>
+          <td>${entry}</td>
+          <td>${stop}</td>
+          <td>${target}</td>
+          <td>${risk}</td>
           <td>
-            <button class="btn btn-ghost" data-watch="${row.ticker}">Watch</button>
-            <button class="btn btn-ghost" data-chart="${row.ticker}">Chart</button>
+            <div class="scanner-chart-slot" data-slot="${row.ticker}">
+              ${chartContent}
+            </div>
+          </td>
+          <td>
+            <div class="button-row">
+              <button class="btn btn-primary" type="button" data-scan-analyze="${row.ticker}">Analyze</button>
+              <button class="btn btn-secondary" type="button" data-scan-watch="${row.ticker}">Watch</button>
+            </div>
           </td>
         </tr>`;
     }).join('');
-    els.universeTable.querySelectorAll('[data-watch]').forEach((btn) => {
-      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch));
+    attachScannerRowActions();
+  }
+
+  function attachScannerRowActions() {
+    els.universeTable?.querySelectorAll('[data-scan-watch]').forEach((btn) => {
+      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.scanWatch));
     });
-    els.universeTable.querySelectorAll('[data-chart]').forEach((btn) => {
-      btn.addEventListener('click', () => updatePatternChart(btn.dataset.chart, '1day'));
+    els.universeTable?.querySelectorAll('[data-scan-analyze]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const ticker = btn.dataset.scanAnalyze;
+        if (!ticker) return;
+        switchTab('analyze');
+        if (els.patternTicker) {
+          els.patternTicker.value = ticker;
+        }
+        fetchAnalyze(ticker, 'daily');
+      });
     });
+    els.universeTable?.querySelectorAll('[data-scan-chart]').forEach((btn) => {
+      btn.addEventListener('click', () => handleScannerChartPreview(btn.dataset.scanChart));
+    });
+  }
+
+  function handleScannerChartPreview(ticker) {
+    if (!ticker) return;
+    const slot = els.universeTable?.querySelector(`[data-slot="${ticker}"]`);
+    if (!slot) return;
+    slot.innerHTML = '<p class="chart-empty">Generating…</p>';
+    const row = state.universeRows.find((item) => item.ticker === ticker);
+    if (!row) return;
+    const tf = row.timeframe === '1week' ? '1week' : '1day';
+    requestAnalyzeChart(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
+      .then((url) => {
+        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
+      })
+      .catch((error) => {
+        slot.innerHTML = `<p class="chart-empty">${error.message || 'Chart unavailable'}</p>`;
+      });
+  }
+
+  function renderScannerMeta(stats = {}) {
+    if (!els.scannerMeta) return;
+    const universe = stats.universe || stats.requested_universe || '—';
+    const timeframe = (stats.timeframe || '').toString().toUpperCase() || '1DAY';
+    const scanned = stats.scanned ?? '—';
+    const cache = stats.cache_hits ?? '—';
+    const score = stats.min_score ?? '—';
+    const rs = stats.min_rs ?? '—';
+    const metaMap = {
+      universe,
+      timeframe,
+      scanned,
+      cache,
+      score,
+      rs,
+    };
+    Object.entries(metaMap).forEach(([key, value]) => {
+      const target = els.scannerMeta.querySelector(`[data-meta="${key}"]`);
+      if (target) target.textContent = value;
+    });
+  }
+
+  function formatCurrency(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) {
+      return '—';
+    }
+    return `$${Number(value).toFixed(2)}`;
+  }
+
+  function computeRiskReward(entry, stop, target) {
+    const e = Number(entry);
+    const s = Number(stop);
+    const t = Number(target);
+    if (!Number.isFinite(e) || !Number.isFinite(s) || !Number.isFinite(t)) {
+      return '—';
+    }
+    const risk = e - s;
+    const reward = t - e;
+    if (risk <= 0) return '—';
+    return (reward / risk).toFixed(2);
   }
 
   async function handleWatchlistSubmit(event) {
@@ -471,35 +627,57 @@ function renderAnalyzeChartImage(url) {
     const filter = els.watchlistFilter.value;
     const filtered = items.filter((item) => filter === 'all' || item.status === filter);
     if (!filtered.length) {
-      els.watchlistEmpty.style.display = 'flex';
-      els.watchlistList.innerHTML = '';
+      if (els.watchlistEmpty) els.watchlistEmpty.style.display = 'block';
+      if (els.watchlistList) els.watchlistList.innerHTML = '';
       return;
     }
-    els.watchlistEmpty.style.display = 'none';
-    els.watchlistList.innerHTML = filtered.map((item) => `
-      <article class="result-card">
-        <div class="result-header">
-          <div>
+    if (els.watchlistEmpty) els.watchlistEmpty.style.display = 'none';
+    els.watchlistList.innerHTML = filtered.map((item) => {
+      const added = formatWatchlistDate(item.added_date || item.added_at);
+      return `
+        <tr>
+          <td>
             <div class="ticker-symbol">${item.ticker}</div>
-            <div class="pattern-type">${item.status}</div>
-          </div>
-          <div class="button-row">
-            <button class="btn btn-ghost" data-analyze="${item.ticker}">Analyze Again</button>
-            <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
-          </div>
-        </div>
-        <p>${item.reason || 'No notes yet.'}</p>
-        ${item.tags ? `<small>Tags: ${item.tags}</small>` : ''}
-        <small>${new Date(item.added_date || item.added_at || Date.now()).toLocaleString()}</small>
-      </article>`).join('');
-    els.watchlistList.querySelectorAll('[data-remove]').forEach((btn) => btn.addEventListener('click', () => removeWatchlist(btn.dataset.remove)));
-    els.watchlistList.querySelectorAll('[data-analyze]').forEach((btn) => btn.addEventListener('click', () => {
-      const ticker = btn.dataset.analyze;
-      if (!ticker) return;
-      els.patternTicker.value = ticker;
-      const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
-      fetchAnalyze(ticker, tf);
-    }));
+            <small>${item.pattern || item.status || ''}</small>
+          </td>
+          <td>${item.status || 'Watching'}</td>
+          <td>${item.reason || 'No notes yet.'}</td>
+          <td>${item.tags || '—'}</td>
+          <td>${added}</td>
+          <td>
+            <div class="button-row">
+              <button class="btn btn-ghost" data-analyze="${item.ticker}">Analyze</button>
+              <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+    attachWatchlistActions();
+  }
+
+  function attachWatchlistActions() {
+    els.watchlistList?.querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.addEventListener('click', () => removeWatchlist(btn.dataset.remove));
+    });
+    els.watchlistList?.querySelectorAll('[data-analyze]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const ticker = btn.dataset.analyze;
+        if (!ticker) return;
+        switchTab('analyze');
+        if (els.patternTicker) {
+          els.patternTicker.value = ticker;
+        }
+        const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
+        fetchAnalyze(ticker, tf);
+      });
+    });
+  }
+
+  function formatWatchlistDate(value) {
+    if (!value) return '—';
+    const ts = new Date(value);
+    if (Number.isNaN(ts.getTime())) return '—';
+    return ts.toLocaleString();
   }
 
   async function removeWatchlist(ticker) {
@@ -586,12 +764,15 @@ function renderAnalyzeChartImage(url) {
       els.topGrid.innerHTML = '';
       return;
     }
-    const cards = results.map((item, idx) => {
+    const cards = results.map((item) => {
       const score = Number(item.score || 0).toFixed(1);
       const entry = Number(item.entry || 0).toFixed(2);
       const stop = Number(item.stop || 0).toFixed(2);
       const target = Number(item.target || 0).toFixed(2);
       const riskReward = Number(item.risk_reward || 0).toFixed(2);
+      const chartContent = item.chart_url
+        ? `<img src="${item.chart_url}" alt="${item.ticker} chart" class="scanner-thumb" loading="lazy" />`
+        : `<button class="btn btn-ghost" type="button" data-top-chart="${item.ticker}">Preview chart</button>`;
       return `
         <article class="result-card top-setup-card">
           <div class="result-header">
@@ -612,9 +793,12 @@ function renderAnalyzeChartImage(url) {
               <div>${riskReward}R • ${item.source || 'Universe'}</div>
             </div>
             <div class="top-card-buttons">
-              <button class="btn btn-primary" data-open-analyze="${item.ticker}">Open in Analyze</button>
+              <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
               <button class="btn btn-ghost" data-watch="${item.ticker}">Watchlist</button>
             </div>
+          </div>
+          <div class="scanner-chart-slot" data-top-slot="${item.ticker}">
+            ${chartContent}
           </div>
         </article>`;
     }).join('');
@@ -638,6 +822,25 @@ function renderAnalyzeChartImage(url) {
     els.topGrid?.querySelectorAll('[data-watch]').forEach((btn) => {
       btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch));
     });
+    els.topGrid?.querySelectorAll('[data-top-chart]').forEach((btn) => {
+      btn.addEventListener('click', () => handleTopSetupChartPreview(btn.dataset.topChart));
+    });
+  }
+
+  function handleTopSetupChartPreview(ticker) {
+    if (!ticker) return;
+    const slot = els.topGrid?.querySelector(`[data-top-slot="${ticker}"]`);
+    if (!slot) return;
+    slot.innerHTML = '<p class="chart-empty">Generating…</p>';
+    const row = state.topSetups.find((item) => item.ticker === ticker);
+    if (!row) return;
+    requestAnalyzeChart(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
+      .then((url) => {
+        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
+      })
+      .catch((error) => {
+        slot.innerHTML = `<p class="chart-empty">${error.message || 'Chart unavailable'}</p>`;
+      });
   }
 
   async function fetchMarketInternals() {
@@ -656,41 +859,43 @@ function renderAnalyzeChartImage(url) {
   }
 
   function renderMarketInternals(data) {
-    if (!data) return;
+    if (!data || !els.marketResults) return;
+    const breadth = data.market_breadth || {};
+    const regimeDetails = data.regime_details || {};
+    const volatility = data.volatility || {};
+    const apiUsage = data.api_usage || {};
+    const usageRows = Object.entries(apiUsage).map(([name, stats]) => {
+      const pct = stats?.percent !== undefined ? `${Number(stats.percent).toFixed(0)}%` : '—';
+      return `<span>${name.toUpperCase()} • ${pct} used</span>`;
+    }).join('');
     els.marketResults.innerHTML = `
-      <article class="result-card">
-        <div class="result-header">
-          <div>
-            <div class="kpi-label">Regime</div>
-            <div class="ticker-symbol" style="font-size:1.5rem;">${data.regime}</div>
-            <p>${data.regime_details?.signal || ''} (${data.regime_details?.confidence || ''})</p>
-          </div>
-          <div>
-            <div class="kpi-label">SPY</div>
-            <div>$${Number(data.spy_price || 0).toFixed(2)}</div>
-            <p>SMA50 ${Number(data.sma_50 || 0).toFixed(2)} · SMA200 ${Number(data.sma_200 || 0).toFixed(2)}</p>
-          </div>
+      <div class="summary-card">
+        <p class="eyebrow">Market regime</p>
+        <h3>${data.regime || 'Unknown'}</h3>
+        <p>${regimeDetails.signal || ''} (${regimeDetails.confidence || ''})</p>
+      </div>
+      <div class="summary-card">
+        <p class="eyebrow">SPY</p>
+        <h3>$${Number(data.spy_price || 0).toFixed(2)}</h3>
+        <p>SMA50 ${Number(data.sma_50 || 0).toFixed(2)} · SMA200 ${Number(data.sma_200 || 0).toFixed(2)}</p>
+      </div>
+      <div class="summary-card">
+        <p class="eyebrow">Breadth</p>
+        <p>% > 50EMA: ${Number(breadth.pct_above_50ema || 0).toFixed(1)}%</p>
+        <p>% > 200EMA: ${Number(breadth.pct_above_200ema || 0).toFixed(1)}%</p>
+        <p>Highs/Lows: ${breadth.new_highs_52w || 0} / ${breadth.new_lows_52w || 0}</p>
+      </div>
+      <div class="summary-card">
+        <p class="eyebrow">Volatility</p>
+        <h3>${volatility.vix_level ? Number(volatility.vix_level).toFixed(2) : 'n/a'}</h3>
+        <p>${volatility.volatility_status || 'Unknown'}</p>
+      </div>
+      <div class="summary-card">
+        <p class="eyebrow">API usage</p>
+        <div class="api-usage">
+          ${usageRows || '<span>No usage data</span>'}
         </div>
-        <div class="form-grid">
-          <div>
-            <div class="kpi-label">% Above 50 EMA</div>
-            <div>${Number(data.market_breadth?.pct_above_50ema || 0).toFixed(1)}%</div>
-          </div>
-          <div>
-            <div class="kpi-label">New Highs</div>
-            <div>${data.market_breadth?.new_highs || '—'}</div>
-          </div>
-          <div>
-            <div class="kpi-label">New Lows</div>
-            <div>${data.market_breadth?.new_lows || '—'}</div>
-          </div>
-          <div>
-            <div class="kpi-label">VIX</div>
-            <div>${Number(data.vix || 0).toFixed(2)}</div>
-          </div>
-        </div>
-      </article>`;
-    // KPI chips removed from main UI; keep only the detailed card content.
+      </div>`;
   }
 
 
@@ -699,15 +904,19 @@ function renderAnalyzeChartImage(url) {
       toast('Run a universe scan before exporting.', 'error');
       return;
     }
-    const headers = ['Ticker', 'Pattern', 'Score', 'RS', 'ATR%', 'Entry', 'Target'];
+    const headers = ['Ticker', 'Pattern', 'Score', 'RS', 'ATR%', 'Sector', 'Timeframe', 'Entry', 'Stop', 'Target', 'RiskReward'];
     const lines = state.universeRows.map((row) => [
       row.ticker,
       row.pattern || '',
-      Math.round((row.score || 0) * 10),
+      Number(row.score || 0).toFixed(1),
       row.rs_rating ?? '',
       row.atr_percent ?? '',
+      row.sector || '',
+      row.timeframe || '',
       row.entry ?? '',
-      row.target ?? ''
+      row.stop ?? '',
+      row.target ?? '',
+      computeRiskReward(row.entry, row.stop, row.target)
     ]);
     const csv = [headers.join(','), ...lines.map((line) => line.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -820,21 +1029,45 @@ function renderAnalyzeChartImage(url) {
       return;
     }
     state.tvReady = true;
-    state.tvWidgets.tape = new TradingView.widget({
-      container_id: 'tv-ticker-tape',
-      width: '100%',
-      colorTheme: 'dark',
-      isTransparent: true,
-      autosize: true,
-      displayMode: 'regular',
-      locale: 'en',
-      symbols: [
-        { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
-        { proName: 'NASDAQ:NDX', title: 'Nasdaq 100' },
-        { proName: 'CME_MINI:ES1!', title: 'ES' },
-        { proName: 'COMEX:GC1!', title: 'Gold' },
-        { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
-      ],
+    if (document.getElementById('tv-ticker-tape')) {
+      state.tvWidgets.tape = new TradingView.widget({
+        container_id: 'tv-ticker-tape',
+        width: '100%',
+        colorTheme: 'dark',
+        isTransparent: true,
+        autosize: true,
+        displayMode: 'regular',
+        locale: 'en',
+        symbols: [
+          { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
+          { proName: 'NASDAQ:NDX', title: 'Nasdaq 100' },
+          { proName: 'CME_MINI:ES1!', title: 'ES' },
+          { proName: 'COMEX:GC1!', title: 'Gold' },
+          { proName: 'BITSTAMP:BTCUSD', title: 'BTC' }
+        ],
+      });
+    }
+    const miniConfigs = [
+      { id: 'tv-mini-spy', symbol: 'AMEX:SPY' },
+      { id: 'tv-mini-qqq', symbol: 'NASDAQ:QQQ' },
+      { id: 'tv-mini-iwm', symbol: 'NYSEARCA:IWM' },
+    ];
+    miniConfigs.forEach((cfg) => {
+      if (!document.getElementById(cfg.id)) return;
+      state.tvWidgets[cfg.id] = new TradingView.widget({
+        container_id: cfg.id,
+        symbol: cfg.symbol,
+        interval: 'D',
+        width: '100%',
+        height: 260,
+        timezone: 'Etc/UTC',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        toolbar_bg: '#080b12',
+        hide_side_toolbar: true,
+        allow_symbol_change: false,
+      });
     });
     // Do not mount any TradingView chart by default on Analyze
     state.tvWidgets.heatmap = new TradingView.widget({
