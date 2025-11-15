@@ -279,7 +279,7 @@ body.tv-symbol-lab {
     background: rgba(15, 23, 42, 0.78);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
-    min-height: clamp(320px, 40vh, 560px);
+    min-height: clamp(380px, 42vh, 600px);
     min-width: min(320px, 100%);
     width: 100%;
     display: flex;
@@ -288,6 +288,13 @@ body.tv-symbol-lab {
 }
 
 .tv-card .tradingview-widget-container {
+    flex: 1;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.tv-card .tradingview-widget-container__widget {
     flex: 1;
     min-height: 0;
 }
@@ -298,34 +305,35 @@ body.tv-symbol-lab {
     align-items: center;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
+    flex-shrink: 0;
 }
 
 .tv-card--wide {
-    min-height: clamp(500px, 55vh, 640px);
+    min-height: clamp(540px, 58vh, 680px);
 }
 
 .tv-card--tall {
-    min-height: clamp(420px, 45vh, 560px);
+    min-height: clamp(480px, 50vh, 640px);
 }
 
 .tv-card--heatmap {
-    min-height: clamp(460px, 50vh, 640px);
+    min-height: clamp(520px, 54vh, 680px);
     width: 100%;
 }
 
 .tv-card--calendar {
-    min-height: clamp(520px, 55vh, 720px);
+    min-height: clamp(560px, 58vh, 760px);
     width: 100%;
 }
 
 .tv-card--screener {
-    min-height: clamp(520px, 55vh, 720px);
+    min-height: clamp(560px, 58vh, 760px);
     width: 100%;
     padding: var(--spacing-sm);
 }
 
 .tv-market-overview {
-    min-height: clamp(440px, 50vh, 620px);
+    min-height: clamp(500px, 54vh, 680px);
     width: 100%;
     padding: var(--spacing-sm);
     overflow-x: auto;
@@ -334,21 +342,23 @@ body.tv-symbol-lab {
 .tv-market-overview .tradingview-widget-container {
     width: 100%;
     min-width: 320px;
+    min-height: 400px;
 }
 
 .tv-market-overview .tradingview-widget-container__widget {
     width: 100% !important;
+    min-height: 400px;
 }
 
 .analyze-tv-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr));
     gap: var(--spacing-xl);
 }
 
 .analyze-tv-info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
     gap: var(--spacing-lg);
     margin-top: var(--spacing-xl);
 }
@@ -1418,8 +1428,18 @@ textarea:focus {
 
 .tag-stack {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-xxs);
+    flex-wrap: nowrap;
+    gap: var(--spacing-xs);
+    align-items: center;
+    overflow-x: auto;
+    max-width: 100%;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.tag-stack::-webkit-scrollbar {
+    display: none;
 }
 
 .tag-pill {
@@ -1433,6 +1453,8 @@ textarea:focus {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .tag-pill-muted {
