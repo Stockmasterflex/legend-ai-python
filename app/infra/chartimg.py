@@ -128,8 +128,11 @@ async def build_analyze_chart(
                                     await cache.set_chart(t, interval, chart_url, ttl=900)
                                 except Exception as exc:
                                     logger.debug("chartimg cache set failed: %s", exc)
+                            else:
+                                logger.warning(f"Chart-IMG 200 OK but no url in response for {sym}: {data}")
                             return chart_url
-                        except Exception:
+                        except Exception as e:
+                            logger.error(f"Chart-IMG response parsing failed for {sym}: {e}", exc_info=True)
                             return None
                     # Non-200
                     body_head = (resp.text or "")[:150]
