@@ -26,7 +26,40 @@
     topSetupsLoaded: false,
     topSetupsRefreshing: false,
     chartRequestId: 0,
+    analyzeChartRequest: null,
+    watchlistEdit: null,
+    watchlistItems: [],
   };
+
+  const WATCHLIST_TAG_LIBRARY = [
+    'Breakout',
+    'Momentum',
+    'VCP',
+    'Pullback',
+    'Earnings',
+    'Post-earnings drift',
+    'Leader',
+    'Laggard',
+    'Reclaim of 21 EMA',
+    'Reclaim of 50 SMA',
+    'First pullback',
+    'Late-stage base',
+    'Extended',
+  ];
+
+  function mapTickerToTvSymbol(ticker, source) {
+    const clean = (ticker || '').trim().toUpperCase();
+    if (!clean) return null;
+    if (source && source.toUpperCase().includes('NYSE')) {
+      return `NYSE:${clean}`;
+    }
+    return `NASDAQ:${clean}`;
+  }
+
+  function buildTvLabLink(ticker, source) {
+    const symbol = mapTickerToTvSymbol(ticker, source) || 'NASDAQ:AAPL';
+    return `/tv?tvwidgetsymbol=${encodeURIComponent(symbol)}`;
+  }
 
   const els = {};
 
@@ -36,6 +69,7 @@
       cacheDom();
       bindEvents();
       initTabNavigation();
+      initTagControls();
       window.Dashboard = { 
         focusTab: (tab) => switchTab(tab),
         initialized: true
@@ -45,6 +79,7 @@
       fetchMarketInternals();
       loadWatchlist();
       loadTopSetups();
+      handleUniverseScan();
       setInterval(fetchMarketInternals, 300000);
     } catch (error) {
       console.error('Dashboard initialization error:', error);
@@ -96,6 +131,17 @@
     els.watchlistList = document.getElementById('watchlist-list');
     els.watchlistEmpty = document.getElementById('watchlist-empty');
     els.watchlistFilter = document.getElementById('watchlist-filter');
+    els.watchlistTagFilter = document.getElementById('watchlist-tag-filter');
+    els.watchlistSymbol = document.getElementById('watchlist-symbol');
+    els.watchlistReason = document.getElementById('watchlist-reason');
+    els.watchlistStatus = document.getElementById('watchlist-status');
+    els.watchlistTags = document.getElementById('watchlist-tags');
+    els.watchlistSubmit = document.getElementById('watchlist-submit');
+    els.watchlistCancel = document.getElementById('watchlist-cancel');
+    els.watchlistModeIndicator = document.getElementById('watchlist-mode-indicator');
+    if (els.watchlistCancel) {
+      els.watchlistCancel.hidden = true;
+    }
     els.scannerMeta = document.getElementById('universe-meta');
 
     els.topGrid = document.getElementById('top-setups-grid');
@@ -106,6 +152,7 @@
 
     els.marketResults = document.getElementById('market-results');
     els.marketLoading = document.getElementById('market-loading');
+    els.marketRefresh = document.getElementById('market-refresh');
 
     els.chartTicker = document.getElementById('chart-ticker');
     els.chartRefresh = document.getElementById('chart-refresh');
@@ -115,6 +162,58 @@
     els.toastStack = document.getElementById('toast-stack');
     setAnalyzeChartTitle('Waiting for scan');
     setAnalyzeChartStatus('Idle', 'muted');
+  }
+
+  function initTagControls() {
+    renderTagButtons(els.watchlistTags);
+    renderTagButtons(els.watchlistTagFilter);
+    setupTagToggleGroup(els.watchlistTags);
+    setupTagToggleGroup(els.watchlistTagFilter, () => renderWatchlist());
+  }
+
+  function renderTagButtons(container) {
+    if (!container) return;
+    const frag = document.createDocumentFragment();
+    WATCHLIST_TAG_LIBRARY.forEach((tag) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tag-toggle';
+      btn.dataset.tag = tag;
+      btn.textContent = tag;
+      frag.appendChild(btn);
+    });
+    container.innerHTML = '';
+    container.appendChild(frag);
+  }
+
+  function setupTagToggleGroup(container, onChange) {
+    if (!container) return;
+    container.querySelectorAll('[data-tag]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
+      btn.addEventListener('click', () => {
+        const isActive = btn.classList.toggle('active');
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (typeof onChange === 'function') {
+          onChange(readTagSelection(container));
+        }
+      });
+    });
+  }
+
+  function readTagSelection(container) {
+    return Array.from(container?.querySelectorAll('.tag-toggle.active') || [])
+      .map((btn) => btn.dataset.tag)
+      .filter(Boolean);
+  }
+
+  function setTagSelection(container, tags = []) {
+    if (!container) return;
+    const lookup = new Set((tags || []).map((tag) => tag.trim()));
+    container.querySelectorAll('[data-tag]').forEach((btn) => {
+      const isActive = lookup.has(btn.dataset.tag);
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
   }
 
   function initTabNavigation() {
@@ -255,9 +354,12 @@
     document.getElementById('universe-export')?.addEventListener('click', exportUniverseCsv);
 
     els.watchlistForm?.addEventListener('submit', handleWatchlistSubmit);
-    els.watchlistFilter?.addEventListener('change', loadWatchlist);
+    els.watchlistFilter?.addEventListener('change', () => renderWatchlist());
+    els.watchlistCancel?.addEventListener('click', () => exitWatchlistEditMode());
 
     els.topRefresh?.addEventListener('click', () => loadTopSetups(true));
+    els.marketRefresh?.addEventListener('click', () => fetchMarketInternals());
+    els.patternChart?.addEventListener('click', handleChartShellClick);
 
     els.chartRefresh?.addEventListener('click', refreshAdvancedChart);
     els.chartMulti?.addEventListener('click', handleMultiTimeframe);
@@ -289,8 +391,10 @@
       .join('');
 
     const snapshotLink = typeof data.chart_url === 'string' && data.chart_url.length > 0
-      ? `<a class="btn btn-secondary" href="${data.chart_url}" target="_blank" rel="noopener">Open full snapshot</a>`
+      ? `<a class="btn btn-secondary btn-compact" href="${data.chart_url}" target="_blank" rel="noopener">Snapshot</a>`
       : '<span style="color:var(--color-text-secondary)">Snapshot unavailable</span>';
+    const tvHref = buildTvLabLink(data.ticker, meta.source || meta.exchange);
+    const tvLink = `<a class="btn btn-ghost btn-compact" href="${tvHref}" target="_blank" rel="noopener">TV</a>`;
 
     els.patternResults.innerHTML = `
       <article class="result-card">
@@ -300,8 +404,9 @@
             <div class="pattern-type">${data.timeframe?.toUpperCase() || ''} · ${meta.universe || 'Off-universe'}</div>
             <small>${meta.sector || 'Sector N/A'}</small>
           </div>
-          <div>
+          <div class="result-actions">
             ${snapshotLink}
+            ${tvLink}
           </div>
         </div>
         <div class="score-gauge">
@@ -349,6 +454,16 @@
     }
   }
 
+  function renderAnalyzeChartError(message) {
+    if (!els.patternChart) return;
+    setChartShellLoading(false);
+    els.patternChart.innerHTML = `
+      <div class="chart-error">
+        <p>${message || 'Chart unavailable'}</p>
+        <button class="btn btn-secondary btn-compact" type="button" data-chart-retry="1">Retry chart</button>
+      </div>`;
+  }
+
   function setAnalyzeChartTitle(text) {
     if (els.analyzeChartTitle) {
       els.analyzeChartTitle.textContent = text || 'Chart View';
@@ -368,9 +483,29 @@
     els.patternChart.classList.toggle('loading', Boolean(isLoading));
   }
 
-  async function requestAnalyzeChart(ticker, tf, plan = {}) {
-    const intervalMap = { weekly: '1W', daily: '1D', intraday: '60', '1week': '1W', '1day': '1D' };
-    const interval = intervalMap[tf] || (state.currentInterval === '1week' ? '1W' : '1D');
+  function handleChartShellClick(event) {
+    const retry = event.target.closest('[data-chart-retry]');
+    if (retry) {
+      event.preventDefault();
+      retryAnalyzeChart();
+    }
+  }
+
+  function retryAnalyzeChart() {
+    if (!state.analyzeChartRequest) return;
+    const { ticker, tf, plan } = state.analyzeChartRequest;
+    loadAnalyzeChart(ticker, tf, plan);
+  }
+
+  function mapTimeframeToInterval(tf) {
+    const value = (tf || '').toString().toLowerCase();
+    if (value.includes('week')) return '1W';
+    if (value.includes('60')) return '60';
+    return '1D';
+  }
+
+  async function fetchChartImage(ticker, tf, plan = {}) {
+    const interval = mapTimeframeToInterval(tf);
     const res = await fetch('/api/charts/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -383,8 +518,8 @@
       }),
     });
     const payload = await res.json().catch(() => ({}));
-    if (!payload.success || !payload.chart_url) {
-      throw new Error(payload.error || 'Chart unavailable');
+    if (!res.ok || !payload.success || !payload.chart_url) {
+      throw new Error(payload.error || `Chart unavailable (${res.status})`);
     }
     return payload.chart_url;
   }
@@ -392,6 +527,7 @@
   function loadAnalyzeChart(ticker, tf, plan = {}, fallbackUrl = null) {
     const timeframeLabel = tf === 'weekly' ? '1W' : '1D';
     setAnalyzeChartTitle(`${ticker} • ${timeframeLabel}`);
+    state.analyzeChartRequest = { ticker, tf, plan };
     const requestId = ++state.chartRequestId;
     if (fallbackUrl) {
       renderAnalyzeChartImage(fallbackUrl);
@@ -400,7 +536,7 @@
     }
     setAnalyzeChartStatus('Generating chart…', 'loading');
     setChartShellLoading(true);
-    requestAnalyzeChart(ticker, tf, plan)
+    fetchChartImage(ticker, tf, plan)
       .then((url) => {
         if (requestId !== state.chartRequestId) return;
         renderAnalyzeChartImage(url);
@@ -409,7 +545,7 @@
       .catch((error) => {
         if (requestId !== state.chartRequestId) return;
         console.error('Analyze chart error:', error);
-        renderAnalyzeChartImage(null, { placeholder: 'Chart unavailable' });
+        renderAnalyzeChartError(error.message || 'Chart unavailable');
         setAnalyzeChartStatus(error.message || 'Chart unavailable', 'error');
       })
       .finally(() => {
@@ -422,9 +558,9 @@
   async function handleUniverseScan(event) {
     event?.preventDefault();
     const universe = document.getElementById('universe-source').value;
-    const limit = Number(document.getElementById('universe-limit').value || 25);
-    const minScore = Number(document.getElementById('universe-score').value || 7);
-    const minRs = Number(document.getElementById('universe-rs').value || 60);
+    const limit = Number(document.getElementById('universe-limit').value || 50);
+    const minScore = Number(document.getElementById('universe-score').value || 6.5);
+    const minRs = Number(document.getElementById('universe-rs').value || 55);
     const timeframe = document.getElementById('scanner-timeframe')?.value || '1day';
     const sector = document.getElementById('scanner-sector')?.value || 'all';
     const atrCapRaw = document.getElementById('scanner-atr')?.value;
@@ -433,7 +569,10 @@
       .map((opt) => opt.value)
       .filter((val) => val && val !== 'all');
     toggleLoading(els.universeLoading, true);
-    els.universeTable.innerHTML = '';
+    if (els.universeTable) {
+      els.universeTable.setAttribute('aria-busy', 'true');
+      els.universeTable.innerHTML = '<tr><td colspan="11" class="scanner-message">Scanning universe…</td></tr>';
+    }
     try {
       const res = await fetch('/api/universe/scan/quick', {
         method: 'POST',
@@ -456,9 +595,14 @@
     } catch (err) {
       console.error(err);
       toast(err.message, 'error');
-      els.universeTable.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`;
+      if (els.universeTable) {
+        els.universeTable.innerHTML = `<tr><td colspan="11">${err.message}</td></tr>`;
+      }
     } finally {
       toggleLoading(els.universeLoading, false);
+      if (els.universeTable) {
+        els.universeTable.removeAttribute('aria-busy');
+      }
     }
   }
 
@@ -500,8 +644,9 @@
           </td>
           <td>
             <div class="button-row">
-              <button class="btn btn-primary" type="button" data-scan-analyze="${row.ticker}">Analyze</button>
-              <button class="btn btn-secondary" type="button" data-scan-watch="${row.ticker}">Watch</button>
+              <button class="btn btn-primary btn-compact" type="button" data-scan-analyze="${row.ticker}">Analyze</button>
+              <button class="btn btn-secondary btn-compact" type="button" data-scan-watch="${row.ticker}">Watch</button>
+              <a class="btn btn-ghost btn-compact" href="${buildTvLabLink(row.ticker, row.source)}" target="_blank" rel="noopener">TV</a>
             </div>
           </td>
         </tr>`;
@@ -511,7 +656,7 @@
 
   function attachScannerRowActions() {
     els.universeTable?.querySelectorAll('[data-scan-watch]').forEach((btn) => {
-      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.scanWatch));
+      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.scanWatch, 'Universe scan', ['Scanner']));
     });
     els.universeTable?.querySelectorAll('[data-scan-analyze]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -537,7 +682,7 @@
     const row = state.universeRows.find((item) => item.ticker === ticker);
     if (!row) return;
     const tf = row.timeframe === '1week' ? '1week' : '1day';
-    requestAnalyzeChart(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
+    fetchChartImage(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
         slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
       })
@@ -554,8 +699,10 @@
     const cache = stats.cache_hits ?? '—';
     const score = stats.min_score ?? '—';
     const rs = stats.min_rs ?? '—';
+    const sector = stats.sector_filter ? stats.sector_filter.replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'All';
     const metaMap = {
       universe,
+      sector,
       timeframe,
       scanned,
       cache,
@@ -588,22 +735,103 @@
     return (reward / risk).toFixed(2);
   }
 
+  function normalizeTags(tags) {
+    if (!tags) return [];
+    if (Array.isArray(tags)) {
+      return tags.map((tag) => String(tag).trim()).filter(Boolean);
+    }
+    return String(tags)
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function setSelectValues(selectEl, values = []) {
+    if (!selectEl) return;
+    const set = new Set(values);
+    Array.from(selectEl.options).forEach((option) => {
+      option.selected = set.has(option.value);
+    });
+  }
+
+  function enterWatchlistEdit(ticker) {
+    if (!ticker || !state.watchlistItems.length) return;
+    const item = state.watchlistItems.find((row) => row.ticker === ticker);
+    if (!item) return;
+    state.watchlistEdit = ticker;
+    if (els.watchlistSymbol) {
+      els.watchlistSymbol.value = ticker;
+      els.watchlistSymbol.disabled = true;
+    }
+    if (els.watchlistReason) {
+      els.watchlistReason.value = item.reason || '';
+    }
+    if (els.watchlistStatus) {
+      els.watchlistStatus.value = item.status || 'Watching';
+    }
+    setTagSelection(els.watchlistTags, normalizeTags(item.tags));
+    if (els.watchlistSubmit) {
+      els.watchlistSubmit.textContent = 'Update watchlist';
+    }
+    if (els.watchlistModeIndicator) {
+      els.watchlistModeIndicator.textContent = `Editing ${ticker}`;
+      els.watchlistModeIndicator.classList.add('editing');
+    }
+    if (els.watchlistCancel) {
+      els.watchlistCancel.hidden = false;
+    }
+    els.watchlistForm?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function exitWatchlistEditMode() {
+    state.watchlistEdit = null;
+    if (els.watchlistSymbol) {
+      els.watchlistSymbol.disabled = false;
+      els.watchlistSymbol.value = '';
+    }
+    if (els.watchlistReason) {
+      els.watchlistReason.value = '';
+    }
+    if (els.watchlistStatus) {
+      els.watchlistStatus.value = 'Watching';
+    }
+    setTagSelection(els.watchlistTags, []);
+    if (els.watchlistSubmit) {
+      els.watchlistSubmit.textContent = 'Add to watchlist';
+    }
+    if (els.watchlistCancel) {
+      els.watchlistCancel.hidden = true;
+    }
+    if (els.watchlistModeIndicator) {
+      els.watchlistModeIndicator.textContent = 'Adding new ticker';
+      els.watchlistModeIndicator.classList.remove('editing');
+    }
+  }
+
   async function handleWatchlistSubmit(event) {
     event.preventDefault();
-    const ticker = document.getElementById('watchlist-symbol').value.trim().toUpperCase();
-    const reason = document.getElementById('watchlist-reason').value.trim();
-    const tags = document.getElementById('watchlist-tags').value.trim();
+    const ticker = (els.watchlistSymbol?.value || '').trim().toUpperCase();
+    const reason = (els.watchlistReason?.value || '').trim();
+    const tags = readTagSelection(els.watchlistTags);
+    const status = els.watchlistStatus?.value || 'Watching';
     if (!ticker) return toast('Enter a ticker for the watchlist.', 'error');
     try {
-      const res = await fetch('/api/watchlist/add', {
-        method: 'POST',
+      const isEdit = state.watchlistEdit && state.watchlistEdit === ticker;
+      const endpoint = isEdit ? `/api/watchlist/${ticker}` : '/api/watchlist/add';
+      const payload = isEdit
+        ? { reason, status, tags }
+        : { ticker, reason, status, tags };
+      const res = await fetch(endpoint, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, reason, tags }),
+        body: JSON.stringify(payload),
       });
-      const payload = await res.json();
-      if (!payload.success) throw new Error(payload.detail || 'Unable to add watchlist item');
-      event.target.reset();
-      toast(`${ticker} added to watchlist`, 'success');
+      const response = await res.json();
+      if (!res.ok || !response.success) {
+        throw new Error(response.detail || response.error || 'Unable to save watchlist item');
+      }
+      exitWatchlistEditMode();
+      toast(isEdit ? `${ticker} updated` : `${ticker} added to watchlist`, 'success');
       loadWatchlist();
     } catch (err) {
       console.error(err);
@@ -616,38 +844,63 @@
       const res = await fetch('/api/watchlist');
       const payload = await res.json();
       if (!payload.success) throw new Error(payload.detail || 'Failed to load watchlist');
-      renderWatchlist(payload.items || []);
+      state.watchlistItems = payload.items || [];
+      renderWatchlist();
     } catch (err) {
       console.error(err);
       toast(err.message, 'error');
     }
   }
 
-  function renderWatchlist(items) {
-    const filter = els.watchlistFilter.value;
-    const filtered = items.filter((item) => filter === 'all' || item.status === filter);
+  function renderWatchlist(items = state.watchlistItems || []) {
+    const filter = els.watchlistFilter?.value || 'all';
+    const tagFilters = readTagSelection(els.watchlistTagFilter);
+    const filtered = items.filter((item) => {
+      const status = item.status || 'Watching';
+      const matchesStatus = filter === 'all' || status === filter;
+      const tags = normalizeTags(item.tags);
+      const matchesTags = !tagFilters.length || tagFilters.every((tag) => tags.includes(tag));
+      return matchesStatus && matchesTags;
+    });
     if (!filtered.length) {
-      if (els.watchlistEmpty) els.watchlistEmpty.style.display = 'block';
+      if (els.watchlistEmpty) {
+        const hasFilters = filter !== 'all' || tagFilters.length > 0;
+        els.watchlistEmpty.textContent = hasFilters
+          ? 'No watchlist items match the current filters.'
+          : 'No watchlist items yet.';
+        els.watchlistEmpty.style.display = 'block';
+      }
       if (els.watchlistList) els.watchlistList.innerHTML = '';
       return;
     }
-    if (els.watchlistEmpty) els.watchlistEmpty.style.display = 'none';
+    if (els.watchlistEmpty) {
+      els.watchlistEmpty.style.display = 'none';
+      els.watchlistEmpty.textContent = 'No watchlist items yet.';
+    }
     els.watchlistList.innerHTML = filtered.map((item) => {
       const added = formatWatchlistDate(item.added_date || item.added_at);
+      const status = item.status || 'Watching';
+      const tags = normalizeTags(item.tags);
+      const statusKey = status.toLowerCase().replace(/\s+/g, '-') || 'watching';
+      const tagsMarkup = tags.length
+        ? tags.map((tag) => `<span class="tag-pill">${tag}</span>`).join('')
+        : '<span class="tag-pill tag-pill-muted">No tags</span>';
       return `
         <tr>
           <td>
             <div class="ticker-symbol">${item.ticker}</div>
             <small>${item.pattern || item.status || ''}</small>
           </td>
-          <td>${item.status || 'Watching'}</td>
+          <td><span class="status-pill status-${statusKey}" data-status="${statusKey}">${status}</span></td>
           <td>${item.reason || 'No notes yet.'}</td>
-          <td>${item.tags || '—'}</td>
+          <td><div class="tag-stack">${tagsMarkup}</div></td>
           <td>${added}</td>
           <td>
             <div class="button-row">
-              <button class="btn btn-ghost" data-analyze="${item.ticker}">Analyze</button>
-              <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
+              <button class="btn btn-primary btn-compact" data-analyze="${item.ticker}">Analyze</button>
+              <button class="btn btn-secondary btn-compact" data-edit="${item.ticker}">Edit</button>
+              <a class="btn btn-secondary btn-compact" data-tv-link="${item.ticker}" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
+              <button class="btn btn-danger btn-compact" data-remove="${item.ticker}">Remove</button>
             </div>
           </td>
         </tr>`;
@@ -671,6 +924,9 @@
         fetchAnalyze(ticker, tf);
       });
     });
+    els.watchlistList?.querySelectorAll('[data-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => enterWatchlistEdit(btn.dataset.edit));
+    });
   }
 
   function formatWatchlistDate(value) {
@@ -682,36 +938,42 @@
 
   async function removeWatchlist(ticker) {
     if (!ticker) return;
-    await fetch(`/api/watchlist/remove/${ticker}`, { method: 'DELETE' });
-    toast(`${ticker} removed`, 'success');
-    loadWatchlist();
+    try {
+      const res = await fetch(`/api/watchlist/remove/${ticker}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Unable to remove watchlist item');
+      }
+      toast(`${ticker} removed`, 'success');
+      loadWatchlist();
+    } catch (err) {
+      console.error(err);
+      toast(err.message, 'error');
+    }
   }
 
   async function addPatternToWatchlist() {
     const ticker = els.patternTicker.value.trim().toUpperCase();
     if (!ticker) return toast('Scan a ticker first.', 'error');
-    try {
-      await fetch('/api/watchlist/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, reason: 'Pattern scanner' }),
-      });
-      toast(`${ticker} added to watchlist`, 'success');
-      loadWatchlist();
-    } catch (err) {
-      toast(err.message, 'error');
-    }
+    quickAddWatchlist(ticker, 'Pattern scanner', ['Analyze']);
   }
 
-  function quickAddWatchlist(ticker) {
+  function quickAddWatchlist(ticker, reason = 'Universe scan', tags = [], status = 'Watching') {
     fetch('/api/watchlist/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker, reason: 'Universe scan' }),
-    }).then(() => {
-      toast(`${ticker} queued`, 'success');
-      loadWatchlist();
-    }).catch((err) => toast(err.message, 'error'));
+      body: JSON.stringify({ ticker, reason, tags, status }),
+    })
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!payload.success) throw new Error(payload.detail || 'Unable to add watchlist item');
+        toast(`${ticker} added to watchlist`, 'success');
+        loadWatchlist();
+      })
+      .catch((err) => {
+        console.error(err);
+        toast(err.message, 'error');
+      });
   }
 
   async function loadTopSetups(force = false) {
@@ -772,7 +1034,7 @@
       const riskReward = Number(item.risk_reward || 0).toFixed(2);
       const chartContent = item.chart_url
         ? `<img src="${item.chart_url}" alt="${item.ticker} chart" class="scanner-thumb" loading="lazy" />`
-        : `<button class="btn btn-ghost" type="button" data-top-chart="${item.ticker}">Preview chart</button>`;
+        : '<p class="chart-empty">Tap Preview chart to load a fresh snapshot.</p>';
       return `
         <article class="result-card top-setup-card">
           <div class="result-header">
@@ -783,9 +1045,9 @@
             <div class="top-score-badge">${score}/10</div>
           </div>
           <div class="top-plan-grid">
-            <div><div class="kpi-label">Entry</div><div>$${entry}</div></div>
-            <div><div class="kpi-label">Stop</div><div>$${stop}</div></div>
-            <div><div class="kpi-label">Target</div><div>$${target}</div></div>
+            <div><div class="kpi-label">Entry</div><div class="top-plan-value">$${entry}</div></div>
+            <div><div class="kpi-label">Stop</div><div class="top-plan-value">$${stop}</div></div>
+            <div><div class="kpi-label">Target</div><div class="top-plan-value">$${target}</div></div>
           </div>
           <div class="top-card-actions">
             <div>
@@ -794,10 +1056,12 @@
             </div>
             <div class="top-card-buttons">
               <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
-              <button class="btn btn-ghost" data-watch="${item.ticker}">Watchlist</button>
+              <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
+              <button class="btn btn-primary" data-top-chart="${item.ticker}">Preview chart</button>
+              <a class="btn btn-secondary" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
             </div>
           </div>
-          <div class="scanner-chart-slot" data-top-slot="${item.ticker}">
+          <div class="scanner-chart-slot top-card-preview" data-top-slot="${item.ticker}">
             ${chartContent}
           </div>
         </article>`;
@@ -820,7 +1084,7 @@
       });
     });
     els.topGrid?.querySelectorAll('[data-watch]').forEach((btn) => {
-      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch));
+      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch, 'Top setup', ['Top Setup']));
     });
     els.topGrid?.querySelectorAll('[data-top-chart]').forEach((btn) => {
       btn.addEventListener('click', () => handleTopSetupChartPreview(btn.dataset.topChart));
@@ -834,7 +1098,7 @@
     slot.innerHTML = '<p class="chart-empty">Generating…</p>';
     const row = state.topSetups.find((item) => item.ticker === ticker);
     if (!row) return;
-    requestAnalyzeChart(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
+    fetchChartImage(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
         slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
       })
@@ -1051,6 +1315,7 @@
       { id: 'tv-mini-spy', symbol: 'AMEX:SPY' },
       { id: 'tv-mini-qqq', symbol: 'NASDAQ:QQQ' },
       { id: 'tv-mini-iwm', symbol: 'NYSEARCA:IWM' },
+      { id: 'tv-mini-vix', symbol: 'CBOE:VIX' },
     ];
     miniConfigs.forEach((cfg) => {
       if (!document.getElementById(cfg.id)) return;
@@ -1070,49 +1335,5 @@
       });
     });
     // Do not mount any TradingView chart by default on Analyze
-    state.tvWidgets.heatmap = new TradingView.widget({
-      container_id: 'tv-heatmap',
-      width: '100%',
-      height: 500,
-      colorTheme: 'dark',
-      isTransparent: false,
-      autosize: true,
-      locale: 'en',
-      dataSource: 'SPX',
-      widgetType: 'stock-heatmap',
-    });
-
-    if (TradingView.MarketOverviewWidget) {
-      state.tvWidgets.marketOverview = new TradingView.MarketOverviewWidget({
-        container_id: 'tv-market-overview',
-        width: '100%',
-        height: 500,
-        tabs: [
-          {
-            title: 'US Indices',
-            symbols: [
-              { s: 'FOREXCOM:SPXUSD' },
-              { s: 'NASDAQ:NDX' },
-              { s: 'AMEX:DIA' },
-              { s: 'CME_MINI:RTY1!' }
-            ],
-          },
-        ],
-        theme: 'dark',
-        locale: 'en',
-      });
-    }
-
-    state.tvWidgets.calendar = new TradingView.widget({
-      container_id: 'tv-calendar',
-      width: '100%',
-      height: 500,
-      colorTheme: 'dark',
-      isTransparent: false,
-      locale: 'en',
-      importanceFilter: '-1,0,1',
-      currencyFilter: 'USD',
-      widgetType: 'economic-calendar',
-    });
   }
 })();
