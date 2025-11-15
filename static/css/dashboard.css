@@ -242,17 +242,23 @@
     min-height: 480px;
 }
 
-.tv-card--heatmap,
-.tv-card--calendar,
+.tv-card--heatmap {
+    min-height: 520px;
+}
+
+.tv-card--calendar {
+    min-height: 420px;
+}
+
 .tv-card--screener {
-    min-height: 340px;
+    min-height: 560px;
     padding: var(--spacing-sm);
 }
 
 .tv-market-overview {
     padding: var(--spacing-sm);
     overflow-x: auto;
-    min-height: 560px;
+    min-height: 520px;
 }
 
 .tv-market-overview .tradingview-widget-container {
@@ -1119,6 +1125,9 @@ textarea:focus {
     border: 1px dashed var(--color-border-subtle);
     border-radius: var(--radius-2xl);
     padding: var(--spacing-md) var(--spacing-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .watchlist-mode-indicator {
@@ -1197,6 +1206,7 @@ textarea:focus {
 
 .watchlist-table td {
     vertical-align: middle;
+    padding: var(--spacing-md) var(--spacing-sm);
 }
 
 .scanner-message {
@@ -1210,6 +1220,14 @@ textarea:focus {
     flex-wrap: wrap;
     gap: var(--spacing-sm);
     align-items: center;
+}
+
+.watchlist-table .button-row {
+    justify-content: flex-start;
+}
+
+.watchlist-table .button-row .btn {
+    min-width: 90px;
 }
 
 .btn-compact {

@@ -8,6 +8,7 @@ from app.utils.build_info import resolve_build_sha
 router = APIRouter(tags=["tradingview"])
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "tv_symbol_lab.html"
+TV_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "partials" / "tv_widget_templates.html"
 
 
 def _normalize_symbol(raw_symbol: str | None) -> str:
@@ -20,11 +21,22 @@ def _normalize_symbol(raw_symbol: str | None) -> str:
     return symbol
 
 
+def _inject_tv_templates(html: str) -> str:
+    if "<!--TV_WIDGET_TEMPLATES-->" not in html:
+        return html
+    try:
+        partial = TV_TEMPLATE_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        partial = ""
+    return html.replace("<!--TV_WIDGET_TEMPLATES-->", partial)
+
+
 def _render_symbol_page(symbol: str) -> HTMLResponse:
     html = TEMPLATE_PATH.read_text(encoding="utf-8")
     build_sha = resolve_build_sha()
     html = html.replace("{{ build_sha }}", build_sha)
-    html = html.replace("__TV_SYMBOL__", symbol)
+    html = html.replace("__DEFAULT_TV_SYMBOL__", symbol)
+    html = _inject_tv_templates(html)
     return HTMLResponse(content=html)
 
 
