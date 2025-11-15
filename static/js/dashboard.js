@@ -26,6 +26,8 @@
     topSetupsLoaded: false,
     topSetupsRefreshing: false,
     chartRequestId: 0,
+    watchlistEdit: null,
+    watchlistItems: [],
   };
 
   const els = {};
@@ -96,6 +98,16 @@
     els.watchlistList = document.getElementById('watchlist-list');
     els.watchlistEmpty = document.getElementById('watchlist-empty');
     els.watchlistFilter = document.getElementById('watchlist-filter');
+    els.watchlistTagFilter = document.getElementById('watchlist-tag-filter');
+    els.watchlistSymbol = document.getElementById('watchlist-symbol');
+    els.watchlistReason = document.getElementById('watchlist-reason');
+    els.watchlistStatus = document.getElementById('watchlist-status');
+    els.watchlistTags = document.getElementById('watchlist-tags');
+    els.watchlistSubmit = document.getElementById('watchlist-submit');
+    els.watchlistCancel = document.getElementById('watchlist-cancel');
+    if (els.watchlistCancel) {
+      els.watchlistCancel.hidden = true;
+    }
     els.scannerMeta = document.getElementById('universe-meta');
 
     els.topGrid = document.getElementById('top-setups-grid');
@@ -255,7 +267,9 @@
     document.getElementById('universe-export')?.addEventListener('click', exportUniverseCsv);
 
     els.watchlistForm?.addEventListener('submit', handleWatchlistSubmit);
-    els.watchlistFilter?.addEventListener('change', loadWatchlist);
+    els.watchlistFilter?.addEventListener('change', () => renderWatchlist());
+    els.watchlistTagFilter?.addEventListener('change', () => renderWatchlist());
+    els.watchlistCancel?.addEventListener('click', () => exitWatchlistEditMode());
 
     els.topRefresh?.addEventListener('click', () => loadTopSetups(true));
 
@@ -368,9 +382,15 @@
     els.patternChart.classList.toggle('loading', Boolean(isLoading));
   }
 
-  async function requestAnalyzeChart(ticker, tf, plan = {}) {
-    const intervalMap = { weekly: '1W', daily: '1D', intraday: '60', '1week': '1W', '1day': '1D' };
-    const interval = intervalMap[tf] || (state.currentInterval === '1week' ? '1W' : '1D');
+  function mapTimeframeToInterval(tf) {
+    const value = (tf || '').toString().toLowerCase();
+    if (value.includes('week')) return '1W';
+    if (value.includes('60')) return '60';
+    return '1D';
+  }
+
+  async function fetchChartImage(ticker, tf, plan = {}) {
+    const interval = mapTimeframeToInterval(tf);
     const res = await fetch('/api/charts/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -383,8 +403,8 @@
       }),
     });
     const payload = await res.json().catch(() => ({}));
-    if (!payload.success || !payload.chart_url) {
-      throw new Error(payload.error || 'Chart unavailable');
+    if (!res.ok || !payload.success || !payload.chart_url) {
+      throw new Error(payload.error || `Chart unavailable (${res.status})`);
     }
     return payload.chart_url;
   }
@@ -400,7 +420,7 @@
     }
     setAnalyzeChartStatus('Generating chart…', 'loading');
     setChartShellLoading(true);
-    requestAnalyzeChart(ticker, tf, plan)
+    fetchChartImage(ticker, tf, plan)
       .then((url) => {
         if (requestId !== state.chartRequestId) return;
         renderAnalyzeChartImage(url);
@@ -409,7 +429,7 @@
       .catch((error) => {
         if (requestId !== state.chartRequestId) return;
         console.error('Analyze chart error:', error);
-        renderAnalyzeChartImage(null, { placeholder: 'Chart unavailable' });
+        renderAnalyzeChartImage(null, { placeholder: error.message || 'Chart unavailable' });
         setAnalyzeChartStatus(error.message || 'Chart unavailable', 'error');
       })
       .finally(() => {
@@ -511,7 +531,7 @@
 
   function attachScannerRowActions() {
     els.universeTable?.querySelectorAll('[data-scan-watch]').forEach((btn) => {
-      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.scanWatch));
+      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.scanWatch, 'Universe scan', ['Scanner']));
     });
     els.universeTable?.querySelectorAll('[data-scan-analyze]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -537,7 +557,7 @@
     const row = state.universeRows.find((item) => item.ticker === ticker);
     if (!row) return;
     const tf = row.timeframe === '1week' ? '1week' : '1day';
-    requestAnalyzeChart(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
+    fetchChartImage(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
         slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
       })
@@ -554,8 +574,10 @@
     const cache = stats.cache_hits ?? '—';
     const score = stats.min_score ?? '—';
     const rs = stats.min_rs ?? '—';
+    const sector = stats.sector_filter ? stats.sector_filter.replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'All';
     const metaMap = {
       universe,
+      sector,
       timeframe,
       scanned,
       cache,
@@ -588,22 +610,101 @@
     return (reward / risk).toFixed(2);
   }
 
+  function normalizeTags(tags) {
+    if (!tags) return [];
+    if (Array.isArray(tags)) {
+      return tags.map((tag) => String(tag).trim()).filter(Boolean);
+    }
+    return String(tags)
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function getSelectedValues(selectEl) {
+    return Array.from(selectEl?.selectedOptions || [])
+      .map((opt) => opt.value)
+      .filter(Boolean);
+  }
+
+  function setSelectValues(selectEl, values = []) {
+    if (!selectEl) return;
+    const set = new Set(values);
+    Array.from(selectEl.options).forEach((option) => {
+      option.selected = set.has(option.value);
+    });
+  }
+
+  function enterWatchlistEdit(ticker) {
+    if (!ticker || !state.watchlistItems.length) return;
+    const item = state.watchlistItems.find((row) => row.ticker === ticker);
+    if (!item) return;
+    state.watchlistEdit = ticker;
+    if (els.watchlistSymbol) {
+      els.watchlistSymbol.value = ticker;
+      els.watchlistSymbol.disabled = true;
+    }
+    if (els.watchlistReason) {
+      els.watchlistReason.value = item.reason || '';
+    }
+    if (els.watchlistStatus) {
+      els.watchlistStatus.value = item.status || 'Watching';
+    }
+    setSelectValues(els.watchlistTags, normalizeTags(item.tags));
+    if (els.watchlistSubmit) {
+      els.watchlistSubmit.textContent = 'Update watchlist';
+    }
+    if (els.watchlistCancel) {
+      els.watchlistCancel.hidden = false;
+    }
+    els.watchlistForm?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function exitWatchlistEditMode() {
+    state.watchlistEdit = null;
+    if (els.watchlistSymbol) {
+      els.watchlistSymbol.disabled = false;
+      els.watchlistSymbol.value = '';
+    }
+    if (els.watchlistReason) {
+      els.watchlistReason.value = '';
+    }
+    if (els.watchlistStatus) {
+      els.watchlistStatus.value = 'Watching';
+    }
+    setSelectValues(els.watchlistTags, []);
+    if (els.watchlistSubmit) {
+      els.watchlistSubmit.textContent = 'Add to watchlist';
+    }
+    if (els.watchlistCancel) {
+      els.watchlistCancel.hidden = true;
+    }
+  }
+
   async function handleWatchlistSubmit(event) {
     event.preventDefault();
-    const ticker = document.getElementById('watchlist-symbol').value.trim().toUpperCase();
-    const reason = document.getElementById('watchlist-reason').value.trim();
-    const tags = document.getElementById('watchlist-tags').value.trim();
+    const ticker = (els.watchlistSymbol?.value || '').trim().toUpperCase();
+    const reason = (els.watchlistReason?.value || '').trim();
+    const tags = getSelectedValues(els.watchlistTags);
+    const status = els.watchlistStatus?.value || 'Watching';
     if (!ticker) return toast('Enter a ticker for the watchlist.', 'error');
     try {
-      const res = await fetch('/api/watchlist/add', {
-        method: 'POST',
+      const isEdit = state.watchlistEdit && state.watchlistEdit === ticker;
+      const endpoint = isEdit ? `/api/watchlist/${ticker}` : '/api/watchlist/add';
+      const payload = isEdit
+        ? { reason, status, tags }
+        : { ticker, reason, status, tags };
+      const res = await fetch(endpoint, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, reason, tags }),
+        body: JSON.stringify(payload),
       });
-      const payload = await res.json();
-      if (!payload.success) throw new Error(payload.detail || 'Unable to add watchlist item');
-      event.target.reset();
-      toast(`${ticker} added to watchlist`, 'success');
+      const response = await res.json();
+      if (!res.ok || !response.success) {
+        throw new Error(response.detail || response.error || 'Unable to save watchlist item');
+      }
+      exitWatchlistEditMode();
+      toast(isEdit ? `${ticker} updated` : `${ticker} added to watchlist`, 'success');
       loadWatchlist();
     } catch (err) {
       console.error(err);
@@ -616,16 +717,24 @@
       const res = await fetch('/api/watchlist');
       const payload = await res.json();
       if (!payload.success) throw new Error(payload.detail || 'Failed to load watchlist');
-      renderWatchlist(payload.items || []);
+      state.watchlistItems = payload.items || [];
+      renderWatchlist();
     } catch (err) {
       console.error(err);
       toast(err.message, 'error');
     }
   }
 
-  function renderWatchlist(items) {
-    const filter = els.watchlistFilter.value;
-    const filtered = items.filter((item) => filter === 'all' || item.status === filter);
+  function renderWatchlist(items = state.watchlistItems || []) {
+    const filter = els.watchlistFilter?.value || 'all';
+    const tagFilters = getSelectedValues(els.watchlistTagFilter);
+    const filtered = items.filter((item) => {
+      const status = item.status || 'Watching';
+      const matchesStatus = filter === 'all' || status === filter;
+      const tags = normalizeTags(item.tags);
+      const matchesTags = !tagFilters.length || tagFilters.every((tag) => tags.includes(tag));
+      return matchesStatus && matchesTags;
+    });
     if (!filtered.length) {
       if (els.watchlistEmpty) els.watchlistEmpty.style.display = 'block';
       if (els.watchlistList) els.watchlistList.innerHTML = '';
@@ -634,19 +743,23 @@
     if (els.watchlistEmpty) els.watchlistEmpty.style.display = 'none';
     els.watchlistList.innerHTML = filtered.map((item) => {
       const added = formatWatchlistDate(item.added_date || item.added_at);
+      const status = item.status || 'Watching';
+      const tags = normalizeTags(item.tags);
+      const tagsDisplay = tags.length ? tags.join(', ') : '—';
       return `
         <tr>
           <td>
             <div class="ticker-symbol">${item.ticker}</div>
             <small>${item.pattern || item.status || ''}</small>
           </td>
-          <td>${item.status || 'Watching'}</td>
+          <td><span class="status-pill">${status}</span></td>
           <td>${item.reason || 'No notes yet.'}</td>
-          <td>${item.tags || '—'}</td>
+          <td>${tagsDisplay}</td>
           <td>${added}</td>
           <td>
             <div class="button-row">
               <button class="btn btn-ghost" data-analyze="${item.ticker}">Analyze</button>
+              <button class="btn btn-ghost" data-edit="${item.ticker}">Edit</button>
               <button class="btn btn-ghost" data-remove="${item.ticker}">Remove</button>
             </div>
           </td>
@@ -671,6 +784,9 @@
         fetchAnalyze(ticker, tf);
       });
     });
+    els.watchlistList?.querySelectorAll('[data-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => enterWatchlistEdit(btn.dataset.edit));
+    });
   }
 
   function formatWatchlistDate(value) {
@@ -682,36 +798,42 @@
 
   async function removeWatchlist(ticker) {
     if (!ticker) return;
-    await fetch(`/api/watchlist/remove/${ticker}`, { method: 'DELETE' });
-    toast(`${ticker} removed`, 'success');
-    loadWatchlist();
+    try {
+      const res = await fetch(`/api/watchlist/remove/${ticker}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Unable to remove watchlist item');
+      }
+      toast(`${ticker} removed`, 'success');
+      loadWatchlist();
+    } catch (err) {
+      console.error(err);
+      toast(err.message, 'error');
+    }
   }
 
   async function addPatternToWatchlist() {
     const ticker = els.patternTicker.value.trim().toUpperCase();
     if (!ticker) return toast('Scan a ticker first.', 'error');
-    try {
-      await fetch('/api/watchlist/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, reason: 'Pattern scanner' }),
-      });
-      toast(`${ticker} added to watchlist`, 'success');
-      loadWatchlist();
-    } catch (err) {
-      toast(err.message, 'error');
-    }
+    quickAddWatchlist(ticker, 'Pattern scanner', ['Analyze']);
   }
 
-  function quickAddWatchlist(ticker) {
+  function quickAddWatchlist(ticker, reason = 'Universe scan', tags = [], status = 'Watching') {
     fetch('/api/watchlist/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker, reason: 'Universe scan' }),
-    }).then(() => {
-      toast(`${ticker} queued`, 'success');
-      loadWatchlist();
-    }).catch((err) => toast(err.message, 'error'));
+      body: JSON.stringify({ ticker, reason, tags, status }),
+    })
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!payload.success) throw new Error(payload.detail || 'Unable to add watchlist item');
+        toast(`${ticker} added to watchlist`, 'success');
+        loadWatchlist();
+      })
+      .catch((err) => {
+        console.error(err);
+        toast(err.message, 'error');
+      });
   }
 
   async function loadTopSetups(force = false) {
@@ -820,7 +942,7 @@
       });
     });
     els.topGrid?.querySelectorAll('[data-watch]').forEach((btn) => {
-      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch));
+      btn.addEventListener('click', () => quickAddWatchlist(btn.dataset.watch, 'Top setup', ['Top Setup']));
     });
     els.topGrid?.querySelectorAll('[data-top-chart]').forEach((btn) => {
       btn.addEventListener('click', () => handleTopSetupChartPreview(btn.dataset.topChart));
@@ -834,7 +956,7 @@
     slot.innerHTML = '<p class="chart-empty">Generating…</p>';
     const row = state.topSetups.find((item) => item.ticker === ticker);
     if (!row) return;
-    requestAnalyzeChart(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
+    fetchChartImage(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
         slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="scanner-thumb" loading="lazy" />`;
       })
