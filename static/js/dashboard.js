@@ -568,6 +568,20 @@
     return payload.chart_url;
   }
 
+  function renderPreviewImage(slot, url, altLabel = 'Chart preview') {
+    if (!slot) return;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = altLabel;
+    img.loading = 'lazy';
+    img.className = 'preview-thumb';
+    img.addEventListener('error', () => {
+      slot.innerHTML = '<p class="chart-empty compact">Chart unavailable</p>';
+    }, { once: true });
+    slot.innerHTML = '';
+    slot.appendChild(img);
+  }
+
   function loadAnalyzeChart(ticker, tf, plan = {}, fallbackUrl = null) {
     const timeframeLabel = tf === 'weekly' ? '1W' : '1D';
     setAnalyzeChartTitle(`${ticker} • ${timeframeLabel}`);
@@ -731,7 +745,7 @@
     const tf = row.timeframe === '1week' ? '1week' : '1day';
     fetchChartImage(ticker, tf, { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
-        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="preview-thumb" loading="lazy" />`;
+        renderPreviewImage(slot, url, `${ticker} chart preview`);
       })
       .catch((error) => {
         slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
@@ -938,9 +952,7 @@
       const previewMarkup = item.chart_url
         ? `<img src="${item.chart_url}" alt="${item.ticker} preview" class="preview-thumb" loading="lazy" />`
         : '<p class="chart-empty compact">Use Preview to load chart.</p>';
-      const tagsMarkup = tags.length
-        ? tags.map((tag) => `<span class="tag-pill">${tag}</span>`).join('')
-        : '<span class="tag-pill tag-pill-muted">No tags</span>';
+      const tagsMarkup = buildTagMarkup(tags);
       return `
         <tr>
           <td>
@@ -957,11 +969,11 @@
             <div class="button-row">
               <button class="btn btn-primary btn-compact" data-analyze="${item.ticker}">Analyze</button>
               <button class="btn btn-secondary btn-compact" data-edit="${item.ticker}">Edit</button>
-              <button class="btn btn-ghost btn-compact" data-preview="${item.ticker}">Preview</button>
+              <button class="btn btn-ghost btn-compact" data-preview="${item.ticker}">Preview chart</button>
               <a class="btn btn-tv btn-compact" data-tv-link="${item.ticker}" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
               <button class="btn btn-danger btn-compact" data-remove="${item.ticker}">Remove</button>
             </div>
-            <div class="watchlist-preview preview-block" data-watch-preview="${item.ticker}">${previewMarkup}</div>
+            <div class="preview-block" data-watch-preview="${item.ticker}">${previewMarkup}</div>
           </td>
         </tr>`;
     }).join('');
@@ -990,6 +1002,18 @@
     els.watchlistList?.querySelectorAll('[data-preview]').forEach((btn) => {
       btn.addEventListener('click', () => handleWatchlistPreview(btn.dataset.preview));
     });
+  }
+
+  function buildTagMarkup(tags = []) {
+    if (!tags.length) {
+      return '<span class="tag-pill tag-pill-muted">No tags</span>';
+    }
+    const visible = tags.slice(0, 3);
+    const remaining = tags.slice(3);
+    const visibleMarkup = visible.map((tag) => `<span class="tag-pill">${tag}</span>`).join('');
+    if (!remaining.length) return visibleMarkup;
+    const moreLabel = remaining.join(', ');
+    return `${visibleMarkup}<span class="tag-pill tag-pill-more" title="${moreLabel}">+${remaining.length} more</span>`;
   }
 
   function formatWatchlistDate(value) {
@@ -1117,12 +1141,11 @@
               <div class="kpi-label">Risk/Reward</div>
               <div>${riskReward}R • ${item.source || 'Universe'}</div>
             </div>
-            <div class="top-card-buttons">
-              <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
-              <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
-              <button class="btn btn-primary" data-top-chart="${item.ticker}">Preview chart</button>
-              <a class="btn btn-tv" href="${buildTvLabLink(item.ticker, item.source)}" target="_blank" rel="noopener">TV</a>
-            </div>
+          <div class="top-card-buttons">
+            <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
+            <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
+            <button class="btn btn-secondary" data-top-chart="${item.ticker}">Preview chart</button>
+          </div>
           </div>
           <div class="top-card-preview">
             <div class="scanner-chart-slot" data-top-slot="${item.ticker}">
@@ -1165,7 +1188,7 @@
     if (!row) return;
     fetchChartImage(ticker, '1day', { entry: row.entry, stop: row.stop, target: row.target })
       .then((url) => {
-        slot.innerHTML = `<img src="${url}" alt="${ticker} chart" class="preview-thumb" loading="lazy" />`;
+        renderPreviewImage(slot, url, `${ticker} chart preview`);
       })
       .catch((error) => {
         slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
@@ -1179,7 +1202,7 @@
     slot.innerHTML = '<p class="chart-empty compact">Loading…</p>';
     fetchChartImage(ticker, els.patternInterval?.value || '1day')
       .then((url) => {
-        slot.innerHTML = `<img src="${url}" alt="${ticker} preview" class="preview-thumb" loading="lazy" />`;
+        renderPreviewImage(slot, url, `${ticker} preview`);
       })
       .catch((error) => {
         slot.innerHTML = `<p class="chart-empty compact">${error.message || 'Chart unavailable'}</p>`;
