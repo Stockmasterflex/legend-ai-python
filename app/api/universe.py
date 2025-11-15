@@ -259,31 +259,15 @@ async def quick_scan(request: QuickScanRequest):
         "focus": ("Trend Template", get_quick_scan_universe),
     }
 
-    stats = {
-        "universe": "Focus",
-        "requested_universe": request.universe,
-        "candidates": 0,
-        "scanned": 0,
-        "cache_hits": 0,
-        "min_score": request.min_score,
-        "min_rs": request.min_rs,
-        "timeframe": "1day",
-    }
-
     try:
         metadata_map = await universe_store.get_all()
         sector_filter = (request.sector or "").strip().lower() or None
         requested_interval = (request.timeframe or "1day").lower()
         interval = "1week" if "week" in requested_interval else "1day"
-        stats["timeframe"] = interval
-        if sector_filter:
-            stats["sector_filter"] = sector_filter
 
         universe_key = request.universe.lower().strip()
         label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
         tickers = universe_fn()
-        stats["universe"] = label
-        stats["candidates"] = len(tickers)
 
         def _matches_sector(symbol: str) -> bool:
             if not sector_filter:
@@ -303,15 +287,12 @@ async def quick_scan(request: QuickScanRequest):
 
         detector = PatternDetector()
         cache = get_cache_service()
+        cache_hits = 0
         spy_data = await market_data_service.get_time_series(
             "SPY",
             interval,
             400 if interval == "1day" else 260,
         )
-
-        stats["scanned"] = len(tickers_to_scan)
-        stats["cache_hits"] = 0
-        stats["candidates"] = len(filtered_universe)
 
         normalized_patterns = _normalize_pattern_filters(request.pattern_types)
 
@@ -325,7 +306,7 @@ async def quick_scan(request: QuickScanRequest):
                 cache_interval = interval
                 cached_pattern = await cache.get_pattern(ticker, cache_interval)
                 if cached_pattern:
-                    stats["cache_hits"] += 1
+                    cache_hits += 1
                     if isinstance(cached_pattern.get("timestamp"), str):
                         cached_pattern["timestamp"] = datetime.fromisoformat(cached_pattern["timestamp"])
 
@@ -390,11 +371,22 @@ async def quick_scan(request: QuickScanRequest):
 
         rows.sort(key=lambda item: item.get("score", 0), reverse=True)
         limited_rows = rows[: scan_limit]
+        stats_payload = {
+            "universe": label,
+            "requested_universe": request.universe,
+            "candidates": len(filtered_universe),
+            "scanned": len(tickers_to_scan),
+            "cache_hits": cache_hits,
+            "min_score": request.min_score,
+            "min_rs": request.min_rs,
+            "timeframe": interval,
+            "sector_filter": sector_filter or "all",
+        }
 
         return {
             "success": True,
             "data": limited_rows,
-            "stats": stats,
+            "stats": stats_payload,
             "message": f"Quick scan completed for {label}",
         }
 
