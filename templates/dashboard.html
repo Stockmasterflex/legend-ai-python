@@ -102,7 +102,7 @@
                                 <select id="universe-source">
                                     <option value="nasdaq100">NASDAQ 100</option>
                                     <option value="sp500">S&P 500</option>
-                                    <option value="focus">Focus List</option>
+                                    <option value="focus">Minervini Trend Template</option>
                                 </select>
                             </div>
                             <div class="form-field">
@@ -113,17 +113,17 @@
                                 </select>
                             </div>
                             <div class="form-field">
-                                <label for="universe-limit">Universe slice</label>
-                                <input id="universe-limit" type="number" value="30" min="5" max="120" />
-                                <small>More symbols = slower scans</small>
+                                <label for="universe-limit">Max symbols to scan</label>
+                                <input id="universe-limit" type="number" value="50" min="10" max="150" />
+                                <small>Scans the first N tickers per universe (sorted by RS strength).</small>
                             </div>
                             <div class="form-field">
                                 <label for="universe-score">Min legend score</label>
-                                <input id="universe-score" type="number" value="7" min="0" max="10" step="0.5" />
+                                <input id="universe-score" type="number" value="6.5" min="0" max="10" step="0.5" />
                             </div>
                             <div class="form-field">
                                 <label for="universe-rs">Min RS rating</label>
-                                <input id="universe-rs" type="number" value="60" min="0" max="100" />
+                                <input id="universe-rs" type="number" value="55" min="0" max="100" />
                             </div>
                             <div class="form-field">
                                 <label for="scanner-atr">Max ATR%</label>
@@ -175,6 +175,10 @@
                                 <div>
                                     <span class="meta-label">Universe</span>
                                     <strong data-meta="universe">—</strong>
+                                </div>
+                                <div>
+                                    <span class="meta-label">Sector</span>
+                                    <strong data-meta="sector">All</strong>
                                 </div>
                                 <div>
                                     <span class="meta-label">Timeframe</span>
@@ -245,28 +249,44 @@
                     <div id="top-setups-grid" class="results-grid"></div>
                 </section>
 
-                <section id="tab-watchlist" class="tab-pane" data-tab-panel="watchlist" hidden>
+                    <section id="tab-watchlist" class="tab-pane" data-tab-panel="watchlist" hidden>
                     <form id="watchlist-form" class="watchlist-form">
+                        <div class="form-field full watchlist-form-banner">
+                            <p id="watchlist-mode-indicator" aria-live="polite">Adding new ticker</p>
+                        </div>
                         <div class="form-field">
                             <label for="watchlist-symbol">Ticker</label>
                             <input id="watchlist-symbol" type="text" placeholder="TSLA" />
                         </div>
                         <div class="form-field">
-                            <label for="watchlist-reason">Reason</label>
-                            <input id="watchlist-reason" type="text" placeholder="VCP base, post-earnings drift…" />
+                            <label for="watchlist-status">Status</label>
+                            <select id="watchlist-status">
+                                <option value="Watching">Watching</option>
+                                <option value="Setup">Setup building</option>
+                                <option value="Triggered">Triggered</option>
+                                <option value="Closed">Closed</option>
+                            </select>
                         </div>
                         <div class="form-field">
+                            <label for="watchlist-reason">Notes</label>
+                            <input id="watchlist-reason" type="text" placeholder="VCP base, post-earnings drift…" />
+                        </div>
+                        <div class="form-field full">
                             <label for="watchlist-tags">Tags</label>
-                            <input id="watchlist-tags" type="text" placeholder="Breakout, Momentum" />
+                            <div id="watchlist-tags" class="tag-toggle-group" role="group" aria-label="Watchlist tags"></div>
+                            <small>Click tags to toggle selections.</small>
                         </div>
                         <div class="form-field">
                             <label>&nbsp;</label>
-                            <button class="btn btn-primary" type="submit">Add to watchlist</button>
+                            <div class="button-row">
+                                <button class="btn btn-primary" type="submit" id="watchlist-submit">Add to watchlist</button>
+                                <button class="btn btn-ghost" type="button" id="watchlist-cancel">Cancel edit</button>
+                            </div>
                         </div>
                     </form>
                     <div class="watchlist-toolbar">
                         <div class="form-field">
-                            <label for="watchlist-filter">Filter</label>
+                            <label for="watchlist-filter">Status filter</label>
                             <select id="watchlist-filter">
                                 <option value="all">All statuses</option>
                                 <option value="Watching">Watching</option>
@@ -274,6 +294,11 @@
                                 <option value="Triggered">Triggered</option>
                                 <option value="Closed">Closed</option>
                             </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="watchlist-tag-filter">Tag filter</label>
+                            <div id="watchlist-tag-filter" class="tag-toggle-group tag-toggle-filter" role="group" aria-label="Filter by tag"></div>
+                            <small>Filters apply immediately; click again to clear.</small>
                         </div>
                     </div>
                     <div id="watchlist-empty" class="watchlist-empty">No watchlist items yet.</div>
@@ -295,6 +320,13 @@
                 </section>
 
                 <section id="tab-internals" class="tab-pane" data-tab-panel="internals" hidden>
+                    <div class="tab-section-header">
+                        <div>
+                            <h2 class="eyebrow">Market Internals</h2>
+                            <p>Live breadth, volatility, and sector structure powered by TradingView widgets.</p>
+                        </div>
+                        <button id="market-refresh" class="btn btn-secondary" type="button">Refresh data</button>
+                    </div>
                     <div class="internals-summary-stack">
                         <div id="market-loading" class="loading-overlay">
                             <span class="spinner"></span>
@@ -302,17 +334,212 @@
                         </div>
                         <div id="market-results" class="internals-summary"></div>
                     </div>
-                    <div class="internals-minis">
-                        <div class="tv-card mini-card" id="tv-ticker-tape" aria-label="Live market ticker"></div>
-                        <div class="tv-card mini-card" id="tv-mini-spy" aria-label="SPY mini chart"></div>
-                        <div class="tv-card mini-card" id="tv-mini-qqq" aria-label="QQQ mini chart"></div>
-                        <div class="tv-card mini-card" id="tv-mini-iwm" aria-label="IWM mini chart"></div>
-                    </div>
-                    <div class="tv-grid">
-                        <div class="tv-card" id="tv-market-overview"></div>
-                        <div class="tv-card" id="tv-heatmap"></div>
-                        <div class="tv-card" id="tv-calendar"></div>
-                    </div>
+
+                    <section class="internals-section">
+                        <div class="internals-section-header">
+                            <div>
+                                <p class="eyebrow">Market pulse</p>
+                                <h3>Index overview</h3>
+                            </div>
+                        </div>
+                        <div class="internals-tape" id="tv-ticker-tape" aria-label="Live market ticker"></div>
+                        <div class="internals-minis">
+                            <div class="tv-card mini-card" id="tv-mini-spy" aria-label="SPY mini chart"></div>
+                            <div class="tv-card mini-card" id="tv-mini-qqq" aria-label="QQQ mini chart"></div>
+                            <div class="tv-card mini-card" id="tv-mini-iwm" aria-label="IWM mini chart"></div>
+                            <div class="tv-card mini-card" id="tv-mini-vix" aria-label="VIX mini chart"></div>
+                        </div>
+                    </section>
+
+                    <section class="internals-section">
+                        <div class="internals-section-header">
+                            <div>
+                                <p class="eyebrow">World markets</p>
+                                <h3>TradingView market overview</h3>
+                            </div>
+                        </div>
+                        <div class="tv-card tv-market-overview" data-testid="tv-market-overview">
+                            <!-- TradingView Widget BEGIN -->
+                            <div class="tradingview-widget-container">
+                              <div class="tradingview-widget-container__widget"></div>
+                              <div class="tradingview-widget-copyright">
+                                <a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank">
+                                  <span class="blue-text">World markets</span>
+                                </a><span class="trademark"> by TradingView</span>
+                              </div>
+                              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+                              {
+                                "colorTheme": "dark",
+                                "dateRange": "12M",
+                                "locale": "en",
+                                "largeChartUrl": "",
+                                "isTransparent": false,
+                                "showFloatingTooltip": false,
+                                "plotLineColorGrowing": "rgba(102, 187, 106, 1)",
+                                "plotLineColorFalling": "rgba(242, 54, 69, 1)",
+                                "gridLineColor": "rgba(240, 243, 250, 0)",
+                                "scaleFontColor": "#DBDBDB",
+                                "belowLineFillColorGrowing": "rgba(41, 98, 255, 0.12)",
+                                "belowLineFillColorFalling": "rgba(41, 98, 255, 0.12)",
+                                "belowLineFillColorGrowingBottom": "rgba(41, 98, 255, 0)",
+                                "belowLineFillColorFallingBottom": "rgba(41, 98, 255, 0)",
+                                "symbolActiveColor": "rgba(41, 98, 255, 0.12)",
+                                "tabs": [
+                                  {
+                                    "title": "Indices",
+                                    "symbols": [
+                                      { "s": "NASDAQ:QQQ", "d": "", "logoid": "invesco", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:SPY", "d": "", "logoid": "spdr-sandp500-etf-tr", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:IWM", "d": "", "logoid": "ishares", "currency-logoid": "country/US" },
+                                      { "s": "TVC:VIX", "d": "", "logoid": "country/US", "currency-logoid": "country/US" }
+                                    ],
+                                    "originalTitle": "Indices"
+                                  },
+                                  {
+                                    "title": "Sectors",
+                                    "symbols": [
+                                      { "s": "AMEX:XLK", "d": "", "logoid": "sector/technology", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLV", "d": "", "logoid": "sector/health-care", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLE", "d": "", "logoid": "sector/energy", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLF", "d": "", "logoid": "sector/financial", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLP", "d": "", "logoid": "sector/consumer-staples", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLU", "d": "", "logoid": "sector/utilities", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLY", "d": "", "logoid": "sector/consumer-discretionary", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLI", "d": "", "logoid": "sector/industrial", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLC", "d": "", "logoid": "communication-services", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLB", "d": "", "logoid": "sector/materials", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XLRE", "d": "", "logoid": "sector/real-estate", "currency-logoid": "country/US" },
+                                      { "s": "AMEX:XBI", "d": "", "logoid": "sector/biotech-etf", "currency-logoid": "country/US" }
+                                    ]
+                                  }
+                                ],
+                                "support_host": "https://www.tradingview.com",
+                                "backgroundColor": "#0f0f0f",
+                                "width": "100%",
+                                "height": "100%",
+                                "showSymbolLogo": true,
+                                "showChart": true
+                              }
+                              </script>
+                            </div>
+                            <!-- TradingView Widget END -->
+                        </div>
+                    </section>
+
+                    <section class="internals-section">
+                        <div class="internals-section-header">
+                            <div>
+                                <p class="eyebrow">Heatmaps</p>
+                                <h3>Sector & ETF rotation</h3>
+                            </div>
+                        </div>
+                        <div class="internals-widgets-grid">
+                            <div class="tv-card tv-card--heatmap" data-testid="tv-stock-heatmap">
+                                <!-- Stock Heatmap -->
+                                <div class="tradingview-widget-container">
+                                  <div class="tradingview-widget-container__widget"></div>
+                                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
+                                  {
+                                    "dataSource": "SPX500",
+                                    "blockSize": "market_cap_basic",
+                                    "blockColor": "change",
+                                    "grouping": "sector",
+                                    "locale": "en",
+                                    "symbolUrl": "",
+                                    "colorTheme": "dark",
+                                    "exchanges": [],
+                                    "hasTopBar": false,
+                                    "isDataSetEnabled": false,
+                                    "isZoomEnabled": true,
+                                    "hasSymbolTooltip": true,
+                                    "isMonoSize": false,
+                                    "width": "100%",
+                                    "height": "100%"
+                                  }
+                                  </script>
+                                </div>
+                            </div>
+                            <div class="tv-card tv-card--heatmap" data-testid="tv-etf-heatmap">
+                                <!-- ETF Heatmap -->
+                                <div class="tradingview-widget-container">
+                                  <div class="tradingview-widget-container__widget"></div>
+                                  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-etf-heatmap.js" async>
+                                  {
+                                    "dataSource": "AllUSEtf",
+                                    "blockSize": "volume",
+                                    "blockColor": "change",
+                                    "grouping": "asset_class",
+                                    "locale": "en",
+                                    "symbolUrl": "",
+                                    "colorTheme": "dark",
+                                    "hasTopBar": false,
+                                    "isDataSetEnabled": false,
+                                    "isZoomEnabled": true,
+                                    "hasSymbolTooltip": true,
+                                    "isMonoSize": false,
+                                    "width": "100%",
+                                    "height": "100%"
+                                  }
+                                  </script>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="internals-section">
+                        <div class="internals-section-header">
+                            <div>
+                                <p class="eyebrow">Screeners</p>
+                                <h3>TradingView stock screener</h3>
+                                <small>Use this for quick scans—Legend AI still applies the full Minervini Trend Template server-side.</small>
+                            </div>
+                        </div>
+                        <div class="tv-card tv-card--screener" data-testid="tv-screener">
+                            <!-- TradingView Stock Screener -->
+                            <div class="tradingview-widget-container">
+                              <div class="tradingview-widget-container__widget"></div>
+                              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+                              {
+                                "market": "america",
+                                "showToolbar": true,
+                                "defaultColumn": "overview",
+                                "defaultScreen": "top_gainers",
+                                "isTransparent": false,
+                                "locale": "en",
+                                "colorTheme": "dark",
+                                "width": "100%",
+                                "height": 550
+                              }
+                              </script>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="internals-section">
+                        <div class="internals-section-header">
+                            <div>
+                                <p class="eyebrow">Catalysts</p>
+                                <h3>Economic calendar</h3>
+                            </div>
+                        </div>
+                        <div class="tv-card tv-card--calendar" data-testid="tv-economic-calendar">
+                            <!-- Economic Calendar -->
+                            <div class="tradingview-widget-container">
+                              <div class="tradingview-widget-container__widget"></div>
+                              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+                              {
+                                "colorTheme": "dark",
+                                "isTransparent": false,
+                                "locale": "en",
+                                "countryFilter": "ar,au,br,ca,cn,fr,de,in,id,it,jp,kr,mx,ru,sa,za,tr,gb,us,eu",
+                                "importanceFilter": "-1,0,1",
+                                "width": "100%",
+                                "height": "100%"
+                              }
+                              </script>
+                            </div>
+                        </div>
+                    </section>
                 </section>
                 
             </div>

@@ -55,3 +55,4 @@ htmlcov/
 *.temp
 .env
 node_modules/
+screenshots/playwright-mcp/

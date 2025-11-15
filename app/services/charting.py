@@ -25,10 +25,10 @@ class ChartingService:
     MAX_PARAMETERS = 5  # Max studies + drawings combined; gracefully degrade if needed
 
     CHART_PRESETS = {
-        "breakout": ["EMA21", "EMA50", "Volume"],
-        "swing": ["EMA21", "EMA50", "RSI"],
-        "momentum": ["EMA21", "EMA50", "EMA200"],
-        "support": ["EMA50", "EMA200", "Volume"],
+        "breakout": ["EMA21", "SMA50", "Volume", "RSI"],
+        "swing": ["EMA21", "SMA50", "RSI", "Volume"],
+        "momentum": ["EMA21", "EMA50", "EMA200", "Volume"],
+        "support": ["EMA21", "SMA50", "Volume"],
     }
 
     def __init__(self):
@@ -196,7 +196,7 @@ class ChartingService:
             "EMA21": {
                 "name": "Moving Average Exponential",
                 "input": {"length": 21, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(255,109,0)"}
+                "override": {"Plot.linewidth": 2, "Plot.color": "#1d4ed8"}
             },
             "EMA50": {
                 "name": "Moving Average Exponential",
@@ -211,7 +211,7 @@ class ChartingService:
             "SMA50": {
                 "name": "Moving Average",
                 "input": {"length": 50, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(67,160,71)"}
+                "override": {"Plot.linewidth": 2, "Plot.color": "#ef4444"}
             },
             "SMA200": {
                 "name": "Moving Average",

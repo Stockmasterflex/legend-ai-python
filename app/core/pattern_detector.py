@@ -125,6 +125,7 @@ class PatternDetector:
 
         # Moving averages
         sma_50 = self._sma(closes, 50)
+        ema_21 = self._ema(closes, 21)
         sma_150 = self._sma(closes, 150)
         sma_200 = self._sma(closes, 200)
         ema_50 = self._ema(closes, 50)
@@ -153,6 +154,7 @@ class PatternDetector:
             "sma_150": sma_150,
             "sma_200": sma_200,
             "ema_50": ema_50,
+            "ema_21": ema_21,
             "above_50sma": above_50,
             "above_200sma": above_200,
             "high_52w": high_52w,
@@ -249,6 +251,38 @@ class PatternDetector:
         if breakout["hit"]:
             patterns.append(breakout)
 
+        rising_wedge = self._detect_wedge(highs, lows, direction="rising")
+        if rising_wedge["hit"]:
+            patterns.append(rising_wedge)
+
+        falling_wedge = self._detect_wedge(highs, lows, direction="falling")
+        if falling_wedge["hit"]:
+            patterns.append(falling_wedge)
+
+        ascending_triangle = self._detect_triangle(highs, lows, kind="ascending")
+        if ascending_triangle["hit"]:
+            patterns.append(ascending_triangle)
+
+        symmetrical_triangle = self._detect_triangle(highs, lows, kind="symmetrical")
+        if symmetrical_triangle["hit"]:
+            patterns.append(symmetrical_triangle)
+
+        head_shoulders = self._detect_head_shoulders(closes, inverted=False)
+        if head_shoulders["hit"]:
+            patterns.append(head_shoulders)
+
+        inverse_head_shoulders = self._detect_head_shoulders(closes, inverted=True)
+        if inverse_head_shoulders["hit"]:
+            patterns.append(inverse_head_shoulders)
+
+        ema_pullback = self._detect_ma_pullback(closes, metrics, length=21)
+        if ema_pullback["hit"]:
+            patterns.append(ema_pullback)
+
+        sma_pullback = self._detect_ma_pullback(closes, metrics, length=50)
+        if sma_pullback["hit"]:
+            patterns.append(sma_pullback)
+
         return patterns
 
     def _detect_vcp(self, closes: List[float], volumes: List[float],
@@ -259,7 +293,8 @@ class PatternDetector:
             return {"hit": False, "score": 0, "info": "Insufficient data"}
 
         contractions = metrics["contractions"]
-        if contractions["count"] < 2:
+        contraction_count = contractions["count"]
+        if contraction_count < 2:
             return {"hit": False, "score": 0, "info": "Need 2+ contractions"}
 
         # Check if contractions are contracting (each smaller than previous)
@@ -271,22 +306,30 @@ class PatternDetector:
                 break
 
         volume_dry_up = metrics["volume_dry_up"]
+        volume_increasing = metrics.get("volume_increasing")
 
-        score = 0
+        score = 4.0
         if contracting:
-            score += 5
+            score += 3.0
+        else:
+            score += 1.0
         if volume_dry_up:
-            score += 3
+            score += 1.5
+        if contraction_count >= 3:
+            score += 1.0
+        if volume_increasing:
+            score += 0.5
 
-        top_pulls = [f"{x:.0f}%" for x in pulls[:4]]
-        info = f"T={'%/'.join(top_pulls)}"
+        top_pulls = [f"{x:.0f}%" for x in pulls[:4]] if pulls else []
+        info_bits = [f"T={'/'.join(top_pulls)}" if top_pulls else "No pulls"]
+        info_bits.append(f"dry-up={'yes' if volume_dry_up else 'no'}")
 
         return {
             "hit": score >= 6,
-            "score": score,
-            "info": info,
+            "score": round(min(10.0, score), 1),
+            "info": " · ".join(info_bits),
             "name": "VCP",
-            "contractions": contractions["count"],
+            "contractions": contraction_count,
             "volume_dry_up": volume_dry_up
         }
 
@@ -318,14 +361,13 @@ class PatternDetector:
         # Cup depth check
         cup_depth = ((left_rim - bottom) / left_rim) * 100
 
-        # Strict criteria for cup & handle
-        # 1. Cup depth must be significant (15-35%)
-        if cup_depth < 15 or cup_depth > 35:
+        # Relaxed criteria for depth/length
+        if cup_depth < 12 or cup_depth > 45:
             return {"hit": False, "score": 0, "info": f"Cup depth {cup_depth:.1f}% out of range"}
 
-        # 2. Left and right rims should be similar (within 10%)
+        # 2. Left and right rims should be similar (within 12%)
         rim_difference = abs(left_rim - right_rim) / left_rim * 100
-        if rim_difference > 10:
+        if rim_difference > 12:
             return {"hit": False, "score": 0, "info": f"Rims differ by {rim_difference:.1f}%"}
 
         # 3. Check handle formation (last 25 days)
@@ -334,34 +376,38 @@ class PatternDetector:
         handle_low = min(handle_window)
         handle_depth = ((handle_high - handle_low) / handle_high) * 100
 
-        # Handle must be tight (less than 10% range) and shallow
-        if handle_depth < 2 or handle_depth > 10:
+        # Handle must be shallow-ish
+        if handle_depth < 2 or handle_depth > 15:
             return {"hit": False, "score": 0, "info": f"Handle depth {handle_depth:.1f}% invalid"}
 
         # 4. Handle should be above the cup bottom
-        if handle_low < bottom * 1.01:  # Allow 1% tolerance
+        if handle_low < bottom * 1.005:
             return {"hit": False, "score": 0, "info": "Handle below cup bottom"}
 
-        # 5. Recent price should be above the handle high (breakout)
-        if closes[-1] < handle_high * 0.98:
+        # 5. Recent price should be within 3% of the handle high (breakout zone)
+        if closes[-1] < handle_high * 0.97:
             return {"hit": False, "score": 0, "info": "No breakout above handle"}
 
-        # 6. Volume should increase on breakout
-        volume_increasing = volumes[-5:] and volumes[-1] > statistics.mean(volumes[-20:-5])
-        if not volume_increasing:
-            return {"hit": False, "score": 0, "info": "No volume confirmation"}
+        # 6. Volume should increase on breakout (soft requirement)
+        volume_increasing = bool(
+            volumes[-5:] and len(volumes) >= 20 and volumes[-1] > statistics.mean(volumes[-20:-5]) * 1.1
+        )
 
-        # All criteria met - calculate score
-        # Deduct points for rim difference and handle sharpness
-        score = 9.0
-        score -= (rim_difference / 10) * 1.5  # Penalize for different rims
-        score -= (handle_depth / 10) * 1.0   # Penalize for loose handle
-        score = max(5.0, min(10.0, score))
+        # Scoring weights
+        score = 7.5
+        if rim_difference < 6:
+            score += 0.5
+        if handle_depth <= 8:
+            score += 0.5
+        if volume_increasing:
+            score += 1
+        score -= max(0, (cup_depth - 30) / 15)
+        score = max(6.0, min(9.5, score))
 
         return {
             "hit": True,
-            "score": score,
-            "info": f"Cup {cup_depth:.1f}%, handle {handle_depth:.1f}%, vol↑",
+            "score": round(score, 1),
+            "info": f"Cup {cup_depth:.1f}%, handle {handle_depth:.1f}% · vol {'up' if volume_increasing else 'flat'}",
             "name": "Cup & Handle"
         }
 
@@ -390,16 +436,19 @@ class PatternDetector:
         except:
             tight = False
 
-        score = 0
-        if depth <= 15:
-            score += 4
+        depth_ok = depth <= 12 or (depth <= 15 and tight)
+        if not depth_ok:
+            return {"hit": False, "score": 0, "info": f"Depth {depth:.1f}% too wide"}
+
+        score = 6.0
+        score += max(0, (12 - min(depth, 12)) / 4)
         if tight:
-            score += 3
+            score += 1.0
 
         return {
             "hit": score >= 6,
-            "score": score,
-            "info": f"depth {depth:.1f}%, tight={tight}",
+            "score": round(min(9.0, score), 1),
+            "info": f"Depth {depth:.1f}%, tight={tight}",
             "name": "Flat Base"
         }
 
@@ -416,6 +465,7 @@ class PatternDetector:
 
         # Check breakout
         broke = current_price >= high_52w * 0.999  # Within 0.1% of 52w high
+        near_high = current_price >= high_52w * 0.995
 
         # Volume spike (40% above 50-day average)
         if len(volumes) >= 50:
@@ -431,19 +481,231 @@ class PatternDetector:
             daily_return = (closes[-1] - closes[-2]) / closes[-2]
             if daily_return > 0.02:
                 momentum = 1
+        rs = metrics.get("rs", 0)
 
         score = 0
         if broke:
-            score += 5
-        if volume_spike >= 40:
-            score += 3
+            score += 4.5
+        elif near_high:
+            score += 3.0
+        if volume_spike >= 25:
+            score += 2.5
+        elif volume_spike >= 10:
+            score += 1.0
         score += momentum
+        if rs >= 60:
+            score += 1.0
 
         return {
             "hit": score >= 6,
-            "score": score,
+            "score": round(min(9.5, score), 1),
             "info": f"vol +{volume_spike:.0f}%, broke={broke}",
             "name": "Breakout"
+        }
+
+    def _detect_wedge(self, highs: List[float], lows: List[float], direction: str = "rising") -> Dict[str, Any]:
+        """Detect rising/falling wedge formations."""
+        window = 60
+        if len(highs) < window or len(lows) < window:
+            return {"hit": False, "score": 0, "info": "Need 60+ candles"}
+
+        recent_highs = highs[-window:]
+        recent_lows = lows[-window:]
+        slope_high = self._linear_slope(recent_highs)
+        slope_low = self._linear_slope(recent_lows)
+        first_half_range = max(recent_highs[:window // 2]) - min(recent_lows[:window // 2])
+        second_half_range = max(recent_highs[window // 2:]) - min(recent_lows[window // 2:])
+        if first_half_range <= 0 or second_half_range <= 0:
+            return {"hit": False, "score": 0, "info": "Range insufficient"}
+        range_ratio = second_half_range / first_half_range
+
+        if direction == "rising":
+            if not (slope_high > 0 and slope_low > 0):
+                return {"hit": False, "score": 0, "info": "No rising slopes"}
+            if not (slope_low > slope_high * 0.8):
+                return {"hit": False, "score": 0, "info": "No convergence"}
+            if range_ratio > 0.85:
+                return {"hit": False, "score": 0, "info": "Range not contracting"}
+            info = f"slopeH {slope_high:.3f}, slopeL {slope_low:.3f}"
+            score = 6.0 + (0.85 - range_ratio) * 5
+            return {
+                "hit": True,
+                "score": round(min(9.5, score), 1),
+                "info": info,
+                "name": "Rising Wedge"
+            }
+        else:
+            if not (slope_high < 0 and slope_low < 0):
+                return {"hit": False, "score": 0, "info": "No falling slopes"}
+            if not (abs(slope_high) > abs(slope_low) * 0.8):
+                return {"hit": False, "score": 0, "info": "No convergence"}
+            if range_ratio > 0.85:
+                return {"hit": False, "score": 0, "info": "Range not contracting"}
+            info = f"slopeH {slope_high:.3f}, slopeL {slope_low:.3f}"
+            score = 6.0 + (0.85 - range_ratio) * 5
+            return {
+                "hit": True,
+                "score": round(min(9.5, score), 1),
+                "info": info,
+                "name": "Falling Wedge"
+            }
+
+    def _detect_triangle(self, highs: List[float], lows: List[float], kind: str = "ascending") -> Dict[str, Any]:
+        """Detect ascending or symmetrical triangle formations."""
+        window = 70
+        if len(highs) < window or len(lows) < window:
+            return {"hit": False, "score": 0, "info": "Need 70+ candles"}
+
+        recent_highs = highs[-window:]
+        recent_lows = lows[-window:]
+        slope_high = self._linear_slope(recent_highs)
+        slope_low = self._linear_slope(recent_lows)
+        first_half_range = max(recent_highs[:window // 2]) - min(recent_lows[:window // 2])
+        second_half_range = max(recent_highs[window // 2:]) - min(recent_lows[window // 2:])
+        if first_half_range <= 0 or second_half_range <= 0:
+            return {"hit": False, "score": 0, "info": "Range insufficient"}
+        range_ratio = second_half_range / first_half_range
+
+        if kind == "ascending":
+            flat_resistance = abs(slope_high) < abs(slope_low) * 0.3 and abs(slope_high) < 0.05
+            rising_support = slope_low > 0.02
+            if not (flat_resistance and rising_support):
+                return {"hit": False, "score": 0, "info": "No flat top + rising base"}
+            if range_ratio > 0.9:
+                return {"hit": False, "score": 0, "info": "Range not contracting"}
+            score = 6.2 + (0.9 - range_ratio) * 4
+            return {
+                "hit": True,
+                "score": round(min(9.2, score), 1),
+                "info": f"slopeL {slope_low:.3f}",
+                "name": "Ascending Triangle"
+            }
+
+        # symmetrical
+        descending_resistance = slope_high < -0.02
+        rising_support = slope_low > 0.02
+        if not (descending_resistance and rising_support):
+            return {"hit": False, "score": 0, "info": "No converging trendlines"}
+        if range_ratio > 0.92:
+            return {"hit": False, "score": 0, "info": "Range not contracting"}
+        score = 6.0 + (0.92 - range_ratio) * 4
+        return {
+            "hit": True,
+            "score": round(min(9.0, score), 1),
+            "info": f"slopeH {slope_high:.3f}, slopeL {slope_low:.3f}",
+            "name": "Symmetrical Triangle"
+        }
+
+    def _detect_head_shoulders(self, closes: List[float], inverted: bool = False) -> Dict[str, Any]:
+        """Detect (inverse) head & shoulders formations."""
+        window = 110
+        if len(closes) < window:
+            return {"hit": False, "score": 0, "info": "Need 110+ candles"}
+        segment = closes[-window:]
+        mode = "min" if inverted else "max"
+        extrema = self._find_local_extrema(segment, mode=mode)
+        if len(extrema) < 3:
+            return {"hit": False, "score": 0, "info": "Not enough pivots"}
+
+        for i in range(len(extrema) - 2):
+            p1, p2, p3 = extrema[i], extrema[i + 1], extrema[i + 2]
+            if p2[0] - p1[0] < 5 or p3[0] - p2[0] < 5:
+                continue
+            shoulder_diff = abs(p1[1] - p3[1]) / max(p1[1], p3[1])
+            if shoulder_diff > 0.05:
+                continue
+            if inverted:
+                # Middle trough should be notably lower
+                if not (p2[1] < min(p1[1], p3[1]) * 0.98):
+                    continue
+                name = "Inverse Head & Shoulders"
+            else:
+                if not (p2[1] > max(p1[1], p3[1]) * 1.02):
+                    continue
+                name = "Head & Shoulders"
+
+            neckline = min(segment[p1[0]:p3[0] + 1]) if not inverted else max(segment[p1[0]:p3[0] + 1])
+            span = p3[0] - p1[0]
+            score = 6.5 + min(2.0, span / 30)
+            info = f"shoulders Δ {shoulder_diff:.2%}, neckline {neckline:.2f}"
+            return {
+                "hit": True,
+                "score": round(min(9.0, score), 1),
+                "info": info,
+                "name": name
+            }
+
+        return {"hit": False, "score": 0, "info": "Pattern not detected"}
+
+    def _find_local_extrema(self, values: List[float], mode: str = "max") -> List[tuple]:
+        """Return local maxima or minima indices/value pairs."""
+        extrema = []
+        for idx in range(2, len(values) - 2):
+            window = values[idx - 2:idx + 3]
+            center = window[2]
+            if mode == "max":
+                if center == max(window):
+                    extrema.append((idx, center))
+            else:
+                if center == min(window):
+                    extrema.append((idx, center))
+        return extrema
+
+    def _linear_slope(self, values: List[float]) -> float:
+        """Compute slope via simple linear regression."""
+        if not values or len(values) < 2:
+            return 0.0
+        n = len(values)
+        mean_x = (n - 1) / 2
+        mean_y = sum(values) / n
+        numerator = 0.0
+        denominator = 0.0
+        for idx, val in enumerate(values):
+            numerator += (idx - mean_x) * (val - mean_y)
+            denominator += (idx - mean_x) ** 2
+        if denominator == 0:
+            return 0.0
+        return numerator / denominator
+
+    def _detect_ma_pullback(self, closes: List[float], metrics: Dict[str, Any], length: int = 21) -> Dict[str, Any]:
+        """Detect constructive pullbacks to 21 EMA or 50 SMA."""
+        if len(closes) < length + 10:
+            return {"hit": False, "score": 0, "info": "Insufficient data"}
+
+        if length == 21:
+            ma_series = metrics.get("ema_21") or self._ema(closes, 21)
+            label = "21 EMA Pullback"
+            trend_guard = metrics.get("above_50sma", False)
+            tolerance = 1.5
+        else:
+            ma_series = metrics.get("sma_50")
+            label = "50 SMA Pullback"
+            trend_guard = metrics.get("above_200sma", False)
+            tolerance = 3.0
+
+        if not ma_series or ma_series[-1] in (None, 0):
+            return {"hit": False, "score": 0, "info": "MA unavailable"}
+
+        ma_value = ma_series[-1]
+        price = closes[-1]
+        prev_close = closes[-2] if len(closes) >= 2 else price
+        distance_pct = ((price - ma_value) / ma_value) * 100
+
+        if distance_pct < -tolerance or distance_pct > tolerance:
+            return {"hit": False, "score": 0, "info": f"Distance {distance_pct:.2f}%"}
+        if price <= prev_close:
+            return {"hit": False, "score": 0, "info": "No bounce confirmation"}
+        if not trend_guard:
+            return {"hit": False, "score": 0, "info": "Trend guard failed"}
+
+        score = 6.5 + max(0, tolerance - abs(distance_pct)) * 0.4
+        score = min(9.0, score)
+
+        return {
+            "hit": True,
+            "score": round(score, 1),
+            "info": f"Δ{distance_pct:.2f}% vs MA",
+            "name": label
         }
 
     def _calculate_rs_rating(self, stock_closes: List[float], spy_closes: List[float]) -> Dict[str, float]:

@@ -24,12 +24,13 @@ This living roadmap mirrors the priorities in `docs/Legend_AI_PRD.md` and keeps 
 - **APIs**: `/api/scan`, `/api/scan/universe`, `/api/scan/sector/{sector}`, `/api/top-setups?limit=10` with Redis caching (24h TTL) and bucketed payloads.
 - **Scheduling**: Cron at 4:05 PM ET + Sunday refresh. Rate-limit aware batching (chunks of 25) with exponential backoff + jitter.
 - **UI & Distribution**: Pattern Scanner and Top Setups tabs consume cached data, Telegram/Sheets digests pull the same payloads, cards include quick Analyze & chart links.
+- **Status Update (Nov 2025)**: Advanced detectors for wedges, triangles, and head & shoulders patterns now power both scanners and Top Setups, closing the roadmap item for “non-VCP” structures.
 - **Definition of Done**: 600-symbol scans finish in <20 minutes, cached JSON drives both UI tabs, telemetry logs batch size/runtime/cache hits.
 
 ### Phase 3 – Watchlist Intelligence & Market Internals
 - **Watchlist**: CRUD UI + API, states (Watching/Breaking Out/Triggered), re-analyze actions, Redis/Postgres persistence bridge.
 - **Alerting**: Five-minute monitoring loop during market hours, toast feed, Telegram/email/SMS hooks, `/scan`, `/plan`, `/watchlist` bot commands, alert history log per ticker.
-- **Market Internals**: Breadth metrics, sector heatmap, VIX, indices, multi-timeframe confirmation heatmap + confidence boosts.
+- **Market Internals**: Breadth metrics, sector heatmap, VIX, indices, multi-timeframe confirmation heatmap + confidence boosts. _Status (Nov 2025): TradingView ticker tape, market overview, SPX + ETF heatmaps, screener, economic calendar, and SPY/QQQ/IWM/VIX minis are live on the dashboard, with Playwright coverage capturing each widget._
 - **Definition of Done**: Alerts flow to dashboard + Telegram in <60 seconds with audit trail, Market Internals tab lazy-loads widgets, multi-TF overlay live in Analyze + dedicated tab.
 
 ### Phase 4 – Trade Plans, Journal & Risk Engine
@@ -52,6 +53,7 @@ Pulling from the master improvement plan and swing-trader feature roadmap, these
 - **Entry/Exit Management (Phase 4)**: Trade journal CRUD, ATR-based sizing, partial exits, endpoints `/api/trades/create|open|close`, expectancy reporting.
 - **Universe Scanner & Scheduled Jobs (Phases 1–2)**: Weekly symbol refresh, post-close scan, rate-limit + caching discipline, sector-level scans, top setups digest.
 - **Watchlist & Bot Commands (Phase 3)**: CRUD with statuses, Telegram `/watchlist`, `/plan`, `/scan` orchestration, triggered alerts piped into Sheets + Redis audit logs.
+- **TradingView Symbol Lab (Phase 3)**: `/tv?tvwidgetsymbol=` route exposes ticker tape, symbol info, advanced chart with EMA21/SMA50/RSI, fundamentals, technicals, news, and Chart-IMG snapshots; Analyze/Scanner/Watchlist/Top Setups provide `TV` actions that open the lab in a new tab.
 
 ## Cross-Cutting Workstreams
 - **Observability & Telemetry (PRD §8)**: Structured logs for Chart-IMG, scan durations, alert emissions; metrics exported to Grafana/Prometheus; error budget reviews every phase.
