@@ -225,7 +225,8 @@ async def analyze(
                 range_hint=times[-1] if times else None,
             )
             CHARTIMG_POST_STATUS_TOTAL.labels(status="success").inc()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Chart generation failed for {ticker_clean}: {e}", exc_info=True)
             CHARTIMG_POST_STATUS_TOTAL.labels(status="error").inc()
             chart_url = None
 
