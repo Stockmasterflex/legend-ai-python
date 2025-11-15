@@ -5,8 +5,8 @@ import logging
 import time
 
 from app.services.charting import get_charting_service
-from app.core.chart_generator import ChartGenerator, ChartConfig, get_chart_generator
 from app.services.cache import get_cache_service
+from app.infra.chartimg import build_analyze_chart
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,17 @@ class MultiTimeframeChartResponse(BaseModel):
 class ChartUsageResponse(BaseModel):
     success: bool
     usage: Dict[str, Any]
+
+
+def _is_widget_embed(url: Optional[str]) -> bool:
+    return isinstance(url, str) and "tradingview.com/widgetembed" in url.lower()
+
+
+def _interval_to_tf_label(interval: str) -> str:
+    normalized = (interval or "").lower()
+    if normalized in {"1w", "1week", "weekly", "w"}:
+        return "weekly"
+    return "daily"
 
 
 @router.post("/generate", response_model=ChartResponse)
@@ -123,6 +134,20 @@ async def generate_chart(request: ChartRequest):
             preset=request.preset
         )
 
+        plan_payload = {
+            "entry": request.entry,
+            "stop": request.stop,
+            "target": request.target,
+        }
+
+        if not chart_url or _is_widget_embed(chart_url):
+            logger.info("Chart-IMG fallback triggered for %s (interval %s)", request.ticker, request.interval)
+            chart_url = await build_analyze_chart(
+                ticker=request.ticker,
+                tf=_interval_to_tf_label(request.interval),
+                plan=plan_payload,
+            )
+
         if chart_url:
             # Cache the chart URL
             await cache.set_chart(request.ticker, request.interval, chart_url)
@@ -144,7 +169,7 @@ async def generate_chart(request: ChartRequest):
 
             return ChartResponse(
                 success=False,
-                error="Chart generation failed - using fallback",
+                error="Chart generation failed",
                 cached=False,
                 ticker=request.ticker,
                 interval=request.interval,

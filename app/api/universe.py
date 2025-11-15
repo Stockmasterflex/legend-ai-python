@@ -68,6 +68,59 @@ class QuickScanRequest(BaseModel):
     max_atr_percent: Optional[float] = None
 
 
+def _normalize_pattern_filters(patterns: Optional[List[str]]) -> set[str]:
+    """Map UI pattern labels to internal detector names."""
+    if not patterns:
+        return set()
+    alias_map = {
+        "vcp": {
+            "vcp",
+            "volatility contraction",
+            "pullback to 21 ema",
+            "pullback to 21",
+        },
+        "cup & handle": {
+            "cup & handle",
+            "cup handle",
+            "cup-and-handle",
+        },
+        "flat base": {
+            "flat base",
+            "pullback to 50",
+            "pullback to 50 sma",
+            "pullback to 50-day",
+        },
+        "breakout": {
+            "breakout",
+            "ascending triangle",
+            "symmetrical triangle",
+            "triangle",
+            "rising wedge",
+            "falling wedge",
+            "head & shoulders",
+            "inverse head & shoulders",
+        },
+    }
+    normalized = set()
+    for raw in patterns:
+        if not raw:
+            continue
+        slug = (
+            raw.replace("&amp;", "&")
+            .replace("-", " ")
+            .strip()
+            .lower()
+        )
+        if slug in {"", "all"}:
+            continue
+        slug = " ".join(slug.split())
+        for canonical, aliases in alias_map.items():
+            if slug == canonical or slug in aliases:
+                normalized.add(canonical)
+                break
+    return normalized
+
+
 @router.get("/health")
 async def health():
     """Health check for universe service"""
@@ -203,7 +256,18 @@ async def quick_scan(request: QuickScanRequest):
     universe_map = {
         "nasdaq100": ("NASDAQ 100", get_nasdaq),
         "sp500": ("S&P 500", get_sp500),
-        "focus": ("Focus", get_quick_scan_universe),
+        "focus": ("Trend Template", get_quick_scan_universe),
+    }
+
+    stats = {
+        "universe": "Focus",
+        "requested_universe": request.universe,
+        "candidates": 0,
+        "scanned": 0,
+        "cache_hits": 0,
+        "min_score": request.min_score,
+        "min_rs": request.min_rs,
+        "timeframe": "1day",
     }
 
     try:
@@ -218,6 +282,7 @@ async def quick_scan(request: QuickScanRequest):
         universe_key = request.universe.lower().strip()
         label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
         tickers = universe_fn()
+        stats["universe"] = label
         stats["candidates"] = len(tickers)
 
         def _matches_sector(symbol: str) -> bool:
@@ -238,18 +303,17 @@ async def quick_scan(request: QuickScanRequest):
 
         detector = PatternDetector()
         cache = get_cache_service()
-        spy_data = await market_data_service.get_time_series("SPY", "1day", 400)
+        spy_data = await market_data_service.get_time_series(
+            "SPY",
+            interval,
+            400 if interval == "1day" else 260,
+        )
 
-        stats = {
-            "universe": label,
-            "requested_universe": request.universe,
-            "candidates": len(filtered_universe),
-            "scanned": len(tickers_to_scan),
-            "cache_hits": 0,
-            "min_score": request.min_score,
-            "min_rs": request.min_rs,
-            "timeframe": interval,
-        }
+        stats["scanned"] = len(tickers_to_scan)
+        stats["cache_hits"] = 0
+        stats["candidates"] = len(filtered_universe)
+
+        normalized_patterns = _normalize_pattern_filters(request.pattern_types)
 
         rows: List[Dict[str, Any]] = []
 
@@ -288,9 +352,8 @@ async def quick_scan(request: QuickScanRequest):
                     continue
 
                 if request.pattern_types:
-                    allowed = {p.strip().lower() for p in request.pattern_types if p and p.strip().lower() != "all"}
                     pattern_name = (pattern_result.pattern or "").strip().lower()
-                    if allowed and pattern_name not in allowed:
+                    if normalized_patterns and pattern_name not in normalized_patterns:
                         continue
 
                 if price_data is None:
