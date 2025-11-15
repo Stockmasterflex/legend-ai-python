@@ -4,102 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Legend AI • TradingView Symbol Lab</title>
+    <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v={{ build_sha }}" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v={{ build_sha }}" />
-    <style>
-        body.tv-symbol-lab {
-            background: #05080f;
-            color: var(--color-text-primary, #e5e7eb);
-            font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-            min-height: 100vh;
-            padding: clamp(1rem, 4vw, 3rem);
-        }
-        .tv-lab {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .tv-lab-header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--spacing-lg);
-            margin-bottom: var(--spacing-2xl, 32px);
-        }
-        .tv-lab-header h1 {
-            margin: 0;
-            font-size: clamp(1.5rem, 3vw, 2.5rem);
-            background: linear-gradient(135deg, #60a5fa, #d946ef);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .tv-symbol-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-            padding: 0.35rem 1rem;
-            border-radius: var(--radius-full, 999px);
-            border: 1px solid rgba(96, 165, 250, 0.4);
-            background: rgba(15, 23, 42, 0.7);
-            letter-spacing: 0.12em;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-        .tv-lab-stack {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-xl, 28px);
-        }
-        .tv-lab-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: var(--spacing-xl, 24px);
-        }
-        .tv-lab-card {
-            background: rgba(15, 23, 42, 0.85);
-            border-radius: var(--radius-2xl, 24px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            padding: var(--spacing-lg, 24px);
-            box-shadow: 0 25px 45px rgba(3, 7, 18, 0.45);
-            min-height: 280px;
-        }
-        .tv-lab-card h2 {
-            margin-top: 0;
-            margin-bottom: var(--spacing-md, 16px);
-            font-size: 0.95rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--color-text-secondary, #9ca3af);
-        }
-        .tv-card--wide {
-            min-height: 600px;
-        }
-        .tv-card--snapshot {
-            min-height: auto;
-        }
-        .tradingview-widget-container {
-            width: 100%;
-            height: 100%;
-        }
-        .tv-snapshot {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-md);
-            align-items: center;
-            justify-content: center;
-        }
-        .tv-snapshot img {
-            width: 100%;
-            border-radius: var(--radius-xl, 20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .tv-snapshot-empty {
-            text-align: center;
-            color: var(--color-text-secondary, #9ca3af);
-        }
-    </style>
 </head>
-<body class="tv-symbol-lab" data-default-tv-symbol="__DEFAULT_TV_SYMBOL__">
-    <div class="tv-lab">
+<body class="app-shell tv-symbol-lab" data-default-tv-symbol="__DEFAULT_TV_SYMBOL__">
+    <main class="container tv-lab">
         <header class="tv-lab-header">
             <div>
                 <p class="eyebrow">Legend AI</p>
@@ -112,45 +21,55 @@
         </header>
 
         <section class="tv-lab-stack">
-            <article class="tv-lab-card" data-testid="tv-lab-ticker-tape">
-                <div class="tv-card-header">
-                    <p class="eyebrow">Market tape</p>
-                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+            <div class="tv-grid tv-grid--stacked">
+                <article class="tv-card" data-testid="tv-lab-ticker-tape">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Market tape</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-ticker-tape"></div>
+                </article>
+                <div class="tv-grid">
+                    <article class="tv-card tv-card--wide" data-testid="tv-lab-advanced-chart">
+                        <div class="tv-card-header">
+                            <p class="eyebrow">Advanced chart</p>
+                            <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                        </div>
+                        <div data-tv-widget-target="tv-template-advanced-chart"></div>
+                    </article>
+                    <article class="tv-card tv-card--wide" data-testid="tv-lab-weekly-chart">
+                        <div class="tv-card-header">
+                            <p class="eyebrow">Weekly confirmation</p>
+                            <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                        </div>
+                        <div data-tv-widget-target="tv-template-advanced-chart-weekly"></div>
+                    </article>
                 </div>
-                <div data-tv-widget-target="tv-template-ticker-tape"></div>
-            </article>
+            </div>
 
-            <article class="tv-lab-card tv-card--wide" data-testid="tv-lab-advanced-chart">
-                <div class="tv-card-header">
-                    <p class="eyebrow">Advanced chart</p>
-                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                </div>
-                <div data-tv-widget-target="tv-template-advanced-chart"></div>
-            </article>
-
-            <div class="tv-lab-grid">
-                <article class="tv-lab-card" data-testid="tv-lab-symbol-info">
+            <div class="tv-grid tv-grid--secondary">
+                <article class="tv-card" data-testid="tv-lab-symbol-info">
                     <div class="tv-card-header">
                         <p class="eyebrow">Symbol info</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
                     </div>
                     <div data-tv-widget-target="tv-template-symbol-info"></div>
                 </article>
-                <article class="tv-lab-card" data-testid="tv-lab-profile">
+                <article class="tv-card" data-testid="tv-lab-profile">
                     <div class="tv-card-header">
                         <p class="eyebrow">Company profile</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
                     </div>
                     <div data-tv-widget-target="tv-template-company-profile"></div>
                 </article>
-                <article class="tv-lab-card" data-testid="tv-lab-fundamentals">
+                <article class="tv-card" data-testid="tv-lab-fundamentals">
                     <div class="tv-card-header">
                         <p class="eyebrow">Fundamentals</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
                     </div>
                     <div data-tv-widget-target="tv-template-fundamentals"></div>
                 </article>
-                <article class="tv-lab-card" data-testid="tv-lab-technical">
+                <article class="tv-card" data-testid="tv-lab-technical">
                     <div class="tv-card-header">
                         <p class="eyebrow">Technical analysis</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
@@ -159,23 +78,27 @@
                 </article>
             </div>
 
-            <article class="tv-lab-card tv-card--wide" data-testid="tv-lab-news">
-                <div class="tv-card-header">
-                    <p class="eyebrow">Top stories</p>
-                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                </div>
-                <div data-tv-widget-target="tv-template-news-timeline"></div>
-            </article>
-
-            <article class="tv-lab-card tv-card--snapshot">
-                <h2>Legend AI Chart-IMG snapshot</h2>
-                <div class="tv-snapshot" data-testid="tv-lab-snapshot">
-                    <img id="chartimg-snapshot" alt="Legend AI snapshot" style="display:none;" />
-                    <div id="chartimg-status" class="tv-snapshot-empty">Generating snapshot…</div>
-                </div>
-            </article>
+            <div class="tv-grid tv-grid--stacked">
+                <article class="tv-card tv-card--tall" data-testid="tv-lab-news">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Top stories</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-news-timeline"></div>
+                </article>
+                <article class="tv-card tv-card--snapshot" data-testid="tv-lab-snapshot">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Legend AI snapshot</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div class="tv-snapshot">
+                        <img id="chartimg-snapshot" alt="Legend AI snapshot" style="display:none;" />
+                        <div id="chartimg-status" class="tv-snapshot-empty">Generating snapshot…</div>
+                    </div>
+                </article>
+            </div>
         </section>
-    </div>
+    </main>
 
     <!-- Shared TradingView templates -->
     <!--TV_WIDGET_TEMPLATES-->
