@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
@@ -53,7 +53,47 @@ class WatchlistItem(BaseModel):
     reason: Optional[str] = None
     target_entry: Optional[float] = None
     status: str = "Watching"
-    tags: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+    @field_validator("ticker")
+    @classmethod
+    def uppercase_ticker(cls, value: str) -> str:
+        ticker = (value or "").strip().upper()
+        if not ticker:
+            raise ValueError("ticker_required")
+        return ticker
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def split_tags(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            tags = [tag.strip() for tag in value.split(",") if tag.strip()]
+            return tags or None
+        if isinstance(value, list):
+            cleaned = [str(tag).strip() for tag in value if str(tag).strip()]
+            return cleaned or None
+        return None
+
+
+class WatchlistUpdate(BaseModel):
+    reason: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def normalize_tags(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            tags = [tag.strip() for tag in value.split(",") if tag.strip()]
+            return tags or None
+        if isinstance(value, list):
+            cleaned = [str(tag).strip() for tag in value if str(tag).strip()]
+            return cleaned or None
+        return None
 
 
 @router.post("/add")
@@ -62,7 +102,8 @@ async def add_to_watchlist(item: WatchlistItem):
     try:
         from app.services.database import get_database_service
         dbs = get_database_service()
-        dbs.add_watchlist_symbol(item.ticker, item.reason, item.tags, item.status)
+        tags_str = ",".join(item.tags) if item.tags else None
+        dbs.add_watchlist_symbol(item.ticker, item.reason, tags_str, item.status)
         all_items = dbs.get_watchlist_items()
         await _sync_cache(all_items)
         return {"success": True, "ticker": item.ticker.upper()}
@@ -74,7 +115,7 @@ async def add_to_watchlist(item: WatchlistItem):
             "reason": item.reason,
             "target_entry": item.target_entry,
             "status": item.status,
-            "tags": item.tags,
+            "tags": item.tags or [],
             "added_date": datetime.utcnow().isoformat(),
         }
         _save(db)
@@ -89,6 +130,11 @@ async def get_watchlist():
         dbs = get_database_service()
         items = dbs.get_watchlist_items()
         if items:
+            for item in items:
+                raw_tags = item.get("tags")
+                if isinstance(raw_tags, str):
+                    tags = [tag.strip() for tag in raw_tags.split(",") if tag.strip()]
+                    item["tags"] = tags
             await _sync_cache(items)
             return {"success": True, "items": items, "total": len(items)}
     except Exception:
@@ -104,11 +150,57 @@ async def get_watchlist():
 
 @router.delete("/remove/{ticker}")
 async def remove_from_watchlist(ticker: str):
-    db = _load()
     t = ticker.upper().strip()
+    try:
+        from app.services.database import get_database_service
+        dbs = get_database_service()
+        if dbs.remove_watchlist_symbol(t):
+            items = dbs.get_watchlist_items()
+            await _sync_cache(items)
+            return {"success": True, "message": f"{t} removed"}
+    except Exception:
+        pass
+    db = _load()
     if t in db:
         db.pop(t)
         _save(db)
         await _sync_cache(list(db.values()))
         return {"success": True, "message": f"{t} removed"}
     raise HTTPException(status_code=404, detail=f"{t} not in watchlist")
+
+
+@router.put("/{ticker}")
+async def update_watchlist_item(ticker: str, payload: WatchlistUpdate):
+    t = ticker.upper().strip()
+    updated = False
+    try:
+        from app.services.database import get_database_service
+        dbs = get_database_service()
+        tags_str = ",".join(payload.tags) if payload.tags else None
+        updated = dbs.update_watchlist_symbol(
+            t,
+            reason=payload.reason,
+            tags=tags_str,
+            status=payload.status,
+        )
+        if updated:
+            items = dbs.get_watchlist_items()
+            await _sync_cache(items)
+            return {"success": True}
+    except Exception:
+        updated = False
+
+    db = _load()
+    entry = db.get(t)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"{t} not in watchlist")
+    if payload.reason is not None:
+        entry["reason"] = payload.reason
+    if payload.status is not None:
+        entry["status"] = payload.status
+    if payload.tags is not None:
+        entry["tags"] = payload.tags
+    db[t] = entry
+    _save(db)
+    await _sync_cache(list(db.values()))
+    return {"success": True}
