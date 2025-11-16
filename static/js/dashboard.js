@@ -1527,54 +1527,38 @@
 
   // TradingView Demo Layout Functionality
   function initTradingViewDemo() {
-    const weeklyToggle = document.getElementById('tv-weekly-toggle');
-    const fullscreenBtn = document.getElementById('tv-fullscreen');
+    const dailyBtn = document.getElementById('tv-weekly-toggle');
+    const weeklyBtn = document.getElementById('tv-daily-toggle');
     const chartContainer = document.querySelector('.tv-demo-chart-container');
     const chartWeekly = document.querySelector('.tv-demo-chart-weekly');
 
-    if (weeklyToggle) {
-      weeklyToggle.addEventListener('click', function() {
-        const isWeekly = chartWeekly.style.display !== 'none';
-        if (isWeekly) {
-          // Switch to daily
-          chartContainer.style.display = 'block';
-          chartWeekly.style.display = 'none';
-          this.textContent = 'Weekly View';
-          this.classList.remove('tv-demo-btn--primary');
-          this.classList.add('tv-demo-btn--secondary');
-        } else {
-          // Switch to weekly
-          chartContainer.style.display = 'none';
-          chartWeekly.style.display = 'block';
-          this.textContent = 'Daily View';
-          this.classList.remove('tv-demo-btn--secondary');
-          this.classList.add('tv-demo-btn--primary');
-        }
+    if (dailyBtn && weeklyBtn) {
+      // Set initial state - daily is active
+      dailyBtn.classList.add('tv-demo-btn--primary');
+      dailyBtn.classList.remove('tv-demo-btn--secondary');
+      weeklyBtn.classList.add('tv-demo-btn--secondary');
+      weeklyBtn.classList.remove('tv-demo-btn--primary');
+
+      dailyBtn.addEventListener('click', function() {
+        // Switch to daily view
+        chartContainer.style.display = 'block';
+        chartWeekly.style.display = 'none';
+        dailyBtn.classList.add('tv-demo-btn--primary');
+        dailyBtn.classList.remove('tv-demo-btn--secondary');
+        weeklyBtn.classList.add('tv-demo-btn--secondary');
+        weeklyBtn.classList.remove('tv-demo-btn--primary');
+      });
+
+      weeklyBtn.addEventListener('click', function() {
+        // Switch to weekly view
+        chartContainer.style.display = 'none';
+        chartWeekly.style.display = 'block';
+        weeklyBtn.classList.add('tv-demo-btn--primary');
+        weeklyBtn.classList.remove('tv-demo-btn--secondary');
+        dailyBtn.classList.add('tv-demo-btn--secondary');
+        dailyBtn.classList.remove('tv-demo-btn--primary');
       });
     }
-
-    if (fullscreenBtn) {
-      fullscreenBtn.addEventListener('click', function() {
-        const mainChart = document.querySelector('.tv-demo-main-chart');
-        if (!document.fullscreenElement) {
-          mainChart.requestFullscreen().catch(err => {
-            console.log('Error attempting to enable full-screen mode:', err.message);
-          });
-        } else {
-          document.exitFullscreen();
-        }
-      });
-    }
-
-    // Handle fullscreen change events
-    document.addEventListener('fullscreenchange', function() {
-      const mainChart = document.querySelector('.tv-demo-main-chart');
-      if (document.fullscreenElement) {
-        fullscreenBtn.textContent = 'Exit Fullscreen';
-      } else {
-        fullscreenBtn.textContent = 'Fullscreen';
-      }
-    });
   }
 
   // Initialize TradingView demo when DOM is ready
