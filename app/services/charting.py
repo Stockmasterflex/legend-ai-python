@@ -342,7 +342,7 @@ class ChartingService:
         """Convert ticker symbol to TradingView format (EXCHANGE:SYMBOL)"""
         ticker = ticker.upper().strip()
 
-        # Common US stocks mapping
+        # Common US stocks mapping - try NASDAQ first as it's most common
         us_exchanges = {
             "AAPL": "NASDAQ", "MSFT": "NASDAQ", "NVDA": "NASDAQ",
             "AMZN": "NASDAQ", "TSLA": "NASDAQ", "META": "NASDAQ",
@@ -355,6 +355,23 @@ class ChartingService:
 
         exchange = us_exchanges.get(ticker, "NASDAQ")
         return f"{exchange}:{ticker}"
+
+    def _get_symbol_candidates(self, ticker: str) -> list[str]:
+        """Get list of symbol format candidates to try (NASDAQ first, then NYSE, then others)"""
+        ticker = ticker.upper().strip()
+
+        # Try NASDAQ first (most common), then NYSE, then the mapped format
+        primary = self._format_ticker(ticker)
+        candidates = [
+            f"NASDAQ:{ticker}",
+            f"NYSE:{ticker}",
+        ]
+
+        # Add the mapped format if it's different
+        if primary not in candidates:
+            candidates.append(primary)
+
+        return candidates
 
     async def generate_chart(
         self,
@@ -429,14 +446,25 @@ class ChartingService:
 
             if response.status_code == 200:
                 data = response.json()
-                # Storage endpoint returns: {"success": true, "data": {"url": "...", "expires_at": "..."}}
+                # Chart-IMG can return different response structures:
+                # 1. {"success": true, "data": {"url": "...", "expires_at": "..."}}
+                # 2. {"url": "...", "expires_at": "..."}
+                # 3. {"imageUrl": "..."}
+                chart_url = None
                 if data.get("success") and data.get("data"):
+                    # Nested structure
                     chart_url = data["data"].get("url")
                     expires_at = data["data"].get("expires_at", "N/A")
+                else:
+                    # Direct structure (same as build_analyze_chart)
+                    chart_url = data.get("url") or data.get("imageUrl") or data.get("image_url")
+                    expires_at = data.get("expires_at", "N/A")
+
+                if chart_url:
                     logger.info(f"✅ Chart generated for {ticker} ({timeframe}): {chart_url[:60]}... (expires: {expires_at})")
                     return chart_url
                 else:
-                    logger.warning(f"⚠️ Chart-IMG storage error for {ticker}: {data.get('error', 'Unknown error')}")
+                    logger.warning(f"⚠️ Chart-IMG response missing URL for {ticker}: {data}")
                     return self._get_fallback_url(ticker, timeframe)
             else:
                 logger.warning(
