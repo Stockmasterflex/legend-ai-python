@@ -180,27 +180,43 @@ async def root(request: Request):
 @app.get("/health")
 async def health(request: Request):
     """
-    Respond with a lightweight health payload.
-    CRITICAL: This endpoint must NEVER fail - it's used for Railway healthchecks.
-    All operations wrapped in try-except to ensure we always return 200 OK.
+    Enhanced health check with actual connectivity tests.
+    Returns 200 OK always for Railway healthchecks, but includes detailed status.
+    Monitoring tools should alert on status="degraded" or status="unhealthy".
     """
+    issues = []
+    warnings = []
+    overall_status = "healthy"
+
+    # Telegram configuration
     try:
         telegram_status = (
             "configured"
             if settings.telegram_bot_token and settings.telegram_bot_token != "dev-token"
             else "not_configured"
         )
-    except Exception:
+        if telegram_status == "not_configured":
+            warnings.append("Telegram bot not configured")
+    except Exception as e:
         telegram_status = "unknown"
+        issues.append(f"Telegram check failed: {str(e)}")
 
+    # Redis connectivity (actual test)
+    redis_status = "unknown"
+    redis_latency_ms = None
     try:
-        redis_status = (
-            "configured"
-            if settings.redis_url and not settings.redis_url.startswith("redis://localhost")
-            else "not_configured"
-        )
-    except Exception:
-        redis_status = "unknown"
+        from redis.asyncio import Redis
+        import time
+        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        start = time.perf_counter()
+        await redis.ping()
+        redis_latency_ms = round((time.perf_counter() - start) * 1000, 2)
+        await redis.close()
+        redis_status = "connected"
+    except Exception as e:
+        redis_status = "disconnected"
+        issues.append(f"Redis connectivity failed: {str(e)}")
+        overall_status = "unhealthy"
 
     try:
         universe_status = {
@@ -210,6 +226,7 @@ async def health(request: Request):
     except Exception:
         universe_status = {"seeded": False, "cached_symbols": 0}
 
+    # API Keys presence (not the actual keys, just boolean)
     try:
         key_presence = {
             "chartimg": bool(settings.chart_img_api_key),
@@ -217,8 +234,14 @@ async def health(request: Request):
             "finnhub": bool(settings.finnhub_api_key),
             "alpha_vantage": bool(settings.alpha_vantage_api_key),
         }
-    except Exception:
+        # Warn if Chart-IMG is not configured (critical for charts)
+        if not key_presence["chartimg"]:
+            warnings.append("Chart-IMG API key not configured - charts will not load")
+            if overall_status == "healthy":
+                overall_status = "degraded"
+    except Exception as e:
         key_presence = {}
+        issues.append(f"API keys check failed: {str(e)}")
 
     try:
         version = resolve_build_sha()
@@ -231,14 +254,19 @@ async def health(request: Request):
         webhook_url = None
 
     payload = {
-        "status": "healthy",
+        "status": overall_status,
         "telegram": telegram_status,
-        "redis": redis_status,
+        "redis": {
+            "status": redis_status,
+            "latency_ms": redis_latency_ms
+        },
         "version": version,
         "webhook_url": webhook_url,
         "universe": universe_status,
         "keys": key_presence,
         "analyze": {"cache_ttl": 3600},
+        "issues": issues,
+        "warnings": warnings,
     }
 
     try:
