@@ -30,6 +30,7 @@ from app.api.scan import router as scan_router
 from app.api.tv import router as tv_router
 from app.services.universe_store import universe_store
 from app.middleware.structured_logging import StructuredLoggingMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.utils.build_info import resolve_build_sha
 
 # Setup logging
@@ -124,6 +125,11 @@ app = FastAPI(
 
 # Structured logging sits at the top of the stack to capture everything
 app.add_middleware(StructuredLoggingMiddleware)
+
+# Add rate limiting middleware to protect against abuse
+# 60 requests per minute per IP for public endpoints
+app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+logger.info("🛡️ Rate limiting enabled: 60 requests/minute per IP")
 
 # Add CORS middleware with environment-aware origin restrictions
 # In production (Railway): only allows requests from the app's own domain
