@@ -281,7 +281,8 @@ class UniverseService:
                                     "target": pattern_result.target,
                                     "risk_reward": pattern_result.risk_reward,
                                     "current_price": pattern_result.current_price,
-                                    "source": item["source"]
+                                    "source": item["source"],
+                                    "chart_url": pattern_result.chart_url
                                 })
                                 
                                 logger.info(f"✅ {ticker}: {pattern_result.pattern} ({pattern_result.score}/10)")
