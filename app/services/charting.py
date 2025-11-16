@@ -26,13 +26,14 @@ class ChartingService:
     MAX_PARAMETERS = 5  # Max studies + drawings combined; gracefully degrade if needed
 
     CHART_PRESETS = {
-        "breakout": ["EMA21", "SMA50", "RSI"],
-        "swing": ["EMA21", "SMA50", "RSI"],
-        "momentum": ["EMA21", "EMA50", "EMA200"],
-        "support": ["EMA21", "SMA50", "RSI"],
+        "breakout": ["EMA21", "SMA50"],  # Simplified: removed RSI to reduce clutter
+        "swing": ["EMA21", "SMA50"],      # Simplified: core moving averages only
+        "momentum": ["EMA21", "SMA50"],   # Simplified: reduced from 3 EMAs
+        "support": ["EMA21", "SMA50"],    # Simplified: focus on key levels
+        "minimal": ["EMA21"],             # New: ultra-minimal for clarity
     }
 
-    CORE_STUDIES_ORDER = ["EMA21", "SMA50", "RSI"]
+    CORE_STUDIES_ORDER = ["EMA21", "SMA50"]  # Simplified: focus on key moving averages
     STUDIES_CONFIG = {
         "EMA21": {
             "name": "Moving Average Exponential",
