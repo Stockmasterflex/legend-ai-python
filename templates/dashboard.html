@@ -55,81 +55,86 @@
             </nav>
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" data-tab-panel="analyze">
-                    <h2 class="eyebrow">Analyze (Daily or Weekly only – intraday coming later)</h2>
-                    <form id="pattern-form" class="analyze-form">
-                        <div class="form-group">
-                            <label for="pattern-ticker">Ticker Symbol</label>
-                            <input
-                                id="pattern-ticker"
-                                type="text"
-                                value="AAPL"
-                                placeholder="e.g., AAPL, BRK.B, SPY"
-                                required
-                                pattern="[A-Z][A-Z0-9.^-]{0,9}"
-                                maxlength="10"
-                                title="Enter ticker symbol (e.g., AAPL, BRK.B)"
-                                class="ticker-input"
-                                list="popular-tickers"
-                            />
-                            <datalist id="popular-tickers">
-                                <option value="NASDAQ:NVDA">NVIDIA</option>
-                                <option value="NASDAQ:AAPL">Apple</option>
-                                <option value="NASDAQ:TSLA">Tesla</option>
-                                <option value="NASDAQ:MSFT">Microsoft</option>
-                                <option value="NASDAQ:GOOGL">Google</option>
-                                <option value="NYSE:SPY">S&P 500 ETF</option>
-                            </datalist>
-                            <small class="form-hint">Format: EXCHANGE:SYMBOL (Daily / Weekly supported)</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Timeframe</label>
-                            <div class="radio-group">
-                                <label class="radio-label">
-                                    <input type="radio" name="pattern-timeframe" value="1day" checked />
-                                    <span>Daily</span>
-                                </label>
-                                <label class="radio-label">
-                                    <input type="radio" name="pattern-timeframe" value="1week" />
-                                    <span>Weekly</span>
-                                </label>
-                            </div>
-                            <select id="pattern-interval" hidden>
-                                <option value="1day" selected>Daily</option>
-                                <option value="1week">Weekly</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button class="btn btn-primary" type="submit">Analyze pattern</button>
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button id="pattern-add-watchlist" class="btn btn-secondary" type="button">Add to watchlist</button>
-                        </div>
-                        <div class="form-field">
-                            <label>&nbsp;</label>
-                            <button id="pattern-snapshot" class="btn btn-ghost" type="button">Generate snapshot</button>
-                        </div>
-                    </form>
-                    <div class="analyze-panels">
-                        <div class="analyze-results">
-                            <div id="pattern-loading" class="loading-overlay" role="status" aria-live="polite">
-                                <span class="spinner" aria-hidden="true"></span>
-                                <span>Scanning Minervini template…</span>
-                            </div>
-                            <div id="pattern-results" class="results-grid"></div>
-                        </div>
-                        <aside class="analyze-chart-panel">
-                            <div class="panel-header">
-                                <div>
-                                    <p class="eyebrow">Chart View</p>
-                                    <h3 id="analyze-chart-title">Waiting for scan</h3>
+                    <h2 class="eyebrow">Analyze Ticker</h2>
+                    <div class="analyze-grid">
+                        <div class="analyze-main">
+                            <div class="chart-container card">
+                                <div class="card-header">
+                                    <h3 id="analyze-chart-title">Chart View</h3>
+                                    <span id="analyze-chart-status" class="chart-status">Idle</span>
                                 </div>
-                                <span id="analyze-chart-status" class="chart-status">Idle</span>
+                                <div class="chart-shell" id="analyze-chart" aria-live="polite">
+                                    <div class="chart-placeholder">
+                                        <p>Enter a ticker and click "Analyze" to see the chart.</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="chart-shell" id="analyze-chart" aria-live="polite"></div>
-                            <p class="chart-hint">Charts auto-sync after each analysis. Use Snapshot for a shareable link.</p>
+                        </div>
+                        <aside class="analyze-sidebar">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Analysis</h3>
+                                </div>
+                                <div id="pattern-loading" class="loading-overlay" role="status" aria-live="polite">
+                                    <span class="spinner" aria-hidden="true"></span>
+                                    <span>Scanning Minervini template…</span>
+                                </div>
+                                <div id="pattern-results" class="results-grid">
+                                    <div class="placeholder-text">
+                                        <p>Analysis results will appear here.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </aside>
+                    </div>
+                    <div class="analyze-form-container card">
+                        <form id="pattern-form" class="analyze-form">
+                            <div class="form-group">
+                                <label for="pattern-ticker">Ticker Symbol</label>
+                                <input
+                                    id="pattern-ticker"
+                                    type="text"
+                                    value="AAPL"
+                                    placeholder="e.g., AAPL, BRK.B, SPY"
+                                    required
+                                    pattern="[A-Z][A-Z0-9.^-]{0,9}"
+                                    maxlength="10"
+                                    title="Enter ticker symbol (e.g., AAPL, BRK.B)"
+                                    class="ticker-input"
+                                    list="popular-tickers"
+                                />
+                                <datalist id="popular-tickers">
+                                    <option value="NASDAQ:NVDA">NVIDIA</option>
+                                    <option value="NASDAQ:AAPL">Apple</option>
+                                    <option value="NASDAQ:TSLA">Tesla</option>
+                                    <option value="NASDAQ:MSFT">Microsoft</option>
+                                    <option value="NASDAQ:GOOGL">Google</option>
+                                    <option value="NYSE:SPY">S&P 500 ETF</option>
+                                </datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Timeframe</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="pattern-timeframe" value="1day" checked />
+                                        <span>Daily</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="pattern-timeframe" value="1week" />
+                                        <span>Weekly</span>
+                                    </label>
+                                </div>
+                                <select id="pattern-interval" hidden>
+                                    <option value="1day" selected>Daily</option>
+                                    <option value="1week">Weekly</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button class="btn btn-primary" type="submit">Analyze</button>
+                                <button id="pattern-add-watchlist" class="btn btn-secondary" type="button">Add to Watchlist</button>
+                                <button id="pattern-snapshot" class="btn btn-ghost" type="button">Snapshot</button>
+                            </div>
+                        </form>
                     </div>
                     <div class="analyze-tv-divider" aria-hidden="true"></div>
                     <section class="tradingview-demo-layout" aria-label="TradingView trading interface">
