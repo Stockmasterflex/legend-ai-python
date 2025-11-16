@@ -552,17 +552,23 @@
     const interval = mapTimeframeToInterval(tf);
     console.log(`[Chart Preview] Fetching chart for ${ticker} (${interval})`, plan);
 
-    const res = await fetch('/api/charts/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ticker,
-        interval,
-        entry: plan.entry,
-        stop: plan.stop,
-        target: plan.target,
-      }),
-    });
+    let res;
+    try {
+      res = await fetch('/api/charts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker,
+          interval,
+          entry: plan.entry,
+          stop: plan.stop,
+          target: plan.target,
+        }),
+      });
+    } catch (networkError) {
+      console.error('[Chart Preview] Network error:', networkError);
+      throw new Error('Network error - chart service unreachable');
+    }
 
     console.log(`[Chart Preview] Response status: ${res.status}`);
 
@@ -594,6 +600,12 @@
     return payload.chart_url;
   }
 
+  function renderPreviewError(slot, reason = 'Chart unavailable') {
+    if (!slot) return;
+    const suffix = reason ? ` (${reason})` : '';
+    slot.innerHTML = `<p class="chart-empty compact">Chart image unavailable${suffix}</p>`;
+  }
+
   function renderPreviewImage(slot, url, altLabel = 'Chart preview') {
     if (!slot) {
       console.warn('[Chart Preview] No slot element provided for rendering');
@@ -602,7 +614,7 @@
 
     if (!url || typeof url !== 'string') {
       console.error('[Chart Preview] Invalid URL provided:', url);
-      slot.innerHTML = '<p class="chart-empty compact">Invalid chart URL</p>';
+      renderPreviewError(slot, 'invalid chart URL');
       return;
     }
 
@@ -617,7 +629,7 @@
     // Handle image load errors (broken URLs, 404s, invalid images)
     img.addEventListener('error', (event) => {
       console.error(`[Chart Preview] Image failed to load: ${url}`, event);
-      slot.innerHTML = '<p class="chart-empty compact">Chart image unavailable (broken URL or network error)</p>';
+      renderPreviewError(slot, 'broken URL or network error');
     }, { once: true });
 
     // Optional: Log successful loads
@@ -800,7 +812,7 @@
     const row = state.universeRows.find((item) => item.ticker === ticker);
     if (!row) {
       console.error(`[Scanner Preview] Row data not found for ${ticker}`);
-      slot.innerHTML = '<p class="chart-empty compact">Setup data not found</p>';
+      renderPreviewError(slot, 'setup data not found');
       return;
     }
 
@@ -814,7 +826,7 @@
       .catch((error) => {
         console.error(`[Scanner Preview] Error for ${ticker}:`, error);
         const errorMsg = error.message || 'Chart generation failed';
-        slot.innerHTML = `<p class="chart-empty compact">${errorMsg}</p>`;
+        renderPreviewError(slot, errorMsg);
       });
   }
 
@@ -1263,7 +1275,7 @@
     const row = state.topSetups.find((item) => item.ticker === ticker);
     if (!row) {
       console.error(`[Top Setup Preview] Setup data not found for ${ticker}`);
-      slot.innerHTML = '<p class="chart-empty compact">Setup data not found</p>';
+      renderPreviewError(slot, 'setup data not found');
       return;
     }
 
@@ -1276,7 +1288,7 @@
       .catch((error) => {
         console.error(`[Top Setup Preview] Error for ${ticker}:`, error);
         const errorMsg = error.message || 'Chart generation failed';
-        slot.innerHTML = `<p class="chart-empty compact">${errorMsg}</p>`;
+        renderPreviewError(slot, errorMsg);
       });
   }
 
@@ -1295,12 +1307,12 @@
     slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
     console.log(`[Watchlist Preview] Starting preview for ${ticker}`);
 
-    // Use the current timeframe from pattern interval, defaulting to 1day
-    const timeframe = els.patternInterval?.value || '1day';
-    console.log(`[Watchlist Preview] Using timeframe: ${timeframe}`);
-
     // Watchlist items may have entry/stop/target from when they were added
     const watchItem = state.watchlistItems?.find((item) => item.ticker === ticker);
+    // Prefer stored timeframe, fallback to the current Analyze selector
+    const timeframe = watchItem?.timeframe || els.patternInterval?.value || '1day';
+    console.log(`[Watchlist Preview] Using timeframe: ${timeframe}`);
+
     const plan = watchItem ? {
       entry: watchItem.entry,
       stop: watchItem.stop,
@@ -1314,7 +1326,7 @@
       .catch((error) => {
         console.error(`[Watchlist Preview] Error for ${ticker}:`, error);
         const errorMsg = error.message || 'Chart generation failed';
-        slot.innerHTML = `<p class="chart-empty compact">${errorMsg}</p>`;
+        renderPreviewError(slot, errorMsg);
       });
   }
 
