@@ -550,7 +550,7 @@
 
   async function fetchChartImage(ticker, tf, plan = {}) {
     const interval = mapTimeframeToInterval(tf);
-    console.log(`[Chart Preview] Fetching chart for ${ticker} (${interval})`, plan);
+    console.log(`[Chart Preview] Fetching chart for ${ticker} (${interval}) from timeframe: ${tf}`, plan);
 
     let res;
     try {
@@ -820,6 +820,13 @@
 
     const tf = row.timeframe === '1week' ? '1week' : '1day';
     const plan = { entry: row.entry, stop: row.stop, target: row.target };
+
+    console.log(`[Scanner Preview] Row data for ${ticker}:`, {
+      timeframe: row.timeframe,
+      tf: tf,
+      plan: plan,
+      hasEntryStopTarget: !!(row.entry && row.stop && row.target)
+    });
 
     fetchChartImage(ticker, tf, plan)
       .then((url) => {
