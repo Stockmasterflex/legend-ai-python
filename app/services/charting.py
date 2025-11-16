@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any, List
 import httpx
 from datetime import datetime
 from uuid import uuid4
+from copy import deepcopy
 from redis.asyncio import Redis
 
 from app.config import get_settings
@@ -25,10 +26,76 @@ class ChartingService:
     MAX_PARAMETERS = 5  # Max studies + drawings combined; gracefully degrade if needed
 
     CHART_PRESETS = {
-        "breakout": ["EMA21", "SMA50", "Volume", "RSI"],
-        "swing": ["EMA21", "SMA50", "RSI", "Volume"],
-        "momentum": ["EMA21", "EMA50", "EMA200", "Volume"],
-        "support": ["EMA21", "SMA50", "Volume"],
+        "breakout": ["EMA21", "SMA50", "RSI"],
+        "swing": ["EMA21", "SMA50", "RSI"],
+        "momentum": ["EMA21", "EMA50", "EMA200"],
+        "support": ["EMA21", "SMA50", "RSI"],
+    }
+
+    CORE_STUDIES_ORDER = ["EMA21", "SMA50", "RSI"]
+    STUDIES_CONFIG = {
+        "EMA21": {
+            "name": "Moving Average Exponential",
+            "input": {"length": 21, "source": "close"},
+            "override": {
+                "Plot.linewidth": 2,
+                "Plot.plottype": "line",
+                "Plot.color": "rgb(96,165,250)"
+            }
+        },
+        "EMA50": {
+            "name": "Moving Average Exponential",
+            "input": {"length": 50, "source": "close"},
+            "override": {
+                "Plot.linewidth": 2,
+                "Plot.plottype": "line",
+                "Plot.color": "#2196F3"
+            }
+        },
+        "EMA200": {
+            "name": "Moving Average Exponential",
+            "input": {"length": 200, "source": "close"},
+            "override": {
+                "Plot.linewidth": 2,
+                "Plot.plottype": "line",
+                "Plot.color": "rgb(156,39,176)"
+            }
+        },
+        "SMA50": {
+            "name": "Moving Average",
+            "input": {"length": 50, "source": "close"},
+            "override": {
+                "Plot.linewidth": 2,
+                "Plot.plottype": "line",
+                "Plot.color": "rgb(239,68,68)"
+            }
+        },
+        "SMA200": {
+            "name": "Moving Average",
+            "input": {"length": 200, "source": "close"},
+            "override": {
+                "Plot.linewidth": 2,
+                "Plot.plottype": "line",
+                "Plot.color": "rgb(255,193,7)"
+            }
+        },
+        "MACD": {
+            "name": "MACD",
+            "input": {"fastLength": 12, "slowLength": 26, "signalLength": 9},
+            "override": {"Plot.linewidth": 2}
+        },
+        "RSI": {
+            "name": "Relative Strength Index",
+            "input": {"length": 14, "smoothingLine": "SMA", "smoothingLength": 14},
+            "override": {
+                "Plot.linewidth": 1,
+                "Plot.plottype": "line",
+                "Plot.color": "rgb(126,87,194)",
+                "UpperLimit.value": 70,
+                "LowerLimit.value": 30
+            },
+            "forceOverlay": False
+        }
     }
 
     def __init__(self):
@@ -157,6 +224,7 @@ class ChartingService:
             "width": width,
             "height": height,
             "theme": "dark",
+            "hideVolume": False,
             "studies": studies,
             "drawings": drawings,
             "timezone": "America/New_York"
@@ -172,77 +240,32 @@ class ChartingService:
         return payload
 
     def _build_studies(self, overlays: List[str]) -> List[Dict[str, Any]]:
-        """Build studies list, gracefully degrading if we have too many overlays"""
-        studies_config = {
-            "Volume": {
-                "name": "Volume",
-                "forceOverlay": False,
-                "override": {
-                    "Volume.plottype": "columns",
-                    "Volume.color.0": "rgba(247,82,95,0.5)",
-                    "Volume.color.1": "rgba(34,171,148,0.5)"
-                }
-            },
-            "RSI": {
-                "name": "Relative Strength Index",
-                "input": {"length": 14, "smoothingLine": "SMA", "smoothingLength": 14},
-                "override": {
-                    "Plot.linewidth": 2,
-                    "Plot.color": "rgb(126,87,194)",
-                    "UpperLimit.value": 70,
-                    "LowerLimit.value": 30
-                }
-            },
-            "EMA21": {
-                "name": "Moving Average Exponential",
-                "input": {"length": 21, "source": "close"},
-                # Light neon blue so it stands apart from other overlays
-                "override": {"Plot.linewidth": 2, "Plot.color": "#60a5fa"}
-            },
-            "EMA50": {
-                "name": "Moving Average Exponential",
-                "input": {"length": 50, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(33,150,243)"}
-            },
-            "EMA200": {
-                "name": "Moving Average Exponential",
-                "input": {"length": 200, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(156,39,176)"}
-            },
-            "SMA50": {
-                "name": "Moving Average",
-                "input": {"length": 50, "source": "close"},
-                # Bright red for clear contrast vs the EMA line
-                "override": {"Plot.linewidth": 2, "Plot.color": "#f87171"}
-            },
-            "SMA200": {
-                "name": "Moving Average",
-                "input": {"length": 200, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "rgb(255,193,7)"}
-            },
-            "MACD": {
-                "name": "MACD",
-                "input": {"fastLength": 12, "slowLength": 26, "signalLength": 9},
-                "override": {"Plot.linewidth": 2}
-            }
-        }
-
+        """Build a deterministic set of studies focused on EMA21, SMA50, and RSI"""
+        overlays = [(overlay or "").upper().strip() for overlay in (overlays or [])]
         studies = []
-        # Add each overlay requested, up to MAX_PARAMETERS
+
+        # Always include the core studies first
+        for key in self.CORE_STUDIES_ORDER:
+            config = self.STUDIES_CONFIG.get(key)
+            if config:
+                studies.append(deepcopy(config))
+
+        # Try to append additional overlays (if any) without exceeding MAX_PARAMETERS
         for overlay in overlays:
-            if len(studies) >= self.MAX_PARAMETERS - 1:  # Reserve 1 for drawings
-                logger.warning(f"⚠️ Skipping overlays due to MAX_PARAMETERS limit: {overlays[len(studies):]}")
+            if overlay in self.CORE_STUDIES_ORDER:
+                continue
+            if len(studies) >= self.MAX_PARAMETERS - 1:
+                logger.warning(
+                    f"⚠️ Skipping extra overlays due to MAX_PARAMETERS limit: {overlay}"
+                )
                 break
+            config = self.STUDIES_CONFIG.get(overlay)
+            if config:
+                studies.append(deepcopy(config))
 
-            if overlay in studies_config:
-                studies.append(studies_config[overlay])
-
-        # Ensure we always have at least Volume
-        if not any(s.get("name") == "Volume" for s in studies):
-            studies.insert(0, studies_config["Volume"])
-            # If adding Volume pushed us over limit, remove the last study
-            if len(studies) > self.MAX_PARAMETERS - 1:
-                studies.pop()
+        # Trim if somehow we exceeded the available slots
+        if len(studies) > self.MAX_PARAMETERS - 1:
+            studies = studies[: self.MAX_PARAMETERS - 1]
 
         return studies
 

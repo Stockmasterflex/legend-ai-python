@@ -322,9 +322,12 @@ body.tv-symbol-lab {
     height: 100%;
 }
 
+.tv-card .tv-widget-fill,
 .tv-card .tradingview-widget-container__widget {
     flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .tv-card-header {
@@ -337,11 +340,16 @@ body.tv-symbol-lab {
 }
 
 .tv-card--chart {
-    min-height: clamp(420px, 55vh, 660px);
+    min-height: clamp(360px, 50vh, 520px);
+    display: flex;
+    flex-direction: column;
 }
 
-.tv-card--chart .tradingview-widget-container {
-    min-height: 360px;
+.tv-card--chart .tv-widget-fill,
+.tv-card--chart .tradingview-widget-container,
+.tv-card--chart .tradingview-widget-container__widget {
+    width: 100%;
+    height: 100%;
 }
 
 .tv-card--info {
@@ -353,11 +361,26 @@ body.tv-symbol-lab {
 }
 
 .tv-card--fundamentals {
-    min-height: clamp(320px, 40vh, 520px);
+    min-height: clamp(420px, 52vh, 640px);
 }
 
-.tv-card--news {
+.tv-card--tv-info,
+.tv-card--tv-fundamentals,
+.tv-card--tv-news {
     min-height: clamp(320px, 40vh, 520px);
+    display: flex;
+    flex-direction: column;
+}
+
+.tv-card--tv-info .tradingview-widget-container,
+.tv-card--tv-fundamentals .tradingview-widget-container,
+.tv-card--tv-news .tradingview-widget-container,
+.tv-card--tv-info .tv-widget-fill,
+.tv-card--tv-fundamentals .tv-widget-fill,
+.tv-card--tv-news .tv-widget-fill {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
 }
 
 .tv-card--wide {
