@@ -33,7 +33,7 @@ async def build_analyze_chart(
       {"index": int, "datetime": ..., "price": ...}. Only a few markers should be sent.
     """
     settings = get_settings()
-    api_key = settings.chartimg_api_key
+    api_key = settings.chart_img_api_key
     if not api_key or api_key.lower().startswith("dev"):
         # Skip in dev/test without a real key
         return None

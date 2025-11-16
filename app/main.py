@@ -66,13 +66,17 @@ async def lifespan(app: FastAPI):
 
     try:
         await universe_store.seed()
+        logger.info("✅ Universe store seeded successfully")
     except Exception as exc:
-        logger.warning("universe_seed skipped: %s", exc)
+        logger.warning("⚠️ Universe seed skipped (non-critical): %s", exc)
 
-    # Set webhook automatically
-    await setup_telegram_webhook()
+    # Set webhook automatically (non-critical, won't block startup)
+    try:
+        await setup_telegram_webhook()
+    except Exception as exc:
+        logger.warning("⚠️ Telegram webhook setup failed (non-critical): %s", exc)
 
-    logger.info("Bot started successfully!")
+    logger.info("✅ Bot started successfully!")
 
     yield
 
@@ -170,47 +174,78 @@ async def root(request: Request):
 
 @app.get("/health")
 async def health(request: Request):
-    """Respond with a lightweight plan-friendly health payload."""
-    telegram_status = (
-        "configured"
-        if settings.telegram_bot_token and settings.telegram_bot_token != "dev-token"
-        else "not_configured"
-    )
+    """
+    Respond with a lightweight health payload.
+    CRITICAL: This endpoint must NEVER fail - it's used for Railway healthchecks.
+    All operations wrapped in try-except to ensure we always return 200 OK.
+    """
+    try:
+        telegram_status = (
+            "configured"
+            if settings.telegram_bot_token and settings.telegram_bot_token != "dev-token"
+            else "not_configured"
+        )
+    except Exception:
+        telegram_status = "unknown"
 
-    redis_status = (
-        "configured"
-        if settings.redis_url and not settings.redis_url.startswith("redis://localhost")
-        else "not_configured"
-    )
+    try:
+        redis_status = (
+            "configured"
+            if settings.redis_url and not settings.redis_url.startswith("redis://localhost")
+            else "not_configured"
+        )
+    except Exception:
+        redis_status = "unknown"
 
-    universe_status = {
-        "seeded": bool(universe_store._memory),
-        "cached_symbols": len(universe_store._memory),
-    }
+    try:
+        universe_status = {
+            "seeded": bool(universe_store._memory),
+            "cached_symbols": len(universe_store._memory),
+        }
+    except Exception:
+        universe_status = {"seeded": False, "cached_symbols": 0}
 
-    key_presence = {
-        "chartimg": bool(settings.chart_img_api_key),
-        "twelvedata": bool(settings.twelvedata_api_key),
-        "finnhub": bool(settings.finnhub_api_key),
-        "alpha_vantage": bool(settings.alpha_vantage_api_key),
-    }
+    try:
+        key_presence = {
+            "chartimg": bool(settings.chart_img_api_key),
+            "twelvedata": bool(settings.twelvedata_api_key),
+            "finnhub": bool(settings.finnhub_api_key),
+            "alpha_vantage": bool(settings.alpha_vantage_api_key),
+        }
+    except Exception:
+        key_presence = {}
+
+    try:
+        version = resolve_build_sha()
+    except Exception:
+        version = "unknown"
+
+    try:
+        webhook_url = settings.telegram_webhook_url
+    except Exception:
+        webhook_url = None
 
     payload = {
         "status": "healthy",
         "telegram": telegram_status,
         "redis": redis_status,
-        "version": resolve_build_sha(),
-        "webhook_url": settings.telegram_webhook_url,
+        "version": version,
+        "webhook_url": webhook_url,
         "universe": universe_status,
         "keys": key_presence,
         "analyze": {"cache_ttl": 3600},
     }
-    request.state.telemetry = {
-        "event": "health",
-        "status": payload["status"],
-        "symbol": None,
-        "interval": None,
-    }
+
+    try:
+        request.state.telemetry = {
+            "event": "health",
+            "status": payload["status"],
+            "symbol": None,
+            "interval": None,
+        }
+    except Exception:
+        pass  # Telemetry is not critical for health check
+
     return payload
 
 if __name__ == "__main__":
