@@ -75,6 +75,7 @@ class ScanResult(BaseModel):
     risk_reward: float
     current_price: Optional[float]
     source: str  # "SP500" or "NASDAQ100"
+    chart_url: Optional[str] = None  # Chart-IMG preview URL
 
 
 class ScanResponse(BaseModel):
