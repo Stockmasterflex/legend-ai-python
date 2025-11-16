@@ -603,7 +603,9 @@
   function renderPreviewError(slot, reason = 'Chart unavailable') {
     if (!slot) return;
     const suffix = reason ? ` (${reason})` : '';
-    slot.innerHTML = `<p class="chart-empty compact">Chart image unavailable${suffix}</p>`;
+    const isApiError = reason.includes('Chart-IMG') || reason.includes('API');
+    const helpText = isApiError ? '<br><small>Set CHARTIMG_API_KEY in environment</small>' : '';
+    slot.innerHTML = `<p class="chart-empty compact">Chart image unavailable${suffix}${helpText}</p>`;
   }
 
   function renderPreviewImage(slot, url, altLabel = 'Chart preview') {
