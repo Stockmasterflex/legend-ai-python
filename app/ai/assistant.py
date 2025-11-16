@@ -16,11 +16,10 @@ except ImportError:
     OPENAI_AVAILABLE = False
     AsyncOpenAI = None
 
-from app.data.market_data import MarketDataService
+from app.services.market_data import MarketDataService
 from app.detectors.advanced.patterns import AdvancedPatternDetector
 from app.technicals.trendlines import AutoTrendlineDetector
 from app.technicals.fibonacci import FibonacciCalculator
-from app.analysis.indicators import TechnicalIndicators
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +106,6 @@ class AIFinancialAssistant:
         self.pattern_detector = AdvancedPatternDetector(min_confidence=60.0)
         self.trendline_detector = AutoTrendlineDetector()
         self.fib_calculator = FibonacciCalculator()
-        self.indicators = TechnicalIndicators()
 
         # Conversation history (session-based, should be stored per user)
         self.conversation_history: List[Dict] = []
