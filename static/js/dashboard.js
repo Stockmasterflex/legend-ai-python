@@ -408,6 +408,30 @@
   }
 
   function bindEvents() {
+    // Global action button delegation
+    document.addEventListener('click', (e) => {
+      const actionBtn = e.target.closest('[data-action]');
+      if (!actionBtn) return;
+
+      const action = actionBtn.dataset.action;
+      const ticker = actionBtn.dataset.ticker;
+
+      switch(action) {
+        case 'view-chart':
+          viewChart(ticker);
+          break;
+        case 'add-watchlist':
+          addToWatchlist(ticker);
+          break;
+        case 'set-alert':
+          setAlert(ticker);
+          break;
+        case 'copy-setup':
+          copySetup(ticker);
+          break;
+      }
+    });
+
     els.patternForm?.addEventListener('submit', (e) => {
       e.preventDefault();
       const ticker = els.patternTicker.value.trim().toUpperCase();
@@ -451,7 +475,14 @@
     els.watchlistFilter?.addEventListener('change', () => renderWatchlist());
     els.watchlistCancel?.addEventListener('click', () => exitWatchlistEditMode());
 
+    // Watchlist search with debounce
+    const watchlistSearch = document.getElementById('watchlist-search');
+    if (watchlistSearch) {
+      watchlistSearch.addEventListener('input', debounce(() => renderWatchlist(), 300));
+    }
+
     els.topRefresh?.addEventListener('click', () => loadTopSetups(true));
+    document.getElementById('top-setups-export')?.addEventListener('click', exportTopSetupsCsv);
     els.manualScanBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       runManualScan();
@@ -515,13 +546,13 @@
   }
 
   function renderActionButtons(ticker, hasChart = false) {
-    const safeTicker = (ticker || '').replace(/'/g, "\\'");
+    const safeTicker = (ticker || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     return `
       <div class="action-buttons">
-        ${hasChart ? `<button class="btn-icon" type="button" onclick="viewChart('${safeTicker}')">📈</button>` : ''}
-        <button class="btn-icon" type="button" onclick="addToWatchlist('${safeTicker}')">⭐</button>
-        <button class="btn-icon" type="button" onclick="setAlert('${safeTicker}')">🔔</button>
-        <button class="btn-icon" type="button" onclick="copySetup('${safeTicker}')">📋</button>
+        ${hasChart ? `<button class="btn-icon" type="button" data-action="view-chart" data-ticker="${safeTicker}" aria-label="View chart for ${safeTicker}">📈</button>` : ''}
+        <button class="btn-icon" type="button" data-action="add-watchlist" data-ticker="${safeTicker}" aria-label="Add ${safeTicker} to watchlist">⭐</button>
+        <button class="btn-icon" type="button" data-action="set-alert" data-ticker="${safeTicker}" aria-label="Set alert for ${safeTicker}">🔔</button>
+        <button class="btn-icon" type="button" data-action="copy-setup" data-ticker="${safeTicker}" aria-label="Copy ${safeTicker} setup">📋</button>
       </div>`;
   }
 
@@ -1180,12 +1211,20 @@
   function renderWatchlist(items = state.watchlistItems || []) {
     const filter = els.watchlistFilter?.value || 'all';
     const tagFilters = readTagSelection(els.watchlistTagFilter);
+    const searchQuery = (document.getElementById('watchlist-search')?.value || '').trim().toLowerCase();
+
     const filtered = items.filter((item) => {
       const status = item.status || 'Watching';
       const matchesStatus = filter === 'all' || status === filter;
       const tags = normalizeTags(item.tags);
       const matchesTags = !tagFilters.length || tagFilters.every((tag) => tags.includes(tag));
-      return matchesStatus && matchesTags;
+
+      // Search in ticker and reason
+      const matchesSearch = !searchQuery ||
+        (item.ticker || '').toLowerCase().includes(searchQuery) ||
+        (item.reason || '').toLowerCase().includes(searchQuery);
+
+      return matchesStatus && matchesTags && matchesSearch;
     });
     if (!filtered.length) {
       if (els.watchlistEmpty) {
@@ -1778,6 +1817,35 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function exportTopSetupsCsv() {
+    if (!state.topSetups.length) {
+      toast('Load top setups before exporting.', 'error');
+      return;
+    }
+    const headers = ['Ticker', 'Pattern', 'Score', 'Source', 'Entry', 'Stop', 'Target', 'RiskReward'];
+    const lines = state.topSetups.map((row) => [
+      row.ticker,
+      row.pattern || '',
+      Number(row.score || 0).toFixed(1),
+      row.source || '',
+      Number(row.entry || 0).toFixed(2),
+      Number(row.stop || 0).toFixed(2),
+      Number(row.target || 0).toFixed(2),
+      Number(row.risk_reward || 0).toFixed(2)
+    ]);
+    const csv = [headers.join(','), ...lines.map((line) => line.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `legend-ai-top-setups-${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Top setups exported successfully', 'success');
+  }
+
   function toggleLoading(el, show) {
     if (!el) return;
     el.classList.toggle('active', Boolean(show));
@@ -1827,15 +1895,27 @@
     closeBtn.className = 'toast-close';
     closeBtn.setAttribute('aria-label', 'Dismiss notification');
     closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => toastEl.remove());
+    closeBtn.addEventListener('click', () => {
+      clearTimeout(toastEl._hideTimeout);
+      toastEl.remove();
+    });
     toastEl.appendChild(closeBtn);
 
     els.toastStack.appendChild(toastEl);
     setTimeout(() => toastEl.classList.add('show'), 10);
-    setTimeout(() => {
-      toastEl.classList.remove('show');
-      setTimeout(() => toastEl.remove(), 300);
-    }, timeout);
+
+    // Auto-hide with pause on hover
+    const scheduleHide = () => {
+      toastEl._hideTimeout = setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => toastEl.remove(), 300);
+      }, timeout);
+    };
+
+    toastEl.addEventListener('mouseenter', () => clearTimeout(toastEl._hideTimeout));
+    toastEl.addEventListener('mouseleave', scheduleHide);
+
+    scheduleHide();
   }
 
   function updateKpiScan() {
