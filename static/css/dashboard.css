@@ -137,10 +137,11 @@
 }
 
 .analyze-chart-panel {
-    background: rgba(15, 23, 42, 0.8);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-2xl);
     padding: var(--spacing-xl);
+    backdrop-filter: blur(10px);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
@@ -654,8 +655,9 @@ body.tv-symbol-lab {
 .scanner-meta-panel {
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-2xl);
-    background: rgba(15, 23, 42, 0.8);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
     padding: var(--spacing-xl);
+    backdrop-filter: blur(10px);
 }
 
 .scanner-meta-grid {
@@ -749,15 +751,24 @@ body.tv-symbol-lab {
     font-size: var(--font-size-md);
     text-align: center;
     padding: var(--spacing-xl);
-    background: rgba(139, 92, 246, 0.05);
-    border: 1px dashed rgba(139, 92, 246, 0.3);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
+    border: 1px solid rgba(139, 92, 246, 0.3);
     border-radius: var(--radius-lg);
-    font-style: italic;
+    backdrop-filter: blur(10px);
 }
 
 .chart-empty.compact {
     padding: var(--spacing-md);
     font-size: var(--font-size-sm);
+}
+
+/* Hide any SVG placeholder text that might show through */
+.chart-shell img[src^="data:image/svg"] {
+    filter: brightness(0.7);
+}
+
+.preview-block img[src^="data:image/svg"] {
+    display: none;
 }
 
 .preview-block {
@@ -853,15 +864,21 @@ body.tv-symbol-lab {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
     flex-wrap: wrap;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-radius: var(--radius-2xl);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
 }
 
 .top-setups-actions {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    flex-wrap: wrap;
 }
 
 .top-setups-meta {
@@ -887,10 +904,11 @@ body.tv-symbol-lab {
 }
 
 .result-card {
-    background: rgba(55, 65, 81, 0.8);
+    background: rgba(31, 41, 55, 0.8);
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-xl);
     padding: var(--spacing-lg);
+    backdrop-filter: blur(10px);
     transition: all var(--transition-base);
     animation: slideInUp 0.5s ease-out;
 }
@@ -907,9 +925,9 @@ body.tv-symbol-lab {
 }
 
 .result-card:hover {
-    border-color: var(--color-neon-purple);
-    box-shadow: var(--glow-purple-sm);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    border-color: var(--color-neon-aqua);
+    box-shadow: var(--glow-aqua-sm);
 }
 
 .result-header {
@@ -1046,12 +1064,17 @@ body.tv-symbol-lab {
     flex-wrap: wrap;
     gap: var(--spacing-md);
     align-items: center;
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .top-card-buttons {
     display: flex;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .internals-summary-stack {
@@ -1067,10 +1090,18 @@ body.tv-symbol-lab {
 }
 
 .internals-summary .summary-card {
-    background: rgba(15, 23, 42, 0.8);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-2xl);
     padding: var(--spacing-lg);
+    backdrop-filter: blur(10px);
+    transition: all var(--transition-base);
+}
+
+.internals-summary .summary-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-neon-aqua);
+    box-shadow: var(--glow-aqua-sm);
 }
 
 .internals-summary h3 {
@@ -1198,6 +1229,54 @@ body.tv-symbol-lab {
 
     .ticker-symbol {
         font-size: var(--font-size-xl);
+    }
+
+    .top-plan-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+
+    .top-card-buttons {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .top-card-buttons .btn {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .result-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .scanner-meta-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .top-setups-header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: var(--spacing-md);
+    }
+
+    .top-setups-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .top-setups-actions .btn {
+        width: 100%;
+    }
+
+    .action-buttons {
+        justify-content: stretch;
+    }
+
+    .action-buttons .btn-icon {
+        flex: 1;
     }
 }
 
@@ -1557,10 +1636,11 @@ textarea:focus {
 }
 
 .watchlist-form-banner {
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px dashed var(--color-border-subtle);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
+    border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-2xl);
     padding: var(--spacing-md) var(--spacing-lg);
+    backdrop-filter: blur(10px);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1984,7 +2064,8 @@ textarea:focus {
     padding: var(--spacing-md) var(--spacing-lg);
     border-radius: var(--radius-xl);
     border: 1px solid var(--color-border-subtle);
-    background: rgba(15, 23, 42, 0.85);
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(88, 28, 135, 0.25));
+    backdrop-filter: blur(10px);
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-lg);
@@ -2095,6 +2176,11 @@ textarea:focus {
     gap: var(--spacing-xs);
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
+}
+
+.action-buttons .btn-icon {
+    flex-shrink: 0;
 }
 
 .btn-icon {
