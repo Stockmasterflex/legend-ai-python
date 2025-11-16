@@ -199,15 +199,15 @@ async def healthz():
 @app.get("/health")
 async def health(request: Request):
     """
-    Enhanced health check with actual connectivity tests.
-    Returns 200 OK always for Railway healthchecks, but includes detailed status.
-    Monitoring tools should alert on status="degraded" or status="unhealthy".
+    Fast health check for Railway deployment.
+    Always returns 200 OK immediately without blocking connectivity tests.
+    Use /health/detailed for full diagnostics.
     """
     issues = []
     warnings = []
     overall_status = "healthy"
 
-    # Telegram configuration
+    # Telegram configuration (non-blocking check)
     try:
         telegram_status = (
             "configured"
@@ -220,26 +220,16 @@ async def health(request: Request):
         telegram_status = "unknown"
         issues.append(f"Telegram check failed: {str(e)}")
 
-    # Redis connectivity (actual test - but don't fail if Redis is down)
-    redis_status = "unknown"
-    redis_latency_ms = None
+    # Redis status (config check only - no actual connection test for speed)
     try:
-        from redis.asyncio import Redis
-        import time
-        redis = Redis.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=2)
-        start = time.perf_counter()
-        await redis.ping()
-        redis_latency_ms = round((time.perf_counter() - start) * 1000, 2)
-        await redis.close()
-        redis_status = "connected"
-        logger.info(f"✅ Redis connected (latency: {redis_latency_ms}ms)")
+        redis_status = "configured" if settings.redis_url else "not_configured"
+        if redis_status == "not_configured":
+            warnings.append("Redis not configured - caching disabled")
+            if overall_status == "healthy":
+                overall_status = "degraded"
     except Exception as e:
-        redis_status = "disconnected"
-        warnings.append(f"Redis connectivity failed: {str(e)}")
-        # Don't mark as unhealthy - app can work without Redis (just slower)
-        if overall_status == "healthy":
-            overall_status = "degraded"
-        logger.warning(f"⚠️ Redis not available: {e}")
+        redis_status = "unknown"
+        warnings.append(f"Redis check failed: {str(e)}")
 
     try:
         universe_status = {
@@ -279,10 +269,7 @@ async def health(request: Request):
     payload = {
         "status": overall_status,
         "telegram": telegram_status,
-        "redis": {
-            "status": redis_status,
-            "latency_ms": redis_latency_ms
-        },
+        "redis": redis_status,
         "version": version,
         "webhook_url": webhook_url,
         "universe": universe_status,
