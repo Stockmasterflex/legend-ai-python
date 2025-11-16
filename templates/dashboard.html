@@ -423,9 +423,27 @@
                             <input id="watchlist-reason" type="text" placeholder="VCP base, post-earnings drift…" />
                         </div>
                         <div class="form-field full">
-                            <label for="watchlist-tags">Tags</label>
-                            <div id="watchlist-tags" class="tag-toggle-group" role="group" aria-label="Watchlist tags"></div>
-                            <small>Click tags to toggle selections.</small>
+                            <label for="watchlist-tags-select">Tags</label>
+                            <select id="watchlist-tags-select" multiple size="6" class="select">
+                                <option value="Breakout">Breakout</option>
+                                <option value="Momentum">Momentum</option>
+                                <option value="VCP">VCP</option>
+                                <option value="Pullback">Pullback</option>
+                                <option value="Earnings">Earnings</option>
+                                <option value="Post-earnings drift">Post-earnings drift</option>
+                                <option value="Leader">Leader</option>
+                                <option value="Laggard">Laggard</option>
+                                <option value="Reclaim of 21 EMA">Reclaim of 21 EMA</option>
+                                <option value="Reclaim of 50 SMA">Reclaim of 50 SMA</option>
+                                <option value="First pullback">First pullback</option>
+                                <option value="Late-stage base">Late-stage base</option>
+                                <option value="Extended">Extended</option>
+                                <option value="Gap up">Gap up</option>
+                                <option value="Base-on-base">Base-on-base</option>
+                                <option value="Short squeeze">Short squeeze</option>
+                                <option value="Power trend">Power trend</option>
+                            </select>
+                            <small>Hold Ctrl/Cmd to select multiple tags.</small>
                         </div>
                         <div class="form-field">
                             <label>&nbsp;</label>
@@ -456,9 +474,28 @@
                             </select>
                         </div>
                         <div class="form-field">
-                            <label for="watchlist-tag-filter">Tag filter</label>
-                            <div id="watchlist-tag-filter" class="tag-toggle-group tag-toggle-filter" role="group" aria-label="Filter by tag"></div>
-                            <small>Filters apply immediately; click again to clear.</small>
+                            <label for="watchlist-tag-filter-select">Tag filter</label>
+                            <select id="watchlist-tag-filter-select" multiple size="4" class="select">
+                                <option value="">All Tags</option>
+                                <option value="Breakout">Breakout</option>
+                                <option value="Momentum">Momentum</option>
+                                <option value="VCP">VCP</option>
+                                <option value="Pullback">Pullback</option>
+                                <option value="Earnings">Earnings</option>
+                                <option value="Post-earnings drift">Post-earnings drift</option>
+                                <option value="Leader">Leader</option>
+                                <option value="Laggard">Laggard</option>
+                                <option value="Reclaim of 21 EMA">Reclaim of 21 EMA</option>
+                                <option value="Reclaim of 50 SMA">Reclaim of 50 SMA</option>
+                                <option value="First pullback">First pullback</option>
+                                <option value="Late-stage base">Late-stage base</option>
+                                <option value="Extended">Extended</option>
+                                <option value="Gap up">Gap up</option>
+                                <option value="Base-on-base">Base-on-base</option>
+                                <option value="Short squeeze">Short squeeze</option>
+                                <option value="Power trend">Power trend</option>
+                            </select>
+                            <small>Hold Ctrl/Cmd to select multiple tags. Filters apply immediately.</small>
                         </div>
                         <div class="watchlist-density" role="group" aria-label="Watchlist density">
                             <span class="meta-label">Density</span>
