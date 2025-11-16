@@ -171,6 +171,23 @@ async def root(request: Request):
 @app.get("/health")
 async def health(request: Request):
     """Detailed health check - resilient to missing services"""
+    import os
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Debug environment variables at startup
+    logger.info("🏥 Health check - Environment variables:")
+    logger.info(f"🏥 CHARTIMG_API_KEY present: {bool(os.getenv('CHARTIMG_API_KEY'))}")
+    logger.info(f"🏥 REDIS_URL present: {bool(os.getenv('REDIS_URL'))}")
+    logger.info(f"🏥 DATABASE_URL present: {bool(os.getenv('DATABASE_URL'))}")
+    logger.info(f"🏥 TWELVEDATA_API_KEY present: {bool(os.getenv('TWELVEDATA_API_KEY'))}")
+
+    logger.info("🏥 Settings values:")
+    logger.info(f"🏥 chartimg_api_key: {bool(settings.chartimg_api_key)}")
+    logger.info(f"🏥 redis_url: {settings.redis_url}")
+    logger.info(f"🏥 database_url: {bool(settings.database_url)}")
+
     # Test Telegram connectivity (non-blocking)
     telegram_status = "unknown"
     try:
