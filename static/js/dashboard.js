@@ -27,6 +27,7 @@
     analyzeChartRequest: null,
     watchlistEdit: null,
     watchlistItems: [],
+    watchlistPreviewsLoaded: false,
   };
 
   const WATCHLIST_TAG_LIBRARY = [
@@ -340,6 +341,11 @@
     state.activeTab = tab;
     if (tab === 'top' && !state.topSetupsLoaded) {
       loadTopSetups();
+    }
+    // Auto-load watchlist previews when tab is activated (first 20 only)
+    if (tab === 'watchlist' && !state.watchlistPreviewsLoaded && state.watchlistItems.length > 0) {
+      // Delay slightly to ensure DOM is ready
+      setTimeout(() => autoLoadWatchlistPreviews(), 100);
     }
     tabs.forEach((btn) => {
       const tabKey = btn.dataset.tabTarget || (btn.textContent || '').toLowerCase();
@@ -810,7 +816,7 @@
     });
   }
 
-  function handleScannerChartPreview(ticker) {
+  async function handleScannerChartPreview(ticker) {
     if (!ticker) {
       console.warn('[Scanner Preview] No ticker provided');
       return;
@@ -832,25 +838,39 @@
       return;
     }
 
-    const tf = row.timeframe === '1week' ? '1week' : '1day';
-    const plan = { entry: row.entry, stop: row.stop, target: row.target };
+    const interval = row.timeframe === '1week' ? '1W' : '1D';
 
-    console.log(`[Scanner Preview] Row data for ${ticker}:`, {
-      timeframe: row.timeframe,
-      tf: tf,
-      plan: plan,
-      hasEntryStopTarget: !!(row.entry && row.stop && row.target)
-    });
-
-    fetchChartImage(ticker, tf, plan)
-      .then((url) => {
-        renderPreviewImage(slot, url, `${ticker} chart preview`);
-      })
-      .catch((error) => {
-        console.error(`[Scanner Preview] Error for ${ticker}:`, error);
-        const errorMsg = error.message || 'Chart generation failed';
-        renderPreviewError(slot, errorMsg);
+    try {
+      // Use batch API for single preview (benefits from caching)
+      const res = await fetch('/api/charts/preview/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'scanner',
+          items: [{ symbol: ticker, interval: interval }]
+        })
       });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.success) {
+        const errorMsg = payload.error || payload.detail || 'Chart generation failed';
+        renderPreviewError(slot, errorMsg);
+        return;
+      }
+
+      const result = payload.results[0];
+      if (result && result.status === 'ok' && result.image_url) {
+        renderPreviewImage(slot, result.image_url, `${ticker} chart preview`);
+        console.log(`[Scanner Preview] ✓ ${ticker} ${result.cached ? '(cached)' : '(fresh)'}`);
+      } else {
+        const errorMsg = result?.error || 'Chart unavailable';
+        renderPreviewError(slot, errorMsg);
+      }
+    } catch (error) {
+      console.error(`[Scanner Preview] Error for ${ticker}:`, error);
+      renderPreviewError(slot, error.message || 'Network error');
+    }
   }
 
   function renderScannerMeta(stats = {}) {
@@ -1220,9 +1240,7 @@
       const stop = Number(item.stop || 0).toFixed(2);
       const target = Number(item.target || 0).toFixed(2);
       const riskReward = Number(item.risk_reward || 0).toFixed(2);
-      const chartContent = item.chart_url
-        ? `<img src="${item.chart_url}" alt="${item.ticker} chart" class="preview-thumb" loading="lazy" />`
-        : '<p class="chart-empty compact">Use Preview chart to sync a fresh snapshot.</p>';
+      const chartContent = '<p class="chart-empty compact">Loading preview...</p>';
       return `
         <article class="result-card top-setup-card">
           <div class="result-header">
@@ -1245,7 +1263,7 @@
           <div class="top-card-buttons">
             <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
             <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
-            <button class="btn btn-secondary" data-top-chart="${item.ticker}">Preview chart</button>
+            <button class="btn btn-secondary" data-top-chart="${item.ticker}">Refresh chart</button>
           </div>
           </div>
           <div class="top-card-preview">
@@ -1257,6 +1275,79 @@
     }).join('');
     els.topGrid.innerHTML = cards;
     attachTopSetupActions();
+    // Auto-load all preview charts using batch API
+    autoLoadTopSetupPreviews();
+  }
+
+  async function autoLoadTopSetupPreviews() {
+    if (!state.topSetups.length) {
+      console.log('[Top Setups] No setups to preview');
+      return;
+    }
+
+    console.log(`[Top Setups] Auto-loading ${state.topSetups.length} preview charts`);
+
+    // Build batch request
+    const items = state.topSetups.map((setup) => ({
+      symbol: setup.ticker,
+      interval: '1D'
+    }));
+
+    try {
+      const res = await fetch('/api/charts/preview/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'top_setups',
+          items: items
+        })
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.success) {
+        const errorMsg = payload.error || payload.detail || `Batch preview failed (${res.status})`;
+        console.error('[Top Setups] Batch preview error:', errorMsg);
+        // Show friendly error in all slots
+        state.topSetups.forEach((setup) => {
+          const slot = els.topGrid?.querySelector(`[data-top-slot="${setup.ticker}"]`);
+          if (slot) {
+            renderPreviewError(slot, errorMsg);
+          }
+        });
+        return;
+      }
+
+      console.log(`[Top Setups] Batch preview successful: ${payload.successful}/${payload.total} charts`);
+
+      // Update each preview slot with the result
+      payload.results.forEach((result) => {
+        const slot = els.topGrid?.querySelector(`[data-top-slot="${result.symbol}"]`);
+        if (!slot) {
+          console.warn(`[Top Setups] Slot not found for ${result.symbol}`);
+          return;
+        }
+
+        if (result.status === 'ok' && result.image_url) {
+          renderPreviewImage(slot, result.image_url, `${result.symbol} preview`);
+          console.log(`[Top Setups] ✓ ${result.symbol} ${result.cached ? '(cached)' : '(fresh)'}`);
+        } else {
+          const errorMsg = result.error || 'Chart unavailable';
+          renderPreviewError(slot, errorMsg);
+          console.warn(`[Top Setups] ✗ ${result.symbol}: ${errorMsg}`);
+        }
+      });
+
+    } catch (error) {
+      console.error('[Top Setups] Batch preview exception:', error);
+      // Show network error in all slots
+      state.topSetups.forEach((setup) => {
+        const slot = els.topGrid?.querySelector(`[data-top-slot="${setup.ticker}"]`);
+        if (slot) {
+          renderPreviewError(slot, 'Network error - unable to load previews');
+        }
+      });
+    }
   }
 
   function attachTopSetupActions() {
@@ -1280,7 +1371,7 @@
     });
   }
 
-  function handleTopSetupChartPreview(ticker) {
+  async function handleTopSetupChartPreview(ticker) {
     if (!ticker) {
       console.warn('[Top Setup Preview] No ticker provided');
       return;
@@ -1292,30 +1383,121 @@
       return;
     }
 
-    slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
-    console.log(`[Top Setup Preview] Starting preview for ${ticker}`);
+    slot.innerHTML = '<p class="chart-empty compact">Refreshing chart…</p>';
+    console.log(`[Top Setup Preview] Refreshing preview for ${ticker}`);
 
-    const row = state.topSetups.find((item) => item.ticker === ticker);
-    if (!row) {
-      console.error(`[Top Setup Preview] Setup data not found for ${ticker}`);
-      renderPreviewError(slot, 'setup data not found');
+    try {
+      // Use batch API for single refresh (benefits from caching)
+      const res = await fetch('/api/charts/preview/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'top_setups',
+          items: [{ symbol: ticker, interval: '1D' }]
+        })
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.success) {
+        const errorMsg = payload.error || payload.detail || 'Chart refresh failed';
+        renderPreviewError(slot, errorMsg);
+        return;
+      }
+
+      const result = payload.results[0];
+      if (result && result.status === 'ok' && result.image_url) {
+        renderPreviewImage(slot, result.image_url, `${ticker} preview`);
+        console.log(`[Top Setup Preview] ✓ ${ticker} refreshed ${result.cached ? '(cached)' : '(fresh)'}`);
+      } else {
+        const errorMsg = result?.error || 'Chart unavailable';
+        renderPreviewError(slot, errorMsg);
+      }
+    } catch (error) {
+      console.error(`[Top Setup Preview] Error for ${ticker}:`, error);
+      renderPreviewError(slot, error.message || 'Network error');
+    }
+  }
+
+  async function autoLoadWatchlistPreviews() {
+    // Get currently filtered watchlist items
+    const filter = els.watchlistFilter?.value || 'all';
+    const tagFilters = readTagSelection(els.watchlistTagFilter);
+    const filtered = state.watchlistItems.filter((item) => {
+      const status = item.status || 'Watching';
+      const matchesStatus = filter === 'all' || status === filter;
+      const tags = normalizeTags(item.tags);
+      const matchesTags = !tagFilters.length || tagFilters.every((tag) => tags.includes(tag));
+      return matchesStatus && matchesTags;
+    });
+
+    // Only load first 20 to conserve Chart-IMG quota
+    const itemsToLoad = filtered.slice(0, 20);
+
+    if (!itemsToLoad.length) {
+      console.log('[Watchlist] No items to preview (filtered or empty)');
+      state.watchlistPreviewsLoaded = true;
       return;
     }
 
-    const plan = { entry: row.entry, stop: row.stop, target: row.target };
+    console.log(`[Watchlist] Auto-loading ${itemsToLoad.length} preview charts (first 20 of ${filtered.length} filtered items)`);
 
-    fetchChartImage(ticker, '1day', plan)
-      .then((url) => {
-        renderPreviewImage(slot, url, `${ticker} chart preview`);
-      })
-      .catch((error) => {
-        console.error(`[Top Setup Preview] Error for ${ticker}:`, error);
-        const errorMsg = error.message || 'Chart generation failed';
-        renderPreviewError(slot, errorMsg);
+    // Build batch request
+    const items = itemsToLoad.map((item) => ({
+      symbol: item.ticker,
+      interval: '1D'
+    }));
+
+    try {
+      const res = await fetch('/api/charts/preview/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'watchlist',
+          items: items
+        })
       });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.success) {
+        const errorMsg = payload.error || payload.detail || `Batch preview failed (${res.status})`;
+        console.error('[Watchlist] Batch preview error:', errorMsg);
+        // Don't show errors in slots for watchlist auto-load (too intrusive)
+        // Users can click "Preview chart" button to manually retry
+        state.watchlistPreviewsLoaded = true;
+        return;
+      }
+
+      console.log(`[Watchlist] Batch preview successful: ${payload.successful}/${payload.total} charts`);
+
+      // Update each preview slot with the result
+      payload.results.forEach((result) => {
+        const slot = els.watchlistList?.querySelector(`[data-watch-preview="${result.symbol}"]`);
+        if (!slot) {
+          console.warn(`[Watchlist] Slot not found for ${result.symbol}`);
+          return;
+        }
+
+        if (result.status === 'ok' && result.image_url) {
+          renderPreviewImage(slot, result.image_url, `${result.symbol} preview`);
+          console.log(`[Watchlist] ✓ ${result.symbol} ${result.cached ? '(cached)' : '(fresh)'}`);
+        } else {
+          // Don't show error - let the placeholder stay for manual load
+          console.warn(`[Watchlist] ✗ ${result.symbol}: ${result.error || 'Chart unavailable'}`);
+        }
+      });
+
+      state.watchlistPreviewsLoaded = true;
+
+    } catch (error) {
+      console.error('[Watchlist] Batch preview exception:', error);
+      // Don't show network errors in watchlist auto-load
+      state.watchlistPreviewsLoaded = true;
+    }
   }
 
-  function handleWatchlistPreview(ticker) {
+  async function handleWatchlistPreview(ticker) {
     if (!ticker) {
       console.warn('[Watchlist Preview] No ticker provided');
       return;
@@ -1328,29 +1510,39 @@
     }
 
     slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
-    console.log(`[Watchlist Preview] Starting preview for ${ticker}`);
+    console.log(`[Watchlist Preview] Starting manual preview for ${ticker}`);
 
-    // Watchlist items may have entry/stop/target from when they were added
-    const watchItem = state.watchlistItems?.find((item) => item.ticker === ticker);
-    // Prefer stored timeframe, fallback to the current Analyze selector
-    const timeframe = watchItem?.timeframe || els.patternInterval?.value || '1day';
-    console.log(`[Watchlist Preview] Using timeframe: ${timeframe}`);
-
-    const plan = watchItem ? {
-      entry: watchItem.entry,
-      stop: watchItem.stop,
-      target: watchItem.target,
-    } : {};
-
-    fetchChartImage(ticker, timeframe, plan)
-      .then((url) => {
-        renderPreviewImage(slot, url, `${ticker} preview`);
-      })
-      .catch((error) => {
-        console.error(`[Watchlist Preview] Error for ${ticker}:`, error);
-        const errorMsg = error.message || 'Chart generation failed';
-        renderPreviewError(slot, errorMsg);
+    try {
+      // Use batch API for single preview (benefits from caching)
+      const res = await fetch('/api/charts/preview/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'watchlist',
+          items: [{ symbol: ticker, interval: '1D' }]
+        })
       });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.success) {
+        const errorMsg = payload.error || payload.detail || 'Chart generation failed';
+        renderPreviewError(slot, errorMsg);
+        return;
+      }
+
+      const result = payload.results[0];
+      if (result && result.status === 'ok' && result.image_url) {
+        renderPreviewImage(slot, result.image_url, `${ticker} preview`);
+        console.log(`[Watchlist Preview] ✓ ${ticker} ${result.cached ? '(cached)' : '(fresh)'}`);
+      } else {
+        const errorMsg = result?.error || 'Chart unavailable';
+        renderPreviewError(slot, errorMsg);
+      }
+    } catch (error) {
+      console.error(`[Watchlist Preview] Error for ${ticker}:`, error);
+      renderPreviewError(slot, error.message || 'Network error');
+    }
   }
 
   async function fetchMarketInternals() {

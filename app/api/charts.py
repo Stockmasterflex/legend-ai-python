@@ -62,6 +62,35 @@ class ChartUsageResponse(BaseModel):
     usage: Dict[str, Any]
 
 
+class PreviewItem(BaseModel):
+    symbol: str
+    interval: str = "1D"
+
+
+class PreviewBatchRequest(BaseModel):
+    context: str  # "top_setups" | "watchlist" | "scanner"
+    items: List[PreviewItem]
+
+
+class PreviewItemResponse(BaseModel):
+    symbol: str
+    interval: str
+    status: str  # "ok" | "error"
+    image_url: Optional[str] = None
+    error: Optional[str] = None
+    cached: bool = False
+
+
+class PreviewBatchResponse(BaseModel):
+    success: bool
+    context: str
+    results: List[PreviewItemResponse]
+    total: int
+    successful: int
+    failed: int
+    processing_time: float
+
+
 @router.post("/generate", response_model=ChartResponse)
 async def generate_chart(request: ChartRequest):
     """
@@ -268,3 +297,108 @@ async def charts_health():
             "chart_img_api": "disconnected",
             "error": str(e)
         }
+
+
+@router.post("/preview/batch", response_model=PreviewBatchResponse)
+async def generate_preview_batch(request: PreviewBatchRequest):
+    """
+    Generate preview thumbnails for multiple symbols in batch
+
+    Optimized for:
+    - Top Setups: Auto-load all preview charts
+    - Watchlist: Auto-load first 20 preview charts
+    - Scanner: Manual click-to-load with caching
+
+    Uses smaller dimensions (420x260) and server-side caching (24hr TTL)
+    to conserve Chart-IMG API quota.
+
+    Args:
+        request: Batch request with context and list of symbols/intervals
+
+    Returns:
+        Batch response with individual results for each symbol
+    """
+    start_time = time.time()
+    cache = get_cache_service()
+    charting_service = get_charting_service()
+
+    logger.info(f"🎨 Batch preview request: context={request.context}, items={len(request.items)}")
+
+    results = []
+    successful = 0
+    failed = 0
+
+    for item in request.items:
+        try:
+            # Check cache first (24 hour TTL)
+            cache_key = f"preview:{request.context}:{item.symbol}:{item.interval}"
+            cached_url = await cache.get(cache_key)
+
+            if cached_url:
+                logger.info(f"⚡ Preview cache hit for {item.symbol}")
+                results.append(PreviewItemResponse(
+                    symbol=item.symbol,
+                    interval=item.interval,
+                    status="ok",
+                    image_url=cached_url,
+                    cached=True
+                ))
+                successful += 1
+                continue
+
+            # Generate new thumbnail (420x260 for previews)
+            chart_url = await charting_service.generate_thumbnail(
+                ticker=item.symbol,
+                timeframe=item.interval.lower(),
+                preset="breakout"
+            )
+
+            if chart_url:
+                # Cache for 24 hours
+                await cache.set(cache_key, chart_url, ttl=86400)
+
+                results.append(PreviewItemResponse(
+                    symbol=item.symbol,
+                    interval=item.interval,
+                    status="ok",
+                    image_url=chart_url,
+                    cached=False
+                ))
+                successful += 1
+                logger.info(f"✅ Preview generated for {item.symbol}")
+            else:
+                results.append(PreviewItemResponse(
+                    symbol=item.symbol,
+                    interval=item.interval,
+                    status="error",
+                    error="Chart generation failed"
+                ))
+                failed += 1
+                logger.warning(f"⚠️ Preview generation failed for {item.symbol}")
+
+        except Exception as e:
+            logger.error(f"💥 Preview error for {item.symbol}: {e}")
+            results.append(PreviewItemResponse(
+                symbol=item.symbol,
+                interval=item.interval,
+                status="error",
+                error=str(e)
+            ))
+            failed += 1
+
+    processing_time = time.time() - start_time
+
+    logger.info(
+        f"✅ Batch preview complete: {successful}/{len(request.items)} successful "
+        f"in {processing_time:.2f}s"
+    )
+
+    return PreviewBatchResponse(
+        success=successful > 0,
+        context=request.context,
+        results=results,
+        total=len(request.items),
+        successful=successful,
+        failed=failed,
+        processing_time=round(processing_time, 2)
+    )

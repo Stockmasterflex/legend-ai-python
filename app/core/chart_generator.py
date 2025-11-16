@@ -219,4 +219,4 @@ class ChartGenerator:
 def get_chart_generator() -> ChartGenerator:
     """Get global chart generator instance"""
     settings = get_settings()
-    return ChartGenerator(settings.chartimg_api_key)
+    return ChartGenerator(settings.chart_img_api_key)
