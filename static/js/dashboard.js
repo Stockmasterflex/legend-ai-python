@@ -586,8 +586,8 @@
       console.error(`[Chart Preview] Request failed: ${errorMsg}`);
 
       // Check if it's a Chart-IMG API key issue
-      if (res.status === 422 || res.status === 401 || errorMsg.toLowerCase().includes('api key')) {
-        throw new Error('Chart-IMG API key not configured or invalid');
+      if (res.status === 422 || res.status === 401 || errorMsg.toLowerCase().includes('api key') || errorMsg.toLowerCase().includes('unauthorized')) {
+        throw new Error('Chart-IMG API key not configured or invalid. Please check Railway environment variables.');
       }
 
       throw new Error(errorMsg);
@@ -598,8 +598,8 @@
       console.error(`[Chart Preview] Chart generation failed: ${errorMsg}`);
 
       // Check if it's a Chart-IMG API issue
-      if (errorMsg.toLowerCase().includes('chart-img') || errorMsg.toLowerCase().includes('api key')) {
-        throw new Error(`Chart-IMG API error: ${errorMsg}`);
+      if (errorMsg.toLowerCase().includes('chart-img') || errorMsg.toLowerCase().includes('api key') || errorMsg.toLowerCase().includes('rate limit')) {
+        throw new Error(`Chart-IMG service error: ${errorMsg}`);
       }
 
       throw new Error(errorMsg);
@@ -1109,8 +1109,8 @@
     if (!tags.length) {
       return '<span class="tag-pill tag-pill-muted">No tags</span>';
     }
-    const visible = tags.slice(0, 3);
-    const remaining = tags.slice(3);
+    const visible = tags.slice(0, 2);
+    const remaining = tags.slice(2);
     const visibleMarkup = visible.map((tag) => `<span class="tag-pill">${tag}</span>`).join('');
     if (!remaining.length) return visibleMarkup;
     const moreLabel = remaining.join(', ');

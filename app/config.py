@@ -36,6 +36,18 @@ class Settings(BaseSettings):
     # Chart-IMG
     chartimg_api_key: Optional[str] = None
 
+    @property
+    def chart_img_api_key(self) -> Optional[str]:
+        """Get Chart-IMG API key from multiple possible environment variable names"""
+        import os
+        return (
+            os.getenv("CHART_IMG_API_KEY")
+            or os.getenv("CHARTIMG_API_KEY")
+            or os.getenv("CHART_IMG_APIKEY")
+            or os.getenv("CHARTIMG_APIKEY")
+            or self.chartimg_api_key
+        )
+
     # Market Data APIs
     twelvedata_api_key: Optional[str] = None
     finnhub_api_key: Optional[str] = None
@@ -81,6 +93,7 @@ def get_settings() -> Settings:
         logger.info(f"🔍 CHARTIMG_API_KEY length: {len(chartimg_key)}")
 
     settings = Settings()
+    logger.info(f"🔍 Settings chart_img_api_key present: {bool(settings.chart_img_api_key)}")
     logger.info(f"🔍 Settings chartimg_api_key present: {bool(settings.chartimg_api_key)}")
 
     return settings

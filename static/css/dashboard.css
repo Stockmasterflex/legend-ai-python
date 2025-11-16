@@ -268,7 +268,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-xl);
     overflow: hidden;
-    min-height: 380px;
+    min-height: 420px;
     display: flex;
     flex-direction: column;
 }
@@ -292,7 +292,7 @@
 
 .tv-demo-widget .tradingview-widget-container {
     flex: 1;
-    min-height: 330px;
+    min-height: 370px;
 }
 
 /* News Section */
@@ -525,7 +525,7 @@ body.tv-symbol-lab {
 }
 
 .tv-card--info {
-    min-height: 360px;
+    min-height: 380px;
 }
 
 .tv-card--profile {
@@ -539,7 +539,7 @@ body.tv-symbol-lab {
 .tv-card--tv-info,
 .tv-card--tv-fundamentals,
 .tv-card--tv-news {
-    min-height: 360px;
+    min-height: 380px;
     display: flex;
     flex-direction: column;
 }
@@ -556,31 +556,31 @@ body.tv-symbol-lab {
 }
 
 .tv-card--wide {
-    min-height: 600px;
+    min-height: 650px;
 }
 
 .tv-card--tall {
-    min-height: 560px;
+    min-height: 580px;
 }
 
 .tv-card--heatmap {
-    min-height: 600px;
+    min-height: 620px;
     width: 100%;
 }
 
 .tv-card--calendar {
-    min-height: 650px;
+    min-height: 680px;
     width: 100%;
 }
 
 .tv-card--screener {
-    min-height: 650px;
+    min-height: 680px;
     width: 100%;
     padding: var(--spacing-md);
 }
 
 .tv-market-overview {
-    min-height: 600px;
+    min-height: 650px;
     width: 100%;
     padding: var(--spacing-md);
     overflow-x: auto;
@@ -788,6 +788,17 @@ body.tv-symbol-lab {
 .scanner-chart-slot {
     min-width: 160px;
     width: 100%;
+}
+
+/* Desktop breakpoint for smoother 1440px experience */
+@media (max-width: 1440px) {
+    .analyze-panels {
+        grid-template-columns: 1.1fr 1.1fr; /* Slightly more balanced layout */
+    }
+
+    .internals-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)); /* Ensure widgets don't get too cramped */
+    }
 }
 
 @media (max-width: 900px) {
@@ -1666,19 +1677,21 @@ textarea:focus {
 
 .tag-stack {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: var(--spacing-xs);
     align-items: center;
-    overflow-x: auto;
-    max-width: 100%;
+    max-height: 2.5rem; /* Allow 2 rows max */
+    overflow: hidden;
     white-space: nowrap;
-    /* Hide scrollbar but keep functionality */
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
 
-.tag-stack::-webkit-scrollbar {
-    display: none;
+.tag-stack .tag-pill {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+    max-width: 6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tag-pill {
