@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info(
             "key_presence chartimg=%s twelvedata=%s finnhub=%s alpha_vantage=%s redis=%s",
-            bool(settings.chartimg_api_key),
+            bool(settings.chart_img_api_key),
             bool(settings.twelvedata_api_key),
             bool(settings.finnhub_api_key),
             bool(settings.alpha_vantage_api_key),
@@ -189,7 +189,7 @@ async def health(request: Request):
     }
 
     key_presence = {
-        "chartimg": bool(settings.chartimg_api_key),
+        "chartimg": bool(settings.chart_img_api_key),
         "twelvedata": bool(settings.twelvedata_api_key),
         "finnhub": bool(settings.finnhub_api_key),
         "alpha_vantage": bool(settings.alpha_vantage_api_key),
