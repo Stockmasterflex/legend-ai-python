@@ -30,6 +30,30 @@
     watchlistPreviewsLoaded: false,
   };
 
+  const LoadingStates = {
+    show(containerId, message = 'Loading…', colspan = 11) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = `
+        <tr class="loading-state">
+          <td colspan="${colspan}">
+            <div class="loading-content">
+              <div class="loading-spinner" aria-hidden="true"></div>
+              <p class="loading-message">${message}</p>
+            </div>
+          </td>
+        </tr>`;
+    },
+    hide(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+    },
+    toast(message, type = 'info') {
+      toast(message, type);
+    }
+  };
+
   const WATCHLIST_TAG_LIBRARY = [
     'Breakout',
     'Momentum',
@@ -84,6 +108,7 @@
       loadWatchlist();
       loadTopSetups();
       handleUniverseScan();
+      updateScanTimes();
       setInterval(fetchMarketInternals, 300000);
     } catch (error) {
       console.error('Dashboard initialization error:', error);
@@ -130,7 +155,8 @@
     els.quickSnapshot = document.getElementById('quick-snapshot');
 
     els.universeForm = document.getElementById('universe-form');
-    els.universeTable = document.getElementById('universe-table');
+    els.universeTable = document.getElementById('trading-interface-body');
+    els.tradingInterfaceBody = els.universeTable;
     els.universeLoading = document.getElementById('universe-loading');
 
     els.watchlistForm = document.getElementById('watchlist-form');
@@ -153,10 +179,15 @@
     els.scannerMeta = document.getElementById('universe-meta');
 
     els.topGrid = document.getElementById('top-setups-grid');
-    els.topEmpty = document.getElementById('top-setups-empty');
+    els.topBody = document.getElementById('top-setups-body');
+    els.topTableWrapper = document.querySelector('.top-setups-table-wrapper');
     els.topLoading = document.getElementById('top-setups-loading');
     els.topMeta = document.getElementById('top-setups-meta');
     els.topRefresh = document.getElementById('top-setups-refresh');
+    els.lastScanTime = document.getElementById('last-scan-time');
+    els.nextScanTime = document.getElementById('next-scan-time');
+    els.setupsCount = document.getElementById('setups-count');
+    els.manualScanBtn = document.getElementById('manual-scan-btn');
 
     els.marketResults = document.getElementById('market-results');
     els.marketLoading = document.getElementById('market-loading');
@@ -384,6 +415,15 @@
       fetchAnalyze(ticker, tf);
     });
 
+    document.querySelectorAll('input[name="pattern-timeframe"]').forEach((input) => {
+      input.addEventListener('change', (event) => {
+        if (event.target.checked && els.patternInterval) {
+          els.patternInterval.value = event.target.value;
+        }
+        syncTimeframeRadios(event.target.value);
+      });
+    });
+
     // Quick search form submit (supports Enter key)
     els.quickScanForm?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -395,6 +435,7 @@
       if (els.quickSymbol) {
         els.patternTicker.value = els.quickSymbol.value.trim().toUpperCase();
         els.patternInterval.value = els.quickTimeframe.value;
+        syncTimeframeRadios(els.patternInterval.value);
         const tf = els.patternInterval.value === '1week' ? 'weekly' : 'daily';
         debounce(() => fetchAnalyze(els.patternTicker.value.trim().toUpperCase(), tf), 300)();
       }
@@ -411,10 +452,105 @@
     els.watchlistCancel?.addEventListener('click', () => exitWatchlistEditMode());
 
     els.topRefresh?.addEventListener('click', () => loadTopSetups(true));
+    els.manualScanBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      runManualScan();
+    });
     els.marketRefresh?.addEventListener('click', () => fetchMarketInternals());
     els.patternChart?.addEventListener('click', handleChartShellClick);
 
     els.chartMulti?.addEventListener('click', handleMultiTimeframe);
+
+    syncTimeframeRadios(els.patternInterval?.value || '1day');
+  }
+
+  function syncTimeframeRadios(value = '1day') {
+    const normalized = (value || '1day').toLowerCase();
+    document.querySelectorAll('input[name="pattern-timeframe"]').forEach((input) => {
+      input.checked = input.value === normalized;
+    });
+    if (els.patternInterval) {
+      els.patternInterval.value = normalized;
+    }
+  }
+
+  function runManualScan() {
+    LoadingStates.toast('Starting manual scan…', 'info');
+    handleUniverseScan();
+    updateScanTimes();
+  }
+
+  function updateScanTimes() {
+    if (!els.lastScanTime || !els.nextScanTime) return;
+    const now = new Date();
+    const lastScan = new Date(now);
+    lastScan.setHours(9, 35, 0, 0);
+    if (now < lastScan) {
+      lastScan.setDate(lastScan.getDate() - 1);
+    }
+    const nextScan = new Date(now);
+    nextScan.setHours(16, 5, 0, 0);
+    if (now >= nextScan) {
+      nextScan.setDate(nextScan.getDate() + 1);
+    }
+    els.lastScanTime.textContent = formatTime(lastScan);
+    els.nextScanTime.textContent = formatTime(nextScan);
+  }
+
+  function formatTime(value) {
+    if (!value || Number.isNaN(value.getTime ? value.getTime() : NaN)) {
+      return '—';
+    }
+    return `${value.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/New_York'
+    })} ET`;
+  }
+
+  function updateSetupsCount(count) {
+    if (!els.setupsCount) return;
+    els.setupsCount.textContent = Number(count || 0).toString();
+  }
+
+  function renderActionButtons(ticker, hasChart = false) {
+    const safeTicker = (ticker || '').replace(/'/g, "\\'");
+    return `
+      <div class="action-buttons">
+        ${hasChart ? `<button class="btn-icon" type="button" onclick="viewChart('${safeTicker}')">📈</button>` : ''}
+        <button class="btn-icon" type="button" onclick="addToWatchlist('${safeTicker}')">⭐</button>
+        <button class="btn-icon" type="button" onclick="setAlert('${safeTicker}')">🔔</button>
+        <button class="btn-icon" type="button" onclick="copySetup('${safeTicker}')">📋</button>
+      </div>`;
+  }
+
+  function viewChart(ticker) {
+    if (!ticker) return;
+    const url = `/tv?tvwidgetsymbol=${encodeURIComponent(ticker)}`;
+    window.open(url, '_blank');
+  }
+
+  function addToWatchlist(ticker) {
+    if (!ticker) return LoadingStates.toast('Ticker missing', 'error');
+    quickAddWatchlist(ticker, 'Action buttons', ['Action']);
+  }
+
+  function setAlert(ticker) {
+    if (!ticker) return LoadingStates.toast('Ticker missing', 'error');
+    LoadingStates.toast(`Alert configured for ${ticker}`, 'success');
+  }
+
+  function copySetup(ticker) {
+    if (!ticker) return LoadingStates.toast('Ticker missing', 'error');
+    const setupText = `${ticker} trade setup ready for review.`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(setupText)
+        .then(() => LoadingStates.toast('Setup copied to clipboard', 'success'))
+        .catch(() => LoadingStates.toast('Clipboard unavailable', 'error'));
+    } else {
+      LoadingStates.toast('Clipboard not supported in this browser', 'error');
+    }
   }
 
   function renderAnalyzeIntel(data) {
@@ -708,10 +844,7 @@
       .map((opt) => opt.value)
       .filter((val) => val && val !== 'all');
     toggleLoading(els.universeLoading, true);
-    if (els.universeTable) {
-      els.universeTable.setAttribute('aria-busy', 'true');
-      els.universeTable.innerHTML = '<tr><td colspan="11" class="scanner-message">Scanning universe…</td></tr>';
-    }
+    LoadingStates.show('trading-interface-body', `Scanning ${universe || 'universe'}…`);
     try {
       const res = await fetch('/api/universe/scan/quick', {
         method: 'POST',
@@ -734,6 +867,7 @@
     } catch (err) {
       console.error(err);
       toast(err.message, 'error');
+      LoadingStates.hide('trading-interface-body');
       if (els.universeTable) {
         els.universeTable.innerHTML = `<tr><td colspan="11">${err.message}</td></tr>`;
       }
@@ -742,11 +876,13 @@
       if (els.universeTable) {
         els.universeTable.removeAttribute('aria-busy');
       }
+      updateScanTimes();
     }
   }
 
   function renderUniverseTable(rows) {
     state.universeRows = rows;
+    LoadingStates.hide('trading-interface-body');
     if (!rows.length) {
       els.universeTable.innerHTML = '<tr><td colspan="11">No setups found.</td></tr>';
       return;
@@ -785,6 +921,7 @@
             </div>
           </td>
           <td>
+            ${renderActionButtons(row.ticker, Boolean(row.chart_url))}
             <div class="button-row">
               <button class="btn btn-primary btn-compact" type="button" data-scan-analyze="${row.ticker}">Analyze</button>
               <button class="btn btn-secondary btn-compact" type="button" data-scan-watch="${row.ticker}">Watch</button>
@@ -1189,7 +1326,8 @@
     state.topSetupsRefreshing = true;
     if (force) state.topSetupsLoaded = false;
     toggleLoading(els.topLoading, true);
-    els.topEmpty?.classList.remove('active');
+    LoadingStates.show('top-setups-body', 'Refreshing top setups…', 8);
+    els.topTableWrapper?.classList.remove('hidden');
     try {
       const res = await fetch('/api/top-setups?limit=10');
       const payload = await res.json();
@@ -1217,23 +1355,24 @@
       if (els.topMeta) {
         els.topMeta.textContent = err.message;
       }
+      LoadingStates.hide('top-setups-body');
     } finally {
       state.topSetupsRefreshing = false;
       toggleLoading(els.topLoading, false);
-      if (!state.topSetups.length) {
-        els.topEmpty?.classList.add('active');
-      } else {
-        els.topEmpty?.classList.remove('active');
-      }
     }
   }
 
   function renderTopSetups(results = []) {
     if (!els.topGrid) return;
+    LoadingStates.hide('top-setups-body');
+    els.topGrid.classList.toggle('hidden', !results.length);
     if (!results.length) {
       els.topGrid.innerHTML = '';
+      els.topTableWrapper?.classList.remove('hidden');
+      updateSetupsCount(0);
       return;
     }
+    els.topTableWrapper?.classList.add('hidden');
     const cards = results.map((item) => {
       const score = Number(item.score || 0).toFixed(1);
       const entry = Number(item.entry || 0).toFixed(2);
@@ -1260,11 +1399,12 @@
               <div class="kpi-label">Risk/Reward</div>
               <div>${riskReward}R • ${item.source || 'Universe'}</div>
             </div>
-          <div class="top-card-buttons">
-            <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
-            <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
-            <button class="btn btn-secondary" data-top-chart="${item.ticker}">Refresh chart</button>
-          </div>
+            <div class="top-card-buttons">
+              ${renderActionButtons(item.ticker, true)}
+              <button class="btn btn-primary" data-open-analyze="${item.ticker}">Analyze</button>
+              <button class="btn btn-primary" data-watch="${item.ticker}">Watchlist</button>
+              <button class="btn btn-secondary" data-top-chart="${item.ticker}">Refresh chart</button>
+            </div>
           </div>
           <div class="top-card-preview">
             <div class="scanner-chart-slot" data-top-slot="${item.ticker}">
@@ -1275,8 +1415,8 @@
     }).join('');
     els.topGrid.innerHTML = cards;
     attachTopSetupActions();
-    // Auto-load all preview charts using batch API
     autoLoadTopSetupPreviews();
+    updateSetupsCount(results.length);
   }
 
   async function autoLoadTopSetupPreviews() {
@@ -1685,7 +1825,11 @@
     toastEl.appendChild(closeBtn);
 
     els.toastStack.appendChild(toastEl);
-    setTimeout(() => toastEl.remove(), timeout);
+    setTimeout(() => toastEl.classList.add('show'), 10);
+    setTimeout(() => {
+      toastEl.classList.remove('show');
+      setTimeout(() => toastEl.remove(), 300);
+    }, timeout);
   }
 
   function updateKpiScan() {

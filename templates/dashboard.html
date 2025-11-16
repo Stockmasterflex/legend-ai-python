@@ -56,26 +56,47 @@
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" data-tab-panel="analyze">
                     <h2 class="eyebrow">Analyze (Daily or Weekly only – intraday coming later)</h2>
-                    <form id="pattern-form" class="form-grid">
-                        <div class="form-field">
-                            <label for="pattern-ticker">Ticker</label>
+                    <form id="pattern-form" class="analyze-form">
+                        <div class="form-group">
+                            <label for="pattern-ticker">Ticker Symbol</label>
                             <input
                                 id="pattern-ticker"
                                 type="text"
                                 value="AAPL"
-                                placeholder="AAPL"
+                                placeholder="e.g., NASDAQ:NVDA"
                                 required
                                 pattern="[A-Z]{1,5}"
                                 maxlength="5"
                                 title="Enter 1-5 uppercase letters (e.g., AAPL)"
+                                class="ticker-input"
+                                list="popular-tickers"
                             />
+                            <datalist id="popular-tickers">
+                                <option value="NASDAQ:NVDA">NVIDIA</option>
+                                <option value="NASDAQ:AAPL">Apple</option>
+                                <option value="NASDAQ:TSLA">Tesla</option>
+                                <option value="NASDAQ:MSFT">Microsoft</option>
+                                <option value="NASDAQ:GOOGL">Google</option>
+                                <option value="NYSE:SPY">S&P 500 ETF</option>
+                            </datalist>
+                            <small class="form-hint">Format: EXCHANGE:SYMBOL (Daily / Weekly supported)</small>
                         </div>
-                        <div class="form-field">
-                            <label for="pattern-interval">Interval</label>
-                        <select id="pattern-interval">
-                            <option value="1day">Daily</option>
-                            <option value="1week">Weekly</option>
-                        </select>
+                        <div class="form-group">
+                            <label>Timeframe</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="pattern-timeframe" value="1day" checked />
+                                    <span>Daily</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="pattern-timeframe" value="1week" />
+                                    <span>Weekly</span>
+                                </label>
+                            </div>
+                            <select id="pattern-interval" hidden>
+                                <option value="1day" selected>Daily</option>
+                                <option value="1week">Weekly</option>
+                            </select>
                         </div>
                         <div class="form-field">
                             <label>&nbsp;</label>
@@ -284,7 +305,7 @@
                         <span class="spinner" aria-hidden="true"></span>
                         <span>Scanning universe…</span>
                     </div>
-                    <div class="table-wrapper scanner-table-wrapper">
+                        <div class="table-wrapper scanner-table-wrapper">
                         <table class="table scanner-table" aria-live="polite">
                             <thead>
                                 <tr>
@@ -302,7 +323,18 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="universe-table"></tbody>
+                            <tbody id="trading-interface-body">
+                                <tr class="empty-state">
+                                    <td colspan="11">
+                                        <div class="empty-state-content">
+                                            <div class="empty-icon">📊</div>
+                                            <h3>No Analysis Results Yet</h3>
+                                            <p>Enter a ticker above (e.g., NASDAQ:NVDA) and click “Analyze” to detect patterns.</p>
+                                            <p class="hint">Supported timeframes: Daily, Weekly</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -318,11 +350,44 @@
                             <button id="top-setups-refresh" class="btn btn-secondary" type="button">Refresh</button>
                         </div>
                     </div>
+                    <div class="scan-status-bar">
+                        <div class="status-item">
+                            <span class="status-label">Last scan:</span>
+                            <span class="status-value" id="last-scan-time">Never</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Next scan:</span>
+                            <span class="status-value" id="next-scan-time">Today 4:05 PM ET</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Setups Found:</span>
+                            <span class="status-value" id="setups-count">0</span>
+                        </div>
+                        <button id="manual-scan-btn" class="btn btn-secondary btn-sm" type="button">Run Manual Scan</button>
+                    </div>
                     <div id="top-setups-loading" class="loading-overlay" role="status" aria-live="polite">
                         <span class="spinner" aria-hidden="true"></span>
                         <span>Fetching setups…</span>
                     </div>
-                    <div id="top-setups-empty" class="top-setups-empty">No setups yet. Run a scan or try again later.</div>
+                    <div class="table-wrapper top-setups-table-wrapper">
+                        <table class="table top-setups-table" aria-live="polite">
+                            <tbody id="top-setups-body">
+                                <tr class="empty-state">
+                                    <td colspan="8">
+                                        <div class="empty-state-content">
+                                            <div class="empty-icon">⭐</div>
+                                            <h3>No Top Setups in Watchlist</h3>
+                                            <p>Scans run daily at market open for S&amp;P 500 + NASDAQ stocks.</p>
+                                            <div class="scan-status">
+                                                <span>Last scan: <strong>—</strong></span>
+                                                <span>Next scan: <strong>—</strong></span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                     <div id="top-setups-grid" class="results-grid"></div>
                 </section>
 
