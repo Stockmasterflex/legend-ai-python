@@ -167,12 +167,13 @@
     els.watchlistSymbol = document.getElementById('watchlist-symbol');
     els.watchlistReason = document.getElementById('watchlist-reason');
     els.watchlistStatus = document.getElementById('watchlist-status');
-    els.watchlistTags = document.getElementById('watchlist-tags');
+    els.watchlistTagsSelect = document.getElementById('watchlist-tags-select');
     els.watchlistSubmit = document.getElementById('watchlist-submit');
     els.watchlistCancel = document.getElementById('watchlist-cancel');
     els.watchlistModeIndicator = document.getElementById('watchlist-mode-indicator');
     els.watchlistDensityButtons = document.querySelectorAll('[data-density]');
     els.watchlistTableWrapper = document.querySelector('.watchlist-table-wrapper');
+    els.watchlistTagFilterSelect = document.getElementById('watchlist-tag-filter-select');
     if (els.watchlistCancel) {
       els.watchlistCancel.hidden = true;
     }
@@ -204,39 +205,10 @@
   }
 
   function initTagControls() {
-    renderTagButtons(els.watchlistTags);
-    renderTagButtons(els.watchlistTagFilter);
-    setupTagToggleGroup(els.watchlistTags);
-    setupTagToggleGroup(els.watchlistTagFilter, () => renderWatchlist());
-  }
-
-  function renderTagButtons(container) {
-    if (!container) return;
-    const frag = document.createDocumentFragment();
-    WATCHLIST_TAG_LIBRARY.forEach((tag) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'tag-toggle';
-      btn.dataset.tag = tag;
-      btn.textContent = tag;
-      frag.appendChild(btn);
-    });
-    container.innerHTML = '';
-    container.appendChild(frag);
-  }
-
-  function setupTagToggleGroup(container, onChange) {
-    if (!container) return;
-    container.querySelectorAll('[data-tag]').forEach((btn) => {
-      btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
-      btn.addEventListener('click', () => {
-        const isActive = btn.classList.toggle('active');
-        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-        if (typeof onChange === 'function') {
-          onChange(readTagSelection(container));
-        }
-      });
-    });
+    // Setup tag filter select to trigger renderWatchlist on change
+    if (els.watchlistTagFilterSelect) {
+      els.watchlistTagFilterSelect.addEventListener('change', () => renderWatchlist());
+    }
   }
 
   function initWatchlistDensity() {
@@ -271,19 +243,18 @@
     window.LegendTV.setSymbol(tvSymbol);
   }
 
-  function readTagSelection(container) {
-    return Array.from(container?.querySelectorAll('.tag-toggle.active') || [])
-      .map((btn) => btn.dataset.tag)
+  function readTagSelection(selectElement) {
+    if (!selectElement) return [];
+    return Array.from(selectElement.selectedOptions)
+      .map((opt) => opt.value)
       .filter(Boolean);
   }
 
-  function setTagSelection(container, tags = []) {
-    if (!container) return;
+  function setTagSelection(selectElement, tags = []) {
+    if (!selectElement) return;
     const lookup = new Set((tags || []).map((tag) => tag.trim()));
-    container.querySelectorAll('[data-tag]').forEach((btn) => {
-      const isActive = lookup.has(btn.dataset.tag);
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    Array.from(selectElement.options).forEach((option) => {
+      option.selected = lookup.has(option.value);
     });
   }
 
@@ -1125,7 +1096,7 @@
     if (els.watchlistStatus) {
       els.watchlistStatus.value = item.status || 'Watching';
     }
-    setTagSelection(els.watchlistTags, normalizeTags(item.tags));
+    setTagSelection(els.watchlistTagsSelect, normalizeTags(item.tags));
     if (els.watchlistSubmit) {
       els.watchlistSubmit.textContent = 'Update watchlist';
     }
@@ -1151,7 +1122,7 @@
     if (els.watchlistStatus) {
       els.watchlistStatus.value = 'Watching';
     }
-    setTagSelection(els.watchlistTags, []);
+    setTagSelection(els.watchlistTagsSelect, []);
     if (els.watchlistSubmit) {
       els.watchlistSubmit.textContent = 'Add to watchlist';
     }
@@ -1168,7 +1139,7 @@
     event.preventDefault();
     const ticker = (els.watchlistSymbol?.value || '').trim().toUpperCase();
     const reason = (els.watchlistReason?.value || '').trim();
-    const tags = readTagSelection(els.watchlistTags);
+    const tags = readTagSelection(els.watchlistTagsSelect);
     const status = els.watchlistStatus?.value || 'Watching';
     if (!ticker) return toast('Enter a ticker for the watchlist.', 'error');
     try {
@@ -1210,7 +1181,7 @@
 
   function renderWatchlist(items = state.watchlistItems || []) {
     const filter = els.watchlistFilter?.value || 'all';
-    const tagFilters = readTagSelection(els.watchlistTagFilter);
+    const tagFilters = readTagSelection(els.watchlistTagFilterSelect).filter(val => val !== '');
     const searchQuery = (document.getElementById('watchlist-search')?.value || '').trim().toLowerCase();
 
     const filtered = items.filter((item) => {
@@ -1607,7 +1578,7 @@
   async function autoLoadWatchlistPreviews() {
     // Get currently filtered watchlist items
     const filter = els.watchlistFilter?.value || 'all';
-    const tagFilters = readTagSelection(els.watchlistTagFilter);
+    const tagFilters = readTagSelection(els.watchlistTagFilterSelect).filter(val => val !== '');
     const filtered = state.watchlistItems.filter((item) => {
       const status = item.status || 'Watching';
       const matchesStatus = filter === 'all' || status === filter;
