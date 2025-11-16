@@ -997,16 +997,17 @@
     }
 
     slot.innerHTML = '<p class="chart-empty compact">Generating chart…</p>';
-    console.log(`[Scanner Preview] Starting preview for ${ticker}`);
+    console.log(`[Scanner Preview] 🎨 Starting preview for ${ticker}`);
 
     const row = state.universeRows.find((item) => item.ticker === ticker);
     if (!row) {
-      console.error(`[Scanner Preview] Row data not found for ${ticker}`);
+      console.error(`[Scanner Preview] ❌ Row data not found for ${ticker}`);
       renderPreviewError(slot, 'setup data not found');
       return;
     }
 
     const interval = row.timeframe === '1week' ? '1W' : '1D';
+    console.log(`[Scanner Preview] 📊 Requesting ${ticker} chart (interval: ${interval})`);
 
     try {
       // Use batch API for single preview (benefits from caching)
@@ -1019,24 +1020,30 @@
         })
       });
 
+      console.log(`[Scanner Preview] 📡 Response status: ${res.status} for ${ticker}`);
       const payload = await res.json();
+      console.log(`[Scanner Preview] 📦 Payload:`, payload);
 
       if (!res.ok || !payload.success) {
         const errorMsg = payload.error || payload.detail || 'Chart generation failed';
+        console.warn(`[Scanner Preview] ⚠️ ${ticker}: ${errorMsg}`);
         renderPreviewError(slot, errorMsg);
         return;
       }
 
       const result = payload.results[0];
+      console.log(`[Scanner Preview] 🔍 Result for ${ticker}:`, result);
+
       if (result && result.status === 'ok' && result.image_url) {
         renderPreviewImage(slot, result.image_url, `${ticker} chart preview`);
-        console.log(`[Scanner Preview] ✓ ${ticker} ${result.cached ? '(cached)' : '(fresh)'}`);
+        console.log(`[Scanner Preview] ✅ ${ticker} ${result.cached ? '(cached)' : '(fresh)'}`);
       } else {
         const errorMsg = result?.error || 'Chart unavailable';
+        console.warn(`[Scanner Preview] ❌ ${ticker}: ${errorMsg}`);
         renderPreviewError(slot, errorMsg);
       }
     } catch (error) {
-      console.error(`[Scanner Preview] Error for ${ticker}:`, error);
+      console.error(`[Scanner Preview] 💥 Error for ${ticker}:`, error);
       renderPreviewError(slot, error.message || 'Network error');
     }
   }
@@ -1460,17 +1467,19 @@
 
   async function autoLoadTopSetupPreviews() {
     if (!state.topSetups.length) {
-      console.log('[Top Setups] No setups to preview');
+      console.log('[Top Setups] ℹ️ No setups to preview');
       return;
     }
 
-    console.log(`[Top Setups] Auto-loading ${state.topSetups.length} preview charts`);
+    console.log(`[Top Setups] 🎨 Auto-loading ${state.topSetups.length} preview charts`);
 
     // Build batch request
     const items = state.topSetups.map((setup) => ({
       symbol: setup.ticker,
       interval: '1D'
     }));
+
+    console.log(`[Top Setups] 📊 Requesting batch preview for:`, items.map(i => i.symbol).join(', '));
 
     try {
       const res = await fetch('/api/charts/preview/batch', {
@@ -1482,11 +1491,13 @@
         })
       });
 
+      console.log(`[Top Setups] 📡 Response status: ${res.status}`);
       const payload = await res.json();
+      console.log(`[Top Setups] 📦 Payload:`, payload);
 
       if (!res.ok || !payload.success) {
         const errorMsg = payload.error || payload.detail || `Batch preview failed (${res.status})`;
-        console.error('[Top Setups] Batch preview error:', errorMsg);
+        console.error(`[Top Setups] ❌ Batch preview error: ${errorMsg}`);
         // Show friendly error in all slots
         state.topSetups.forEach((setup) => {
           const slot = els.topGrid?.querySelector(`[data-top-slot="${setup.ticker}"]`);
@@ -1497,28 +1508,28 @@
         return;
       }
 
-      console.log(`[Top Setups] Batch preview successful: ${payload.successful}/${payload.total} charts`);
+      console.log(`[Top Setups] ✅ Batch preview successful: ${payload.successful}/${payload.total} charts`);
 
       // Update each preview slot with the result
       payload.results.forEach((result) => {
         const slot = els.topGrid?.querySelector(`[data-top-slot="${result.symbol}"]`);
         if (!slot) {
-          console.warn(`[Top Setups] Slot not found for ${result.symbol}`);
+          console.warn(`[Top Setups] ⚠️ Slot not found for ${result.symbol}`);
           return;
         }
 
         if (result.status === 'ok' && result.image_url) {
           renderPreviewImage(slot, result.image_url, `${result.symbol} preview`);
-          console.log(`[Top Setups] ✓ ${result.symbol} ${result.cached ? '(cached)' : '(fresh)'}`);
+          console.log(`[Top Setups] ✅ ${result.symbol} ${result.cached ? '(cached)' : '(fresh)'}`);
         } else {
           const errorMsg = result.error || 'Chart unavailable';
           renderPreviewError(slot, errorMsg);
-          console.warn(`[Top Setups] ✗ ${result.symbol}: ${errorMsg}`);
+          console.warn(`[Top Setups] ❌ ${result.symbol}: ${errorMsg}`);
         }
       });
 
     } catch (error) {
-      console.error('[Top Setups] Batch preview exception:', error);
+      console.error('[Top Setups] 💥 Batch preview exception:', error);
       // Show network error in all slots
       state.topSetups.forEach((setup) => {
         const slot = els.topGrid?.querySelector(`[data-top-slot="${setup.ticker}"]`);
