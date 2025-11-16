@@ -1525,4 +1525,63 @@
     }
   }
 
+  // TradingView Demo Layout Functionality
+  function initTradingViewDemo() {
+    const weeklyToggle = document.getElementById('tv-weekly-toggle');
+    const fullscreenBtn = document.getElementById('tv-fullscreen');
+    const chartContainer = document.querySelector('.tv-demo-chart-container');
+    const chartWeekly = document.querySelector('.tv-demo-chart-weekly');
+
+    if (weeklyToggle) {
+      weeklyToggle.addEventListener('click', function() {
+        const isWeekly = chartWeekly.style.display !== 'none';
+        if (isWeekly) {
+          // Switch to daily
+          chartContainer.style.display = 'block';
+          chartWeekly.style.display = 'none';
+          this.textContent = 'Weekly View';
+          this.classList.remove('tv-demo-btn--primary');
+          this.classList.add('tv-demo-btn--secondary');
+        } else {
+          // Switch to weekly
+          chartContainer.style.display = 'none';
+          chartWeekly.style.display = 'block';
+          this.textContent = 'Daily View';
+          this.classList.remove('tv-demo-btn--secondary');
+          this.classList.add('tv-demo-btn--primary');
+        }
+      });
+    }
+
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener('click', function() {
+        const mainChart = document.querySelector('.tv-demo-main-chart');
+        if (!document.fullscreenElement) {
+          mainChart.requestFullscreen().catch(err => {
+            console.log('Error attempting to enable full-screen mode:', err.message);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      });
+    }
+
+    // Handle fullscreen change events
+    document.addEventListener('fullscreenchange', function() {
+      const mainChart = document.querySelector('.tv-demo-main-chart');
+      if (document.fullscreenElement) {
+        fullscreenBtn.textContent = 'Exit Fullscreen';
+      } else {
+        fullscreenBtn.textContent = 'Fullscreen';
+      }
+    });
+  }
+
+  // Initialize TradingView demo when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTradingViewDemo);
+  } else {
+    initTradingViewDemo();
+  }
+
 })();
