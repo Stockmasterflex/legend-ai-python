@@ -28,9 +28,9 @@
                             placeholder="AAPL"
                             value="AAPL"
                             required
-                            pattern="[A-Z]{1,5}"
-                            maxlength="5"
-                            title="Enter 1-5 uppercase letters (e.g., AAPL)"
+                            pattern="[A-Z][A-Z0-9.^-]{0,9}"
+                            maxlength="10"
+                            title="Enter ticker symbol (e.g., AAPL, BRK.B)"
                         />
                         <button type="submit" id="quick-scan-button" class="btn btn-primary">Scan</button>
                     </form>
@@ -63,11 +63,11 @@
                                 id="pattern-ticker"
                                 type="text"
                                 value="AAPL"
-                                placeholder="e.g., NASDAQ:NVDA"
+                                placeholder="e.g., AAPL, BRK.B, SPY"
                                 required
-                                pattern="[A-Z]{1,5}"
-                                maxlength="5"
-                                title="Enter 1-5 uppercase letters (e.g., AAPL)"
+                                pattern="[A-Z][A-Z0-9.^-]{0,9}"
+                                maxlength="10"
+                                title="Enter ticker symbol (e.g., AAPL, BRK.B)"
                                 class="ticker-input"
                                 list="popular-tickers"
                             />
@@ -139,8 +139,8 @@
                                 <span class="tv-demo-subtitle">Live Trading Interface</span>
                             </div>
                             <div class="tv-demo-actions">
-                                <button class="tv-demo-btn tv-demo-btn--secondary" id="tv-weekly-toggle">Daily View</button>
-                                <button class="tv-demo-btn tv-demo-btn--primary" id="tv-daily-toggle">Weekly View</button>
+                                <button class="tv-demo-btn tv-demo-btn--primary" id="tv-daily-toggle">Daily View</button>
+                                <button class="tv-demo-btn tv-demo-btn--secondary" id="tv-weekly-toggle">Weekly View</button>
                             </div>
                         </div>
 
@@ -312,24 +312,24 @@
                                     <th>Ticker</th>
                                     <th>Pattern</th>
                                     <th>Score</th>
-                                    <th>RS</th>
-                                    <th>ATR%</th>
+                                    <th title="Relative Strength - measures stock performance vs market (0-100, higher is stronger)">RS</th>
+                                    <th title="Average True Range % - daily price volatility as % of stock price">ATR%</th>
                                     <th>Sector</th>
                                     <th>Entry</th>
                                     <th>Stop</th>
                                     <th>Target</th>
-                                    <th>R:R</th>
+                                    <th title="Risk:Reward ratio - potential reward divided by risk (higher is better, 2:1 minimum recommended)">R:R</th>
                                     <th>Chart</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="trading-interface-body">
                                 <tr class="empty-state">
-                                    <td colspan="11">
+                                    <td colspan="12">
                                         <div class="empty-state-content">
                                             <div class="empty-icon">📊</div>
                                             <h3>No Analysis Results Yet</h3>
-                                            <p>Enter a ticker above (e.g., NASDAQ:NVDA) and click “Analyze” to detect patterns.</p>
+                                            <p>Configure your scan parameters above and click "Run scan" to find trading setups.</p>
                                             <p class="hint">Supported timeframes: Daily, Weekly</p>
                                         </div>
                                     </td>
@@ -347,6 +347,7 @@
                         </div>
                         <div class="top-setups-actions">
                             <span id="top-setups-meta" class="top-setups-meta">Waiting for first fetch…</span>
+                            <button id="top-setups-export" class="btn btn-ghost" type="button">Export CSV</button>
                             <button id="top-setups-refresh" class="btn btn-secondary" type="button">Refresh</button>
                         </div>
                     </div>
@@ -403,9 +404,9 @@
                                 type="text"
                                 placeholder="TSLA"
                                 required
-                                pattern="[A-Z]{1,5}"
-                                maxlength="5"
-                                title="Enter 1-5 uppercase letters (e.g., TSLA)"
+                                pattern="[A-Z][A-Z0-9.^-]{0,9}"
+                                maxlength="10"
+                                title="Enter ticker symbol (e.g., TSLA, BRK.B)"
                             />
                         </div>
                         <div class="form-field">
@@ -436,6 +437,15 @@
                     </form>
                     <div class="watchlist-toolbar">
                         <div class="form-field">
+                            <label for="watchlist-search">Search</label>
+                            <input
+                                id="watchlist-search"
+                                type="text"
+                                placeholder="Search ticker or notes..."
+                                class="input"
+                            />
+                        </div>
+                        <div class="form-field">
                             <label for="watchlist-filter">Status filter</label>
                             <select id="watchlist-filter">
                                 <option value="all">All statuses</option>
@@ -465,8 +475,8 @@
                                 <tr>
                                     <th>Ticker</th>
                                     <th>Status</th>
-                                    <th>RS</th>
-                                    <th>ATR%</th>
+                                    <th title="Relative Strength - measures stock performance vs market (0-100, higher is stronger)">RS</th>
+                                    <th title="Average True Range % - daily price volatility as % of stock price">ATR%</th>
                                     <th>Reason</th>
                                     <th>Tags</th>
                                     <th>Added</th>
