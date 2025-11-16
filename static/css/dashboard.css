@@ -564,23 +564,23 @@ body.tv-symbol-lab {
 }
 
 .tv-card--heatmap {
-    min-height: 620px;
+    min-height: 650px;
     width: 100%;
 }
 
 .tv-card--calendar {
-    min-height: 680px;
+    min-height: 720px;
     width: 100%;
 }
 
 .tv-card--screener {
-    min-height: 680px;
+    min-height: 750px;
     width: 100%;
     padding: var(--spacing-md);
 }
 
 .tv-market-overview {
-    min-height: 650px;
+    min-height: 700px;
     width: 100%;
     padding: var(--spacing-md);
     overflow-x: auto;
