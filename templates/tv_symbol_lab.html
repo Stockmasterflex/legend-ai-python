@@ -29,47 +29,34 @@
                     </div>
                     <div data-tv-widget-target="tv-template-ticker-tape"></div>
                 </article>
-                <div class="tv-grid analyze-tv-grid">
-                    <article class="tv-card tv-card--wide" data-testid="tv-lab-advanced-chart">
-                        <div class="tv-card-header">
-                            <p class="eyebrow">Advanced chart</p>
-                            <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                        </div>
-                        <div data-tv-widget-target="tv-template-advanced-chart"></div>
-                    </article>
-                    <article class="tv-card tv-card--wide" data-testid="tv-lab-weekly-chart">
-                        <div class="tv-card-header">
-                            <p class="eyebrow">Weekly confirmation</p>
-                            <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                        </div>
-                        <div data-tv-widget-target="tv-template-advanced-chart-weekly"></div>
-                    </article>
-                </div>
             </div>
 
-            <div class="tv-grid analyze-tv-info-grid">
-                <article class="tv-card" data-testid="tv-lab-symbol-info">
+            <div class="tv-grid tv-grid--charts">
+                <article class="tv-card tv-card--chart" data-testid="tv-lab-advanced-chart">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Advanced chart</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-advanced-chart"></div>
+                </article>
+                <article class="tv-card tv-card--chart" data-testid="tv-lab-weekly-chart">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Weekly confirmation</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-advanced-chart-weekly"></div>
+                </article>
+            </div>
+
+            <div class="tv-grid tv-grid--info">
+                <article class="tv-card tv-card--info" data-testid="tv-lab-symbol-info">
                     <div class="tv-card-header">
                         <p class="eyebrow">Symbol info</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
                     </div>
                     <div data-tv-widget-target="tv-template-symbol-info"></div>
                 </article>
-                <article class="tv-card" data-testid="tv-lab-profile">
-                    <div class="tv-card-header">
-                        <p class="eyebrow">Company profile</p>
-                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                    </div>
-                    <div data-tv-widget-target="tv-template-company-profile"></div>
-                </article>
-                <article class="tv-card" data-testid="tv-lab-fundamentals">
-                    <div class="tv-card-header">
-                        <p class="eyebrow">Fundamentals</p>
-                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                    </div>
-                    <div data-tv-widget-target="tv-template-fundamentals"></div>
-                </article>
-                <article class="tv-card" data-testid="tv-lab-technical">
+                <article class="tv-card tv-card--info" data-testid="tv-lab-technical">
                     <div class="tv-card-header">
                         <p class="eyebrow">Technical analysis</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
@@ -78,14 +65,32 @@
                 </article>
             </div>
 
-            <div class="tv-grid tv-grid--stacked">
-                <article class="tv-card tv-card--tall" data-testid="tv-lab-news">
+            <div class="tv-grid tv-grid--profile">
+                <article class="tv-card tv-card--profile" data-testid="tv-lab-profile">
                     <div class="tv-card-header">
-                        <p class="eyebrow">Top stories</p>
+                        <p class="eyebrow">Company profile</p>
                         <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
                     </div>
-                    <div data-tv-widget-target="tv-template-news-timeline"></div>
+                    <div data-tv-widget-target="tv-template-company-profile"></div>
                 </article>
+                <article class="tv-card tv-card--fundamentals" data-testid="tv-lab-fundamentals">
+                    <div class="tv-card-header">
+                        <p class="eyebrow">Fundamentals</p>
+                        <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                    </div>
+                    <div data-tv-widget-target="tv-template-fundamentals"></div>
+                </article>
+            </div>
+
+            <article class="tv-card tv-card--news tv-lab-news" data-testid="tv-lab-news">
+                <div class="tv-card-header">
+                    <p class="eyebrow">Top stories</p>
+                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+                </div>
+                <div data-tv-widget-target="tv-template-news-timeline"></div>
+            </article>
+
+            <div class="tv-grid tv-grid--stacked tv-grid--snapshot">
                 <article class="tv-card tv-card--snapshot" data-testid="tv-lab-snapshot">
                     <div class="tv-card-header">
                         <p class="eyebrow">Legend AI snapshot</p>

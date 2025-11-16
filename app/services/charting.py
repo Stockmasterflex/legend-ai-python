@@ -196,7 +196,8 @@ class ChartingService:
             "EMA21": {
                 "name": "Moving Average Exponential",
                 "input": {"length": 21, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "#1d4ed8"}
+                # Light neon blue so it stands apart from other overlays
+                "override": {"Plot.linewidth": 2, "Plot.color": "#60a5fa"}
             },
             "EMA50": {
                 "name": "Moving Average Exponential",
@@ -211,7 +212,8 @@ class ChartingService:
             "SMA50": {
                 "name": "Moving Average",
                 "input": {"length": 50, "source": "close"},
-                "override": {"Plot.linewidth": 2, "Plot.color": "#ef4444"}
+                # Bright red for clear contrast vs the EMA line
+                "override": {"Plot.linewidth": 2, "Plot.color": "#f87171"}
             },
             "SMA200": {
                 "name": "Moving Average",
