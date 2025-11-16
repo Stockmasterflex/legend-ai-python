@@ -552,18 +552,20 @@
     const interval = mapTimeframeToInterval(tf);
     console.log(`[Chart Preview] Fetching chart for ${ticker} (${interval}) from timeframe: ${tf}`, plan);
 
+    // Build request body - only include entry/stop/target if they're defined
+    const body = { ticker, interval };
+    if (plan.entry !== undefined && plan.entry !== null) body.entry = plan.entry;
+    if (plan.stop !== undefined && plan.stop !== null) body.stop = plan.stop;
+    if (plan.target !== undefined && plan.target !== null) body.target = plan.target;
+
+    console.log('[Chart Preview] Request body:', body);
+
     let res;
     try {
       res = await fetch('/api/charts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticker,
-          interval,
-          entry: plan.entry,
-          stop: plan.stop,
-          target: plan.target,
-        }),
+        body: JSON.stringify(body),
       });
     } catch (networkError) {
       console.error('[Chart Preview] Network error:', networkError);
@@ -582,12 +584,24 @@
     if (!res.ok) {
       const errorMsg = payload.error || payload.detail || `HTTP ${res.status}`;
       console.error(`[Chart Preview] Request failed: ${errorMsg}`);
+
+      // Check if it's a Chart-IMG API key issue
+      if (res.status === 422 || res.status === 401 || errorMsg.toLowerCase().includes('api key')) {
+        throw new Error('Chart-IMG API key not configured or invalid');
+      }
+
       throw new Error(errorMsg);
     }
 
     if (!payload.success) {
       const errorMsg = payload.error || payload.detail || 'Chart generation failed';
       console.error(`[Chart Preview] Chart generation failed: ${errorMsg}`);
+
+      // Check if it's a Chart-IMG API issue
+      if (errorMsg.toLowerCase().includes('chart-img') || errorMsg.toLowerCase().includes('api key')) {
+        throw new Error(`Chart-IMG API error: ${errorMsg}`);
+      }
+
       throw new Error(errorMsg);
     }
 
