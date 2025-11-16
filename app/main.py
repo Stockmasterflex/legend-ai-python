@@ -28,6 +28,8 @@ from app.api.version import router as version_router
 from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
 from app.api.tv import router as tv_router
+from app.routers.ai_chat import router as ai_chat_router
+from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.services.universe_store import universe_store
 from app.middleware.structured_logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -164,6 +166,8 @@ app.include_router(version_router)
 app.include_router(metrics_router)
 app.include_router(scan_router)
 app.include_router(tv_router)
+app.include_router(ai_chat_router)
+app.include_router(advanced_analysis_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"
