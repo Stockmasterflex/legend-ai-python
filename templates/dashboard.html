@@ -111,66 +111,60 @@
                         </aside>
                     </div>
                     <div class="analyze-tv-divider" aria-hidden="true"></div>
-                    <section class="analyze-tv-section" aria-label="TradingView detail">
-                        <div class="section-header">
-                            <div>
-                                <p class="eyebrow">TradingView Detail</p>
-                                <h3>Live chart + fundamentals</h3>
+                    <section class="tradingview-demo-layout" aria-label="TradingView trading interface">
+                        <div class="tv-demo-header">
+                            <div class="tv-demo-title">
+                                <h3 class="tv-demo-symbol" data-tv-symbol-label>NASDAQ:AAPL</h3>
+                                <span class="tv-demo-subtitle">Live Trading Interface</span>
                             </div>
-                            <span class="tv-symbol-pill" data-tv-symbol-label>NASDAQ:AAPL</span>
+                            <div class="tv-demo-actions">
+                                <button class="tv-demo-btn tv-demo-btn--secondary" id="tv-weekly-toggle">Weekly View</button>
+                                <button class="tv-demo-btn tv-demo-btn--primary" id="tv-fullscreen">Fullscreen</button>
+                            </div>
                         </div>
-                        <div class="tv-grid tv-grid--charts">
-                            <div class="tv-card tv-card--chart" data-testid="analyze-tv-advanced">
-                                <div class="tv-card-header">
-                                    <p class="eyebrow">Advanced chart</p>
-                                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                                </div>
+
+                        <div class="tv-demo-main-chart">
+                            <div class="tv-demo-chart-container">
                                 <div data-tv-widget-target="tv-template-advanced-chart"></div>
                             </div>
-                            <div class="tv-card tv-card--chart" data-testid="analyze-tv-weekly">
-                                <div class="tv-card-header">
-                                    <p class="eyebrow">Weekly confirmation</p>
-                                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                                </div>
+                            <div class="tv-demo-chart-weekly" style="display: none;">
                                 <div data-tv-widget-target="tv-template-advanced-chart-weekly"></div>
                             </div>
                         </div>
-                        <div class="tv-grid tv-grid--info">
-                            <div class="tv-card tv-card--info tv-card--tv-info">
-                                <div class="tv-card-header">
-                                    <p class="eyebrow">Symbol info</p>
-                                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+
+                        <div class="tv-demo-widgets-grid">
+                            <div class="tv-demo-widget tv-demo-widget--symbol">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Symbol Info</span>
                                 </div>
                                 <div data-tv-widget-target="tv-template-symbol-info"></div>
                             </div>
-                            <div class="tv-card tv-card--info tv-card--tv-info">
-                                <div class="tv-card-header">
-                                    <p class="eyebrow">Technical gauge</p>
-                                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+
+                            <div class="tv-demo-widget tv-demo-widget--technical">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Technical Analysis</span>
                                 </div>
                                 <div data-tv-widget-target="tv-template-technical-analysis"></div>
                             </div>
-                        </div>
-                        <div class="tv-grid tv-grid--profile">
-                            <div class="tv-card tv-card--profile tv-card--tv-fundamentals">
-                                <div class="tv-card-header">
-                                    <p class="eyebrow">Company profile</p>
-                                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
-                                </div>
-                                <div data-tv-widget-target="tv-template-company-profile"></div>
-                            </div>
-                            <div class="tv-card tv-card--fundamentals tv-card--tv-fundamentals">
-                                <div class="tv-card-header">
-                                    <p class="eyebrow">Fundamentals</p>
-                                    <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+
+                            <div class="tv-demo-widget tv-demo-widget--fundamentals">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Fundamentals</span>
                                 </div>
                                 <div data-tv-widget-target="tv-template-fundamentals"></div>
                             </div>
+
+                            <div class="tv-demo-widget tv-demo-widget--profile">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Company Profile</span>
+                                </div>
+                                <div data-tv-widget-target="tv-template-company-profile"></div>
+                            </div>
                         </div>
-                        <div class="tv-card tv-card--news analyze-tv-news tv-card--tv-news">
-                            <div class="tv-card-header">
-                                <p class="eyebrow">Top stories</p>
-                                <span class="tv-label-inline" data-tv-symbol-label>NASDAQ:AAPL</span>
+
+                        <div class="tv-demo-news-section">
+                            <div class="tv-demo-widget-header">
+                                <span class="tv-demo-widget-title">Market News & Analysis</span>
                             </div>
                             <div data-tv-widget-target="tv-template-news-timeline"></div>
                         </div>
