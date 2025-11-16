@@ -553,6 +553,12 @@
     }
   }
 
+  // Expose action functions to global scope for onclick handlers
+  window.viewChart = viewChart;
+  window.addToWatchlist = addToWatchlist;
+  window.setAlert = setAlert;
+  window.copySetup = copySetup;
+
   function renderAnalyzeIntel(data) {
     if (!data) return;
     const m = data.patterns?.minervini || { passed: false, failed_rules: [] };
