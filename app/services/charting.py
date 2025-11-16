@@ -99,7 +99,7 @@ class ChartingService:
     }
 
     def __init__(self):
-        self.api_key = settings.chartimg_api_key
+        self.api_key = settings.chart_img_api_key  # Use the robust property
         self.daily_limit = settings.chartimg_daily_limit
         self.rate_limit = 10  # 10 calls/sec
         self.fallback_mode = False  # Graceful degradation flag
@@ -108,7 +108,9 @@ class ChartingService:
         # Debug: Log API key status
         logger.info(f"🎨 ChartingService initialized - API key present: {bool(self.api_key)}")
         if not self.api_key:
-            logger.warning("⚠️ Chart-IMG API key not found in settings!")
+            logger.warning("⚠️ Chart-IMG API key not found in any environment variable (CHART_IMG_API_KEY, CHARTIMG_API_KEY, etc.)")
+        else:
+            logger.info(f"🎨 Chart-IMG API key loaded successfully (length: {len(self.api_key)})")
 
     async def _check_rate_limit(self):
         """Global burst (10/sec) + daily quota (500/day) enforcement"""
