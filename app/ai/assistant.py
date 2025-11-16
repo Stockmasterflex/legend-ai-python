@@ -58,23 +58,48 @@ Current date: {current_date}
 class AIFinancialAssistant:
     """
     Conversational AI Financial Assistant
-    Uses GPT-4 + RAG to provide intelligent trading insights
+    Uses GPT-4/Claude/Gemini via OpenRouter (or direct OpenAI) + RAG
+
+    Cost-optimized: Uses OpenRouter by default (3-10x cheaper than direct OpenAI!)
     """
 
     def __init__(
         self,
-        model: str = "gpt-4-turbo-preview",
+        model: Optional[str] = None,
         temperature: float = 0.7
     ):
         if not OPENAI_AVAILABLE:
             raise ImportError("openai package not installed. Run: pip install openai")
 
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not set")
+        # Check for OpenRouter first (cheaper!)
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
 
-        self.client = AsyncOpenAI(api_key=api_key)
-        self.model = model
+        if openrouter_key:
+            # Use OpenRouter (MUCH cheaper!)
+            self.client = AsyncOpenAI(
+                api_key=openrouter_key,
+                base_url="https://openrouter.ai/api/v1"
+            )
+            # Default to Claude 3.5 Sonnet (best value: ~$3/1M tokens)
+            self.model = model or os.getenv("AI_MODEL", "anthropic/claude-3.5-sonnet")
+            self.provider = "OpenRouter"
+            logger.info(f"🤖 AI Assistant using OpenRouter with model: {self.model}")
+
+        elif openai_key:
+            # Fallback to direct OpenAI
+            self.client = AsyncOpenAI(api_key=openai_key)
+            self.model = model or "gpt-4-turbo-preview"
+            self.provider = "OpenAI"
+            logger.info(f"🤖 AI Assistant using OpenAI with model: {self.model}")
+
+        else:
+            raise ValueError(
+                "No AI API key found! Set either:\n"
+                "- OPENROUTER_API_KEY (recommended - cheaper)\n"
+                "- OPENAI_API_KEY (fallback)"
+            )
+
         self.temperature = temperature
 
         # Initialize analysis tools

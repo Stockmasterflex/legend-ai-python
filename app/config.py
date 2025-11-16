@@ -53,8 +53,10 @@ class Settings(BaseSettings):
         return ["*"]
 
     # AI Services
-    openrouter_api_key: str = "dev-key"
+    openrouter_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
+    ai_model: str = "anthropic/claude-3.5-sonnet"  # Default to Claude (best value)
+    ai_temperature: float = 0.7
 
     # Chart-IMG
     chartimg_api_key: Optional[str] = None
@@ -90,6 +92,26 @@ class Settings(BaseSettings):
 
     # Google Sheets
     google_sheets_id: Optional[str] = None
+
+    # N8N Integration
+    n8n_api_key: Optional[str] = None
+    n8n_api_url: Optional[str] = None
+    n8n_chart_webhook: Optional[str] = None
+
+    # Feature Flags
+    legend_flags_enable_scanner: int = 1
+
+    # Cost Optimization Settings
+    cache_ttl_patterns: int = 3600  # 1 hour
+    cache_ttl_market_data: int = 900  # 15 minutes
+    cache_ttl_charts: int = 7200  # 2 hours
+    cache_ttl_ai_responses: int = 1800  # 30 minutes
+
+    rate_limit_per_minute: int = 60
+    ai_rate_limit_per_minute: int = 20
+    market_data_rate_limit: int = 30
+
+    data_source_priority: str = "twelvedata,finnhub,alphavantage"
 
     # Email & Alerts (optional for Phase 4)
     sendgrid_api_key: Optional[str] = None
