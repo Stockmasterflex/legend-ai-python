@@ -332,10 +332,14 @@ async def generate_preview_batch(request: PreviewBatchRequest):
         try:
             # Check cache first (24 hour TTL)
             cache_key = f"preview:{request.context}:{item.symbol}:{item.interval}"
-            cached_url = await cache.get(cache_key)
+            try:
+                cached_url = await cache.get(cache_key)
+            except Exception as cache_error:
+                logger.warning(f"⚠️ Cache get failed for {item.symbol}: {cache_error}")
+                cached_url = None
 
             if cached_url:
-                logger.info(f"⚡ Preview cache hit for {item.symbol}")
+                logger.info(f"⚡ Preview cache hit for {item.symbol}: {cached_url[:60]}...")
                 results.append(PreviewItemResponse(
                     symbol=item.symbol,
                     interval=item.interval,
@@ -347,45 +351,48 @@ async def generate_preview_batch(request: PreviewBatchRequest):
                 continue
 
             # Generate new thumbnail (400x225 for previews)
+            logger.info(f"🎨 Generating thumbnail for {item.symbol}")
             chart_url = await charting_service.generate_thumbnail(
                 ticker=item.symbol,
                 timeframe=item.interval.lower(),
                 preset="breakout"
             )
 
-            if chart_url:
-                # Check if it's a fallback SVG (data:image/svg+xml)
-                if chart_url.startswith('data:image/svg'):
-                    logger.warning(f"⚠️ Fallback SVG returned for {item.symbol} - likely API key issue")
-                    results.append(PreviewItemResponse(
-                        symbol=item.symbol,
-                        interval=item.interval,
-                        status="error",
-                        error="Chart-IMG API key required"
-                    ))
-                    failed += 1
-                else:
-                    # Cache for 24 hours
+            if chart_url and isinstance(chart_url, str) and chart_url.startswith('http'):
+                # Valid HTTP(S) URL - cache and return success
+                try:
                     await cache.set(cache_key, chart_url, ttl=86400)
+                except Exception as cache_error:
+                    logger.warning(f"⚠️ Cache set failed for {item.symbol}: {cache_error}")
 
-                    results.append(PreviewItemResponse(
-                        symbol=item.symbol,
-                        interval=item.interval,
-                        status="ok",
-                        image_url=chart_url,
-                        cached=False
-                    ))
-                    successful += 1
-                    logger.info(f"✅ Preview generated for {item.symbol}")
+                results.append(PreviewItemResponse(
+                    symbol=item.symbol,
+                    interval=item.interval,
+                    status="ok",
+                    image_url=chart_url,
+                    cached=False
+                ))
+                successful += 1
+                logger.info(f"✅ Preview generated for {item.symbol}: {chart_url[:60]}...")
             else:
+                # Chart generation failed - determine why
+                error_msg = "Chart unavailable"
+                if not charting_service.api_key or charting_service.api_key.lower().startswith('dev'):
+                    error_msg = "Chart-IMG API key not configured"
+                    logger.warning(f"⚠️ {item.symbol}: No API key")
+                elif chart_url and chart_url.startswith('data:'):
+                    error_msg = "Chart-IMG API key required"
+                    logger.warning(f"⚠️ {item.symbol}: Fallback SVG returned")
+                else:
+                    logger.warning(f"⚠️ {item.symbol}: Generation failed (returned {chart_url})")
+
                 results.append(PreviewItemResponse(
                     symbol=item.symbol,
                     interval=item.interval,
                     status="error",
-                    error="Chart generation returned None"
+                    error=error_msg
                 ))
                 failed += 1
-                logger.warning(f"⚠️ Preview generation failed for {item.symbol} - returned None")
 
         except Exception as e:
             logger.error(f"💥 Preview error for {item.symbol}: {e}")
