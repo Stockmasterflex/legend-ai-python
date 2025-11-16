@@ -187,6 +187,15 @@ async def root(request: Request):
         "docs": "/docs"
     }
 
+@app.get("/healthz")
+async def healthz():
+    """
+    Simple health check for Railway/K8s
+    Always returns 200 OK if app is running
+    """
+    return {"status": "ok"}
+
+
 @app.get("/health")
 async def health(request: Request):
     """
@@ -211,22 +220,26 @@ async def health(request: Request):
         telegram_status = "unknown"
         issues.append(f"Telegram check failed: {str(e)}")
 
-    # Redis connectivity (actual test)
+    # Redis connectivity (actual test - but don't fail if Redis is down)
     redis_status = "unknown"
     redis_latency_ms = None
     try:
         from redis.asyncio import Redis
         import time
-        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        redis = Redis.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=2)
         start = time.perf_counter()
         await redis.ping()
         redis_latency_ms = round((time.perf_counter() - start) * 1000, 2)
         await redis.close()
         redis_status = "connected"
+        logger.info(f"✅ Redis connected (latency: {redis_latency_ms}ms)")
     except Exception as e:
         redis_status = "disconnected"
-        issues.append(f"Redis connectivity failed: {str(e)}")
-        overall_status = "unhealthy"
+        warnings.append(f"Redis connectivity failed: {str(e)}")
+        # Don't mark as unhealthy - app can work without Redis (just slower)
+        if overall_status == "healthy":
+            overall_status = "degraded"
+        logger.warning(f"⚠️ Redis not available: {e}")
 
     try:
         universe_status = {

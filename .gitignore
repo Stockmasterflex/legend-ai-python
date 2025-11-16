@@ -54,5 +54,8 @@ htmlcov/
 *.tmp
 *.temp
 .env
+.env.railway
+.env.local
+.env.production
 node_modules/
 screenshots/playwright-mcp/
