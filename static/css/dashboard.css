@@ -203,8 +203,12 @@
 
 .tv-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
     gap: var(--spacing-lg);
+}
+
+.tv-grid + .tv-grid {
+    margin-top: var(--spacing-xl);
 }
 
 .tv-grid--stacked {
@@ -213,8 +217,29 @@
 
 .tv-grid--secondary {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
     gap: var(--spacing-lg);
+}
+
+.tv-grid--charts,
+.analyze-tv-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr));
+    gap: var(--spacing-xl);
+}
+
+.tv-grid--info,
+.analyze-tv-info-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+    gap: var(--spacing-lg);
+}
+
+.tv-grid--profile {
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    gap: var(--spacing-xl);
+}
+
+.tv-grid--snapshot {
+    margin-top: var(--spacing-xl);
 }
 
 body.tv-symbol-lab {
@@ -278,20 +303,21 @@ body.tv-symbol-lab {
     overflow: hidden;
     background: rgba(15, 23, 42, 0.78);
     padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-    min-height: clamp(380px, 42vh, 600px);
+    min-height: clamp(320px, 38vh, 520px);
     min-width: min(320px, 100%);
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+    height: 100%;
 }
 
 .tv-card .tradingview-widget-container {
     flex: 1;
-    min-height: 280px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    height: 100%;
 }
 
 .tv-card .tradingview-widget-container__widget {
@@ -308,62 +334,77 @@ body.tv-symbol-lab {
     flex-shrink: 0;
 }
 
+.tv-card--chart {
+    min-height: clamp(420px, 55vh, 660px);
+}
+
+.tv-card--chart .tradingview-widget-container {
+    min-height: 360px;
+}
+
+.tv-card--info {
+    min-height: clamp(360px, 45vh, 560px);
+}
+
+.tv-card--profile {
+    min-height: clamp(420px, 52vh, 640px);
+}
+
+.tv-card--fundamentals {
+    min-height: clamp(520px, 60vh, 740px);
+}
+
+.tv-card--news {
+    min-height: clamp(520px, 60vh, 740px);
+}
+
 .tv-card--wide {
-    min-height: clamp(540px, 58vh, 680px);
+    min-height: clamp(560px, 60vh, 720px);
 }
 
 .tv-card--tall {
-    min-height: clamp(480px, 50vh, 640px);
+    min-height: clamp(520px, 58vh, 720px);
 }
 
 .tv-card--heatmap {
-    min-height: clamp(520px, 54vh, 680px);
+    min-height: clamp(560px, 60vh, 760px);
     width: 100%;
 }
 
 .tv-card--calendar {
-    min-height: clamp(560px, 58vh, 760px);
+    min-height: clamp(620px, 65vh, 840px);
     width: 100%;
 }
 
 .tv-card--screener {
-    min-height: clamp(560px, 58vh, 760px);
+    min-height: clamp(620px, 65vh, 840px);
     width: 100%;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md);
 }
 
 .tv-market-overview {
-    min-height: clamp(500px, 54vh, 680px);
+    min-height: clamp(560px, 60vh, 780px);
     width: 100%;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md);
     overflow-x: auto;
 }
 
 .tv-market-overview .tradingview-widget-container {
     width: 100%;
     min-width: 320px;
-    min-height: 400px;
+    min-height: 460px;
 }
 
 .tv-market-overview .tradingview-widget-container__widget {
     width: 100% !important;
-    min-height: 400px;
-}
-
-.analyze-tv-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr));
-    gap: var(--spacing-xl);
-}
-
-.analyze-tv-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-    gap: var(--spacing-lg);
-    margin-top: var(--spacing-xl);
+    min-height: 460px;
 }
 
 .analyze-tv-news {
+    margin-top: var(--spacing-xl);
+}
+
+.tv-lab-news {
     margin-top: var(--spacing-xl);
 }
 
@@ -1433,6 +1474,7 @@ textarea:focus {
     align-items: center;
     overflow-x: auto;
     max-width: 100%;
+    white-space: nowrap;
     /* Hide scrollbar but keep functionality */
     scrollbar-width: none;
     -ms-overflow-style: none;
