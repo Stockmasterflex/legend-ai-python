@@ -415,23 +415,23 @@ class ChartingService:
                 )
             logger.info(f"📡 Chart-IMG response status: {response.status_code} for {ticker}")
 
-                if response.status_code == 200:
-                    data = response.json()
-                    # Storage endpoint returns: {"success": true, "data": {"url": "...", "expires_at": "..."}}
-                    if data.get("success") and data.get("data"):
-                        chart_url = data["data"].get("url")
-                        expires_at = data["data"].get("expires_at", "N/A")
-                        logger.info(f"✅ Chart generated for {ticker} ({timeframe}): {chart_url[:60]}... (expires: {expires_at})")
-                        return chart_url
-                    else:
-                        logger.warning(f"⚠️ Chart-IMG storage error for {ticker}: {data.get('error', 'Unknown error')}")
-                        return self._get_fallback_url(ticker, timeframe)
+            if response.status_code == 200:
+                data = response.json()
+                # Storage endpoint returns: {"success": true, "data": {"url": "...", "expires_at": "..."}}
+                if data.get("success") and data.get("data"):
+                    chart_url = data["data"].get("url")
+                    expires_at = data["data"].get("expires_at", "N/A")
+                    logger.info(f"✅ Chart generated for {ticker} ({timeframe}): {chart_url[:60]}... (expires: {expires_at})")
+                    return chart_url
                 else:
-                    logger.warning(
-                        f"⚠️ Chart-IMG error {response.status_code} for {ticker}: "
-                        f"{response.text[:100]}"
-                    )
+                    logger.warning(f"⚠️ Chart-IMG storage error for {ticker}: {data.get('error', 'Unknown error')}")
                     return self._get_fallback_url(ticker, timeframe)
+            else:
+                logger.warning(
+                    f"⚠️ Chart-IMG error {response.status_code} for {ticker}: "
+                    f"{response.text[:100]}"
+                )
+                return self._get_fallback_url(ticker, timeframe)
 
         except Exception as e:
             logger.warning(f"⚠️ Chart generation error for {ticker}: {e}")
