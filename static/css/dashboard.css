@@ -570,18 +570,18 @@ body.tv-symbol-lab {
 }
 
 .tv-card--calendar {
-    min-height: 720px;
+    min-height: 550px;
     width: 100%;
 }
 
 .tv-card--screener {
-    min-height: 750px;
+    min-height: 650px;
     width: 100%;
     padding: var(--spacing-md);
 }
 
 .tv-market-overview {
-    min-height: 700px;
+    min-height: 450px;
     width: 100%;
     padding: var(--spacing-md);
     overflow-x: auto;
@@ -590,12 +590,12 @@ body.tv-symbol-lab {
 .tv-market-overview .tradingview-widget-container {
     width: 100%;
     min-width: 320px;
-    min-height: 460px;
+    min-height: 400px;
 }
 
 .tv-market-overview .tradingview-widget-container__widget {
     width: 100% !important;
-    min-height: 460px;
+    min-height: 400px;
 }
 
 .analyze-tv-news {
@@ -2253,6 +2253,40 @@ select:focus-visible {
     outline-offset: 2px;
 }
 
+/* Enhanced Multi-Select Styling for Watchlist Tags and Filters */
+select[multiple] {
+    min-height: 150px;
+    padding: var(--spacing-sm);
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+}
+
+select[multiple]:focus {
+    border-color: var(--color-neon-aqua);
+    box-shadow: var(--glow-aqua-sm);
+}
+
+select[multiple] option {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-md);
+    margin: 2px 0;
+    cursor: pointer;
+}
+
+select[multiple] option:hover {
+    background: rgba(32, 240, 255, 0.15);
+}
+
+select[multiple] option:checked,
+select[multiple] option:checked:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(32, 240, 255, 0.6));
+    color: white;
+    font-weight: var(--font-weight-semibold);
+}
+
 @media (max-width: 768px) {
     .tabs-header {
         grid-template-columns: repeat(2, 1fr);
@@ -2268,5 +2302,9 @@ select:focus-visible {
 
     .btn {
         width: 100%;
+    }
+
+    select[multiple] {
+        min-height: 120px;
     }
 }
