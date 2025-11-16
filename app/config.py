@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     debug: bool = False
     secret_key: str = "dev-secret-key-change-in-production"
 
+    # CORS Origins (comma-separated list)
+    cors_origins: str = "*"  # Default to allow all for development
+
     # Telegram
     telegram_bot_token: str = "dev-token"
     telegram_chat_id: Optional[str] = None
@@ -28,6 +31,26 @@ class Settings(BaseSettings):
             return self.telegram_webhook_url
         # Default for local development
         return "http://localhost:8000"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Get list of allowed CORS origins, auto-detecting Railway domain"""
+        import os
+
+        # In production (Railway), restrict to the app's own domain
+        railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        if railway_domain:
+            return [
+                f"https://{railway_domain}",
+                f"http://{railway_domain}",
+            ]
+
+        # If CORS_ORIGINS is explicitly set, use that
+        if self.cors_origins != "*":
+            return [origin.strip() for origin in self.cors_origins.split(",")]
+
+        # In development, allow all origins
+        return ["*"]
 
     # AI Services
     openrouter_api_key: str = "dev-key"
