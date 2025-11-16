@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 import logging
 
-from app.data.market_data import MarketDataService
+from app.services.market_data import MarketDataService
 from app.detectors.advanced.patterns import AdvancedPatternDetector, PatternType
 from app.technicals.trendlines import (
     AutoTrendlineDetector,
