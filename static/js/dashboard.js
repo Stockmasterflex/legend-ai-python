@@ -764,12 +764,25 @@
     return payload.chart_url;
   }
 
+  function renderPreviewLoading(slot, ticker = '') {
+    if (!slot) return;
+    const label = ticker ? ` for ${ticker}` : '';
+    slot.innerHTML = `
+      <div class="chart-loading">
+        <div class="loading-spinner"></div>
+        <p class="chart-status loading">Loading chart${label}...</p>
+      </div>
+    `;
+  }
+
   function renderPreviewError(slot, reason = 'Chart unavailable') {
     if (!slot) return;
-    const suffix = reason ? ` (${reason})` : '';
-    const isApiError = reason.includes('Chart-IMG') || reason.includes('API');
-    const helpText = isApiError ? '<br><small>Set CHARTIMG_API_KEY in environment</small>' : '';
-    slot.innerHTML = `<p class="chart-empty compact">Chart image unavailable${suffix}${helpText}</p>`;
+    const suffix = reason ? `: ${reason}` : '';
+    const isApiError = reason.includes('Chart-IMG') || reason.includes('API') || reason.includes('API key');
+    const helpText = isApiError
+      ? '<br><small>💡 Ensure CHARTIMG_API_KEY is set in Railway environment variables</small>'
+      : '';
+    slot.innerHTML = `<p class="chart-empty compact">Chart unavailable${suffix}${helpText}</p>`;
   }
 
   function renderPreviewImage(slot, url, altLabel = 'Chart preview') {
