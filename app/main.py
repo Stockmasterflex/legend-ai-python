@@ -170,56 +170,23 @@ async def root(request: Request):
 
 @app.get("/health")
 async def health(request: Request):
-    """Detailed health check - resilient to missing services"""
-    import os
-    import logging
+    """Respond with a lightweight plan-friendly health payload."""
+    telegram_status = (
+        "configured"
+        if settings.telegram_bot_token and settings.telegram_bot_token != "dev-token"
+        else "not_configured"
+    )
 
-    logger = logging.getLogger(__name__)
+    redis_status = (
+        "configured"
+        if settings.redis_url and not settings.redis_url.startswith("redis://localhost")
+        else "not_configured"
+    )
 
-    # Debug environment variables at startup
-    logger.info("🏥 Health check - Environment variables:")
-    logger.info(f"🏥 CHARTIMG_API_KEY present: {bool(os.getenv('CHARTIMG_API_KEY'))}")
-    logger.info(f"🏥 REDIS_URL present: {bool(os.getenv('REDIS_URL'))}")
-    logger.info(f"🏥 DATABASE_URL present: {bool(os.getenv('DATABASE_URL'))}")
-    logger.info(f"🏥 TWELVEDATA_API_KEY present: {bool(os.getenv('TWELVEDATA_API_KEY'))}")
-
-    logger.info("🏥 Settings values:")
-    logger.info(f"🏥 chartimg_api_key: {bool(settings.chartimg_api_key)}")
-    logger.info(f"🏥 redis_url: {settings.redis_url}")
-    logger.info(f"🏥 database_url: {bool(settings.database_url)}")
-
-    # Test Telegram connectivity (non-blocking)
-    telegram_status = "unknown"
-    try:
-        if settings.telegram_bot_token and settings.telegram_bot_token != "dev-token":
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(
-                    f"https://api.telegram.org/bot{settings.telegram_bot_token}/getMe"
-                )
-                telegram_status = "connected" if response.status_code == 200 else "error"
-        else:
-            telegram_status = "not_configured"
-    except Exception as e:
-        logger.debug(f"Telegram health check failed: {e}")
-        telegram_status = "disconnected"
-
-    # Test Redis connectivity (non-blocking)
-    redis_status = "unknown"
-    try:
-        from app.services.cache import get_cache_service
-        cache = get_cache_service()
-        health_check = await cache.health_check()
-        redis_status = health_check.get("status", "unknown")
-    except Exception as e:
-        logger.debug(f"Redis health check failed: {e}")
-        redis_status = "disconnected"
-
-    # Universe dataset
-    try:
-        universe_snapshot = await universe_store.get_all()
-        universe_status = {"seeded": bool(universe_snapshot), "symbols": len(universe_snapshot)}
-    except Exception as exc:
-        universe_status = {"seeded": False, "error": str(exc)}
+    universe_status = {
+        "seeded": bool(universe_store._memory),
+        "cached_symbols": len(universe_store._memory),
+    }
 
     key_presence = {
         "chartimg": bool(settings.chartimg_api_key),
@@ -228,13 +195,12 @@ async def health(request: Request):
         "alpha_vantage": bool(settings.alpha_vantage_api_key),
     }
 
-    # Always return healthy status - individual services can be down
     payload = {
         "status": "healthy",
         "telegram": telegram_status,
         "redis": redis_status,
         "version": resolve_build_sha(),
-        "webhook_url": settings.telegram_webhook_url if settings.telegram_webhook_url else None,
+        "webhook_url": settings.telegram_webhook_url,
         "universe": universe_status,
         "keys": key_presence,
         "analyze": {"cache_ttl": 3600},
