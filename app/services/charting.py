@@ -376,9 +376,13 @@ class ChartingService:
         Returns:
             URL of the generated chart image
         """
+        logger.info(f"🎨 Starting chart generation for {ticker} on {timeframe} with preset {preset}")
         try:
             # Check rate limiting
-            if not await self._check_rate_limit():
+            rate_limit_ok = await self._check_rate_limit()
+            logger.info(f"📊 Rate limit check for {ticker}: {'PASS' if rate_limit_ok else 'FAIL'}")
+            if not rate_limit_ok:
+                logger.warning(f"⚠️ Rate limit hit for {ticker}, using fallback")
                 return self._get_fallback_url(ticker, timeframe)
 
             # Apply rate limit delay
@@ -392,6 +396,7 @@ class ChartingService:
             )
 
             # Make API request
+            logger.info(f"📡 Making Chart-IMG API request for {ticker} with API key present: {bool(self.api_key)}")
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     self.BASE_URL,
@@ -401,6 +406,7 @@ class ChartingService:
                         "Content-Type": "application/json"
                     }
                 )
+            logger.info(f"📡 Chart-IMG response status: {response.status_code} for {ticker}")
 
                 if response.status_code == 200:
                     data = response.json()
