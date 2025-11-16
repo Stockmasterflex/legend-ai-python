@@ -125,10 +125,15 @@ app = FastAPI(
 # Structured logging sits at the top of the stack to capture everything
 app.add_middleware(StructuredLoggingMiddleware)
 
-# Add CORS middleware to allow dashboard JavaScript to call APIs
+# Add CORS middleware with environment-aware origin restrictions
+# In production (Railway): only allows requests from the app's own domain
+# In development: allows all origins for easier testing
+allowed_origins = settings.allowed_origins
+logger.info(f"🔒 CORS configured with allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for dashboard
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
