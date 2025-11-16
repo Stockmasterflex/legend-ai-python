@@ -47,12 +47,38 @@
       "watchlist": [],
       "compareSymbols": [],
       "studies": [
-        "STD;Moving Average Exponential",
-        "STD;Moving Average"
+        {
+          "name": "Moving Average Exponential",
+          "inputs": {
+            "length": 21,
+            "source": "close",
+            "offset": 0
+          },
+          "override": {
+            "Plot.linewidth": 2,
+            "Plot.plottype": "line",
+            "Plot.color": "rgb(0,255,255)"
+          }
+        },
+        {
+          "name": "Moving Average",
+          "inputs": {
+            "length": 50,
+            "source": "close",
+            "smoothingLine": "SMA"
+          },
+          "override": {
+            "Plot.linewidth": 2,
+            "Plot.plottype": "line",
+            "Plot.color": "rgb(255,0,0)"
+          }
+        },
+        "STD;RSI"
       ],
       "studies_overrides": {
-        "moving average exponential.plot.color": "rgb(96,165,250)",
-        "moving average.plot.color": "rgb(239,68,68)"
+        "rsi.plot.color": "rgb(255,165,0)",
+        "rsi.upperlimit": 70,
+        "rsi.lowerlimit": 30
       },
       "overrides": {
         "paneProperties.background": "#05080f",
@@ -93,32 +119,38 @@
       "compareSymbols": [],
       "studies": [
         {
-          "name": "Moving Average",
+          "name": "Moving Average Exponential",
           "inputs": {
-            "length": 10,
+            "length": 21,
             "source": "close",
-            "smoothingLine": "SMA"
+            "offset": 0
           },
           "override": {
             "Plot.linewidth": 2,
             "Plot.plottype": "line",
-            "Plot.color": "rgb(96,165,250)"
+            "Plot.color": "rgb(0,255,255)"
           }
         },
         {
           "name": "Moving Average",
           "inputs": {
-            "length": 40,
+            "length": 50,
             "source": "close",
             "smoothingLine": "SMA"
           },
           "override": {
             "Plot.linewidth": 2,
             "Plot.plottype": "line",
-            "Plot.color": "rgb(239,68,68)"
+            "Plot.color": "rgb(255,0,0)"
           }
-        }
+        },
+        "STD;RSI"
       ],
+      "studies_overrides": {
+        "rsi.plot.color": "rgb(255,165,0)",
+        "rsi.upperlimit": 70,
+        "rsi.lowerlimit": 30
+      },
       "overrides": {
         "paneProperties.background": "#05080f",
         "paneProperties.vertGridProperties.color": "rgba(255,255,255,0.04)",
@@ -139,7 +171,7 @@
     {
       "symbol": "__SYMBOL__",
       "width": "100%",
-      "height": 240,
+      "height": 320,
       "locale": "en",
       "colorTheme": "dark",
       "isTransparent": false
@@ -155,6 +187,7 @@
     {
       "symbol": "__SYMBOL__",
       "width": "100%",
+      "height": 320,
       "colorTheme": "dark",
       "isTransparent": false,
       "locale": "en"
@@ -170,7 +203,7 @@
     {
       "symbol": "__SYMBOL__",
       "width": "100%",
-      "height": 280,
+      "height": 320,
       "colorTheme": "dark",
       "isTransparent": false,
       "locale": "en",
@@ -189,7 +222,7 @@
       "symbol": "__SYMBOL__",
       "showIntervalTabs": true,
       "width": "100%",
-      "height": 260,
+      "height": 320,
       "isTransparent": false,
       "colorTheme": "dark",
       "locale": "en"

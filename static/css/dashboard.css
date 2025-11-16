@@ -257,9 +257,10 @@
 /* Widgets Grid */
 .tv-demo-widgets-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
+    max-width: 100%;
 }
 
 .tv-demo-widget {
@@ -267,7 +268,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-xl);
     overflow: hidden;
-    min-height: 300px;
+    min-height: 380px;
     display: flex;
     flex-direction: column;
 }
@@ -291,7 +292,7 @@
 
 .tv-demo-widget .tradingview-widget-container {
     flex: 1;
-    min-height: 250px;
+    min-height: 330px;
 }
 
 /* News Section */
@@ -314,7 +315,8 @@
 /* Responsive Design */
 @media (max-width: 1200px) {
     .tv-demo-widgets-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
     }
 }
 
@@ -336,6 +338,11 @@
     }
 
     .tv-demo-main-chart {
+        min-height: 400px;
+    }
+
+    .tv-demo-chart-container,
+    .tv-demo-chart-weekly {
         min-height: 400px;
     }
 }
