@@ -105,6 +105,11 @@ class ChartingService:
         self.fallback_mode = False  # Graceful degradation flag
         self.redis: Redis = Redis.from_url(settings.redis_url, decode_responses=True)
 
+        # Debug: Log API key status
+        logger.info(f"🎨 ChartingService initialized - API key present: {bool(self.api_key)}")
+        if not self.api_key:
+            logger.warning("⚠️ Chart-IMG API key not found in settings!")
+
     async def _check_rate_limit(self):
         """Global burst (10/sec) + daily quota (500/day) enforcement"""
         if not await self._consume_burst_token():

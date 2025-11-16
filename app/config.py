@@ -69,4 +69,18 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance"""
-    return Settings()
+    import os
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Debug environment variables
+    chartimg_key = os.getenv('CHARTIMG_API_KEY')
+    logger.info(f"🔍 Environment CHARTIMG_API_KEY present: {bool(chartimg_key)}")
+    if chartimg_key:
+        logger.info(f"🔍 CHARTIMG_API_KEY length: {len(chartimg_key)}")
+
+    settings = Settings()
+    logger.info(f"🔍 Settings chartimg_api_key present: {bool(settings.chartimg_api_key)}")
+
+    return settings
