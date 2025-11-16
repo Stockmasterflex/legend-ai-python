@@ -346,7 +346,7 @@ async def generate_preview_batch(request: PreviewBatchRequest):
                 successful += 1
                 continue
 
-            # Generate new thumbnail (420x260 for previews)
+            # Generate new thumbnail (400x225 for previews)
             chart_url = await charting_service.generate_thumbnail(
                 ticker=item.symbol,
                 timeframe=item.interval.lower(),
@@ -354,27 +354,38 @@ async def generate_preview_batch(request: PreviewBatchRequest):
             )
 
             if chart_url:
-                # Cache for 24 hours
-                await cache.set(cache_key, chart_url, ttl=86400)
+                # Check if it's a fallback SVG (data:image/svg+xml)
+                if chart_url.startswith('data:image/svg'):
+                    logger.warning(f"⚠️ Fallback SVG returned for {item.symbol} - likely API key issue")
+                    results.append(PreviewItemResponse(
+                        symbol=item.symbol,
+                        interval=item.interval,
+                        status="error",
+                        error="Chart-IMG API key required"
+                    ))
+                    failed += 1
+                else:
+                    # Cache for 24 hours
+                    await cache.set(cache_key, chart_url, ttl=86400)
 
-                results.append(PreviewItemResponse(
-                    symbol=item.symbol,
-                    interval=item.interval,
-                    status="ok",
-                    image_url=chart_url,
-                    cached=False
-                ))
-                successful += 1
-                logger.info(f"✅ Preview generated for {item.symbol}")
+                    results.append(PreviewItemResponse(
+                        symbol=item.symbol,
+                        interval=item.interval,
+                        status="ok",
+                        image_url=chart_url,
+                        cached=False
+                    ))
+                    successful += 1
+                    logger.info(f"✅ Preview generated for {item.symbol}")
             else:
                 results.append(PreviewItemResponse(
                     symbol=item.symbol,
                     interval=item.interval,
                     status="error",
-                    error="Chart generation failed"
+                    error="Chart generation returned None"
                 ))
                 failed += 1
-                logger.warning(f"⚠️ Preview generation failed for {item.symbol}")
+                logger.warning(f"⚠️ Preview generation failed for {item.symbol} - returned None")
 
         except Exception as e:
             logger.error(f"💥 Preview error for {item.symbol}: {e}")

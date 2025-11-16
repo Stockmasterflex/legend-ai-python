@@ -114,15 +114,21 @@ class ChartingService:
 
     async def _check_rate_limit(self):
         """Global burst (10/sec) + daily quota (500/day) enforcement"""
-        if not await self._consume_burst_token():
-            return False
-        usage = await self._get_daily_usage()
-        if usage >= self.daily_limit:
-            logger.warning("⚠️ Chart-IMG daily quota exhausted. Using fallback charts.")
-            self.fallback_mode = True
-            return False
-        await self._increment_daily_usage()
-        return True
+        try:
+            if not await self._consume_burst_token():
+                logger.warning("⚠️ Burst rate limit hit")
+                return False
+            usage = await self._get_daily_usage()
+            if usage >= self.daily_limit:
+                logger.warning("⚠️ Chart-IMG daily quota exhausted. Using fallback charts.")
+                self.fallback_mode = True
+                return False
+            await self._increment_daily_usage()
+            return True
+        except Exception as e:
+            logger.error(f"⚠️ Rate limit check failed: {e}. Allowing request to proceed.")
+            # On Redis error, allow the request to proceed rather than blocking
+            return True
 
     async def _consume_burst_token(self) -> bool:
         """Shared 10 req/sec limit using Redis sorted set"""
@@ -384,6 +390,12 @@ class ChartingService:
             URL of the generated chart image
         """
         logger.info(f"🎨 Starting chart generation for {ticker} on {timeframe} with preset {preset}")
+
+        # Check if API key is available
+        if not self.api_key or self.api_key.lower().startswith('dev'):
+            logger.error(f"❌ Chart-IMG API key not configured for {ticker}")
+            return self._get_fallback_url(ticker, timeframe)
+
         try:
             # Check rate limiting
             rate_limit_ok = await self._check_rate_limit()
