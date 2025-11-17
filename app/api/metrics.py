@@ -5,7 +5,7 @@ router = APIRouter(tags=["metrics"])
 
 
 @router.get("/metrics")
-def metrics_endpoint():
+def metrics_endpoint() -> Response:
     """Expose Prometheus metrics collected in-process."""
     payload = generate_latest()
     return Response(content=payload, media_type=CONTENT_TYPE_LATEST)
