@@ -1316,9 +1316,113 @@ class AdvancedPatternDetector:
     def _detect_harmonic_patterns(self, df: pd.DataFrame, timeframe: str) -> List[Pattern]:
         """Detect harmonic patterns (Gartley, Bat, Butterfly, etc.)"""
         patterns = []
-        # TODO: Implement Fibonacci-based harmonic pattern detection
-        # These are complex patterns requiring precise Fibonacci ratios
-        # Placeholder for now - will implement in next iteration
+
+        if len(df) < 50:
+            return patterns
+
+        # Find significant swing points for XABCD pattern
+        highs = df['high'].values
+        lows = df['low'].values
+
+        # Find peaks and troughs
+        peaks_idx, _ = find_peaks(highs, distance=5, prominence=highs.std() * 0.3)
+        troughs_idx, _ = find_peaks(-lows, distance=5, prominence=lows.std() * 0.3)
+
+        if len(peaks_idx) < 3 or len(troughs_idx) < 2:
+            return patterns
+
+        # For bullish harmonics, need pattern: trough-peak-trough-peak-trough (XABCD)
+        # Try last 5 significant points
+        all_points = []
+
+        # Combine peaks and troughs with their types
+        for idx in peaks_idx[-10:]:
+            all_points.append((idx, highs[idx], 'peak'))
+        for idx in troughs_idx[-10:]:
+            all_points.append((idx, lows[idx], 'trough'))
+
+        # Sort by index
+        all_points.sort(key=lambda x: x[0])
+
+        # Look for XABCD patterns (alternating peaks/troughs)
+        if len(all_points) >= 5:
+            for i in range(len(all_points) - 4):
+                X, A, B, C, D = all_points[i:i+5]
+
+                # Check alternating pattern
+                if X[2] == 'trough' and A[2] == 'peak' and B[2] == 'trough' and C[2] == 'peak' and D[2] == 'trough':
+                    # Bullish pattern - check Gartley ratios
+                    XA = abs(A[1] - X[1])
+                    AB = abs(B[1] - A[1])
+                    BC = abs(C[1] - B[1])
+                    CD = abs(D[1] - C[1])
+
+                    if XA > 0 and AB > 0 and BC > 0 and CD > 0:
+                        # Calculate retracement ratios
+                        AB_XA_ratio = AB / XA  # Should be ~0.618 for Gartley
+                        BC_AB_ratio = BC / AB  # Should be ~0.382-0.886
+                        CD_BC_ratio = CD / BC  # Should be ~1.272-1.618
+
+                        # Gartley Pattern
+                        if (0.55 < AB_XA_ratio < 0.68 and  # ~0.618
+                            0.35 < BC_AB_ratio < 0.95 and   # 0.382-0.886
+                            1.20 < CD_BC_ratio < 1.70):     # 1.272-1.618
+
+                            confidence = 65.0
+                            # Increase confidence if ratios are more precise
+                            if 0.60 < AB_XA_ratio < 0.64:
+                                confidence += 10
+
+                            pattern = Pattern(
+                                pattern_type=PatternType.GARTLEY,
+                                strength=self._calculate_strength(confidence),
+                                confidence=confidence,
+                                start_idx=X[0],
+                                end_idx=D[0],
+                                key_points=[
+                                    (int(X[0]), float(X[1])),
+                                    (int(A[0]), float(A[1])),
+                                    (int(B[0]), float(B[1])),
+                                    (int(C[0]), float(C[1])),
+                                    (int(D[0]), float(D[1]))
+                                ],
+                                target_price=D[1] * 1.08,
+                                stop_loss=D[1] * 0.97,
+                                expected_move=8.0,
+                                win_probability=70.0,
+                                timeframe_detected=timeframe,
+                                description=f"Gartley Pattern (Bullish) - PRZ at ${D[1]:.2f}"
+                            )
+                            patterns.append(pattern)
+
+                        # Bat Pattern (different ratios)
+                        elif (0.35 < AB_XA_ratio < 0.52 and  # ~0.382-0.500
+                              0.35 < BC_AB_ratio < 0.95 and
+                              1.60 < CD_BC_ratio < 2.70):    # 1.618-2.618
+
+                            confidence = 68.0
+                            pattern = Pattern(
+                                pattern_type=PatternType.BAT,
+                                strength=self._calculate_strength(confidence),
+                                confidence=confidence,
+                                start_idx=X[0],
+                                end_idx=D[0],
+                                key_points=[
+                                    (int(X[0]), float(X[1])),
+                                    (int(A[0]), float(A[1])),
+                                    (int(B[0]), float(B[1])),
+                                    (int(C[0]), float(C[1])),
+                                    (int(D[0]), float(D[1]))
+                                ],
+                                target_price=D[1] * 1.10,
+                                stop_loss=D[1] * 0.96,
+                                expected_move=10.0,
+                                win_probability=72.0,
+                                timeframe_detected=timeframe,
+                                description=f"Bat Pattern (Bullish) - PRZ at ${D[1]:.2f}"
+                            )
+                            patterns.append(pattern)
+
         return patterns
 
     def _calculate_strength(self, confidence: float) -> PatternStrength:
