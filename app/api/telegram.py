@@ -377,7 +377,7 @@ async def telegram_webhook(request: Request):
         elif cmd_request.cmd == "/chart":
             result = await telegram_service.handle_chart_command(chat_id, cmd_request.ticker)
             response_text = result.get("text", "")
-            # TODO: Send chart photo if chart_url exists
+            # Chart photo is already sent within handle_chart_command
         elif cmd_request.cmd == "/scan":
             response_text = await telegram_service.handle_scan_command(chat_id)
         elif cmd_request.cmd == "/ai":
