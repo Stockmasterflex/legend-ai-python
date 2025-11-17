@@ -20,7 +20,8 @@ def _load() -> dict:
     if DATA_FILE.exists():
         try:
             return json.loads(DATA_FILE.read_text())
-        except Exception:
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning(f"Failed to load watchlist from {DATA_FILE}: {exc}")
             return {}
     return {}
 
@@ -33,8 +34,10 @@ async def _sync_cache(items: List[Dict[str, Any]]) -> None:
     try:
         cache = get_cache_service()
         await cache.set(WATCHLIST_CACHE_KEY, items, ttl=3600)
+    except (ConnectionError, TimeoutError) as exc:
+        logger.debug("watchlist cache sync skipped (connection issue): %s", exc)
     except Exception as exc:
-        logger.debug("watchlist cache sync skipped: %s", exc)
+        logger.warning("watchlist cache sync failed unexpectedly: %s", exc)
 
 
 async def _cache_items() -> Optional[List[Dict[str, Any]]]:
