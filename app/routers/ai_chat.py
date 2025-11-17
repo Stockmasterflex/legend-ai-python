@@ -7,9 +7,6 @@ from typing import Optional, List
 import logging
 
 from app.ai.assistant import AIFinancialAssistant
-from app.core.rate_limiter import limiter
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +55,6 @@ class ExplainPatternRequest(BaseModel):
 
 
 @router.post("/chat")
-@limiter.limit("20/minute")
 async def chat(request: ChatRequest):
     """
     Chat with AI Financial Assistant
@@ -91,7 +87,6 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/analyze")
-@limiter.limit("10/minute")
 async def analyze_stock(request: AnalyzeStockRequest):
     """
     Get comprehensive AI-powered stock analysis
@@ -125,7 +120,6 @@ async def analyze_stock(request: AnalyzeStockRequest):
 
 
 @router.post("/compare")
-@limiter.limit("5/minute")
 async def compare_stocks(request: CompareStocksRequest):
     """
     AI-powered comparison of multiple stocks
@@ -170,7 +164,6 @@ async def compare_stocks(request: CompareStocksRequest):
 
 
 @router.post("/explain-pattern")
-@limiter.limit("15/minute")
 async def explain_pattern(request: ExplainPatternRequest):
     """
     Get detailed explanation of a chart pattern
