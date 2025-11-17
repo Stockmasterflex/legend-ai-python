@@ -17,7 +17,6 @@ from app.technicals.trendlines import (
     detect_horizontal_support_resistance
 )
 from app.technicals.fibonacci import FibonacciCalculator
-from app.core.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,6 @@ class ManualFibonacciRequest(BaseModel):
 
 
 @router.post("/patterns/detect")
-@limiter.limit("30/minute")
 async def detect_advanced_patterns(request: PatternDetectionRequest):
     """
     Detect 50+ advanced chart patterns using ML-enhanced algorithms
@@ -135,7 +133,6 @@ async def detect_advanced_patterns(request: PatternDetectionRequest):
 
 
 @router.post("/trendlines/detect")
-@limiter.limit("30/minute")
 async def detect_trendlines(request: TrendlineRequest):
     """
     Automatically detect support and resistance trendlines
@@ -213,7 +210,6 @@ async def detect_trendlines(request: TrendlineRequest):
 
 
 @router.post("/fibonacci/auto")
-@limiter.limit("30/minute")
 async def calculate_fibonacci_auto(request: FibonacciRequest):
     """
     Automatically calculate Fibonacci retracement and extension levels
@@ -361,7 +357,6 @@ async def list_all_patterns():
 
 
 @router.post("/comprehensive-analysis")
-@limiter.limit("15/minute")
 async def comprehensive_technical_analysis(symbol: str = Query(..., description="Stock ticker")):
     """
     **Ultimate Technical Analysis** - Everything at once!
