@@ -8,6 +8,10 @@ import subprocess
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
+CACHE_BUSTING_HEADERS = {
+    "Cache-Control": "no-store, max-age=0, must-revalidate",
+}
+
 # Resolve the dashboard template relative to the repository root so it works
 # locally and inside Railway containers.
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
@@ -37,8 +41,14 @@ async def get_dashboard():
         html_content = html_content.replace("{{ build_sha }}", build_sha)
         html_content = _inject_tv_templates(html_content)
 
-        logger.info("📊 Serving dashboard")
-        return html_content
+        logger.info("📊 Serving dashboard build=%s", build_sha)
+
+        response = HTMLResponse(content=html_content)
+        # Send headers that force browsers/CDNs to fetch the latest HTML
+        response.headers.update(CACHE_BUSTING_HEADERS)
+        response.headers.setdefault("ETag", build_sha)
+        response.headers.setdefault("X-Build-Sha", build_sha)
+        return response
         
     except Exception as e:
         logger.error(f"Error loading dashboard: {e}")
@@ -63,7 +73,7 @@ async def get_dashboard():
 @router.get("/test", response_class=HTMLResponse)
 async def dashboard_test():
     """Test endpoint to verify dashboard is accessible"""
-    return """
+    response = HTMLResponse("""
     <html>
     <head>
         <title>Legend AI - Dashboard Test</title>
@@ -121,7 +131,9 @@ async def dashboard_test():
         </div>
     </body>
     </html>
-    """
+    """)
+    response.headers.update(CACHE_BUSTING_HEADERS)
+    return response
 def _resolve_build_sha() -> str:
     """Resolve a short build SHA for cache-busting and display.
 

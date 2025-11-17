@@ -1,16 +1,16 @@
 # Copy these environment variables to Railway Dashboard → Your Project → Variables
 
 # Required API Keys
-TELEGRAM_BOT_TOKEN=8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4
-OPENROUTER_API_KEY=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
-TWELVEDATA_API_KEY=14b61f5898d1412681a8dfc878f857b4
-CHARTIMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
-GOOGLE_SHEETS_ID=1g6vBpp3-d9C-fMYFz4P7BU_Vq5FNDd-VBzxDjw2kDLk
+TELEGRAM_BOT_TOKEN=<set-in-railway>
+OPENROUTER_API_KEY=<set-in-railway>
+TWELVEDATA_API_KEY=<set-in-railway>
+CHARTIMG_API_KEY=<set-in-railway>
+GOOGLE_SHEETS_ID=<optional-google-sheet-id>
 
 # App Configuration  
 APP_NAME=Legend AI
 DEBUG=false
-SECRET_KEY=af10148245a5421e4df19595b6d530434ed6b4c1266636371814bad48a0b775d
+SECRET_KEY=<generate-a-strong-secret>
 
 # Database & Redis (Railway provides these automatically)
 # DO NOT SET THESE MANUALLY - Railway sets them automatically
