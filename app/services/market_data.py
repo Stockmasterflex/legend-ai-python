@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import asyncio
 import logging
 from enum import Enum
+import pandas as pd
 
 from app.config import get_settings
 from app.services.cache import get_cache_service
@@ -485,6 +486,78 @@ class MarketDataService:
             }
 
         return None
+
+    async def get_price_data(
+        self,
+        symbol: str,
+        period: str = "3mo",
+        interval: str = "1d"
+    ) -> Optional[pd.DataFrame]:
+        """
+        Get price data as a pandas DataFrame
+
+        Args:
+            symbol: Stock ticker symbol
+            period: Time period (1mo, 3mo, 6mo, 1y, 2y, 5y)
+            interval: Data interval (1m, 5m, 15m, 30m, 1h, 1d, 1wk, 1mo)
+
+        Returns:
+            DataFrame with columns: open, high, low, close, volume, timestamp
+        """
+        # Map period to outputsize (number of data points)
+        period_map = {
+            "1mo": 30,
+            "3mo": 90,
+            "6mo": 180,
+            "1y": 365,
+            "2y": 730,
+            "5y": 1825,
+            "max": 5000
+        }
+        outputsize = period_map.get(period, 180)
+
+        # Map interval format
+        interval_map = {
+            "1m": "1min",
+            "5m": "5min",
+            "15m": "15min",
+            "30m": "30min",
+            "1h": "1h",
+            "1d": "1day",
+            "1wk": "1week",
+            "1mo": "1month"
+        }
+        api_interval = interval_map.get(interval, interval)
+
+        # Get time series data
+        data = await self.get_time_series(
+            ticker=symbol,
+            interval=api_interval,
+            outputsize=outputsize
+        )
+
+        if not data or not data.get("c"):
+            return None
+
+        # Convert to DataFrame
+        df = pd.DataFrame({
+            "open": data["o"],
+            "high": data["h"],
+            "low": data["l"],
+            "close": data["c"],
+            "volume": data["v"],
+            "timestamp": data["t"]
+        })
+
+        # Convert timestamp to datetime if it's a string
+        if len(df) > 0 and isinstance(df["timestamp"].iloc[0], str):
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+        # Set timestamp as index
+        if "timestamp" in df.columns:
+            df.set_index("timestamp", inplace=True)
+
+        return df
 
     async def close(self):
         """Close HTTP client"""
