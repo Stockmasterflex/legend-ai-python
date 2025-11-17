@@ -229,16 +229,31 @@
                             </div>
                             <div class="form-field full">
                                 <label for="scanner-patterns">Pattern focus</label>
-                                <select id="scanner-patterns" multiple size="6">
+                                <select id="scanner-patterns" multiple size="8">
                                     <option value="all" selected>All implemented patterns</option>
+                                    <!-- Continuation Patterns -->
                                     <option value="VCP">Volatility Contraction Pattern (VCP)</option>
                                     <option value="Flat Base">Flat Base</option>
                                     <option value="Cup &amp; Handle">Cup with Handle</option>
                                     <option value="21 EMA Pullback">Pullback to 21 EMA</option>
-                                    <!-- Additional patterns coming in Phase 1.2:
-                                    Base-on-Base, Three-Weeks Tight, High-Tight Flag -->
+                                    <option value="50 SMA Pullback">Pullback to 50 SMA</option>
+                                    <!-- Triangle Patterns -->
+                                    <option value="Ascending Triangle">Ascending Triangle</option>
+                                    <option value="Descending Triangle">Descending Triangle</option>
+                                    <option value="Symmetrical Triangle">Symmetrical Triangle</option>
+                                    <!-- Wedge Patterns -->
+                                    <option value="Rising Wedge">Rising Wedge (Bearish)</option>
+                                    <option value="Falling Wedge">Falling Wedge (Bullish)</option>
+                                    <!-- Reversal Patterns -->
+                                    <option value="Head &amp; Shoulders">Head &amp; Shoulders</option>
+                                    <option value="Inverse Head &amp; Shoulders">Inverse Head &amp; Shoulders</option>
+                                    <option value="Double Top">Double Top</option>
+                                    <option value="Double Bottom">Double Bottom</option>
+                                    <!-- Channel Patterns -->
+                                    <option value="Channel Up">Channel Up</option>
+                                    <option value="Channel Down">Channel Down</option>
                                 </select>
-                                <small>Use Cmd/Ctrl-click to select multiple patterns. More patterns coming soon!</small>
+                                <small>Use Cmd/Ctrl-click to select multiple patterns. 17 patterns now available!</small>
                             </div>
                             <div class="form-field">
                                 <label for="scanner-sector">Sector filter</label>
