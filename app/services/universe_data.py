@@ -2,6 +2,7 @@
 Universe Data - S&P 500 + NASDAQ 100 ticker lists
 Hardcoded for reliability and speed (no external API dependencies)
 """
+from typing import List
 
 # S&P 500 Top 100 Most Liquid Stocks (for quick scanning)
 SP500_TOP_100 = [
@@ -41,18 +42,18 @@ QUICK_SCAN_UNIVERSE = [
     "ZS", "OKTA", "MDB", "PLTR", "SOFI", "RIVN", "LCID", "NIO", "XPEV", "LI"
 ]
 
-def get_full_universe():
+def get_full_universe() -> List[str]:
     """Get full S&P 500 + NASDAQ 100 universe (~200 tickers)"""
     return ALL_UNIVERSE
 
-def get_quick_scan_universe():
+def get_quick_scan_universe() -> List[str]:
     """Get quick scan universe (30 high-growth tickers)"""
     return QUICK_SCAN_UNIVERSE
 
-def get_sp500():
+def get_sp500() -> List[str]:
     """Get S&P 500 top 100"""
     return SP500_TOP_100
 
-def get_nasdaq():
+def get_nasdaq() -> List[str]:
     """Get NASDAQ 100"""
     return NASDAQ_100
