@@ -294,6 +294,42 @@ class StatsHelper:
         return pivots
 
     @staticmethod
+    def find_zigzag_pivots(high: np.ndarray, low: np.ndarray, close: np.ndarray,
+                          threshold: float = 0.03) -> List[Dict]:
+        """
+        Find zigzag pivots using simple percentage threshold.
+        Returns list of dicts with keys: index, price, type
+
+        Args:
+            high: High prices
+            low: Low prices
+            close: Close prices
+            threshold: Minimum percentage move to qualify as pivot (default 3%)
+
+        Returns:
+            List of pivot dictionaries
+        """
+        pivots = []
+        if len(close) < 3:
+            return pivots
+
+        # Simple zigzag: find local highs and lows
+        for i in range(1, len(close) - 1):
+            if high[i] > high[i-1] and high[i] > high[i+1]:
+                if not pivots or pivots[-1]['type'] != 'high':
+                    pivots.append({'index': i, 'price': high[i], 'type': 'high'})
+            elif low[i] < low[i-1] and low[i] < low[i+1]:
+                if not pivots or pivots[-1]['type'] != 'low':
+                    pivots.append({'index': i, 'price': low[i], 'type': 'low'})
+
+        return pivots
+
+    @staticmethod
+    def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+        """Calculate Average True Range (convenience alias for atr method)"""
+        return StatsHelper.atr(high, low, close, period)
+
+    @staticmethod
     def curvature_score(prices: np.ndarray) -> float:
         """
         Score smoothness of price curve (for Cup & Handle roundedness).
