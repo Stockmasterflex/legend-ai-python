@@ -195,38 +195,30 @@ async def detect_pattern(request: PatternRequest):
 @router.get("/health")
 async def patterns_health():
     """Health check for patterns service"""
-    # Test API clients
-    twelvedata_status = "unknown"
-    yahoo_status = "unknown"
     cache_status = "unknown"
-
-    try:
-        # Quick test with a known ticker
-        test_data = await twelve_data_client.get_quote("AAPL")
-        twelvedata_status = "connected" if test_data else "error"
-    except:
-        twelvedata_status = "disconnected"
-
-    try:
-        test_data = await yahoo_client.get_time_series("AAPL", "1d", "1mo")
-        yahoo_status = "connected" if test_data else "error"
-    except:
-        yahoo_status = "disconnected"
+    market_data_status = "unknown"
 
     try:
         cache = get_cache_service()
         cache_health = await cache.health_check()
         cache_status = cache_health["status"]
-    except:
+    except Exception as e:
+        logger.warning(f"Cache health check failed: {e}")
         cache_status = "disconnected"
+
+    try:
+        # Test market data service with a quick request
+        test_data = await market_data_service.get_time_series("AAPL", "1day", 1)
+        market_data_status = "connected" if test_data else "error"
+    except Exception as e:
+        logger.warning(f"Market data health check failed: {e}")
+        market_data_status = "disconnected"
 
     return {
         "status": "healthy",
-        "twelvedata_api": twelvedata_status,
-        "yahoo_finance_api": yahoo_status,
+        "market_data_service": market_data_status,
         "redis_cache": cache_status,
-        "pattern_detector": "ready",
-        "usage": await twelve_data_client.get_usage_stats()
+        "pattern_detector": "ready"
     }
 
 

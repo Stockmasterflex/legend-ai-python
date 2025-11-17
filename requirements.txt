@@ -3,7 +3,6 @@ uvicorn[standard]==0.24.0
 python-telegram-bot==20.7
 httpx==0.25.2
 redis==5.0.1
-redis[asyncio]==5.0.1
 pydantic==2.5.0
 pydantic-settings==2.1.0
 python-jose[cryptography]==3.3.0
@@ -31,6 +30,8 @@ gradio==4.8.0
 # Testing
 pytest==8.4.2
 pytest-asyncio==1.3.0
+pytest-cov==6.0.0
+mypy==1.13.0
 # Optional for future phases
 # jinja2==3.1.2  # Phase 3
 # sse-starlette==1.8.2  # Phase 3
