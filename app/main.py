@@ -33,6 +33,11 @@ from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
+from app.api.competitors import router as competitors_router
+from app.api.patents import router as patents_router
+from app.api.sentiment import router as sentiment_router
+from app.api.analysts import router as analysts_router
+from app.api.supply_chain import router as supply_chain_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.utils.build_info import resolve_build_sha
@@ -117,6 +122,11 @@ app.include_router(api_usage_router)
 app.include_router(docs_router)
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
+app.include_router(competitors_router)
+app.include_router(patents_router)
+app.include_router(sentiment_router)
+app.include_router(analysts_router)
+app.include_router(supply_chain_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"
