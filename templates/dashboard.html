@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/comparison.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
     <main class="container" data-dashboard-shell>
@@ -52,6 +53,7 @@
                 <button class="tab-button" type="button" data-tab-target="top" aria-controls="tab-top" aria-selected="false" role="tab">Top Setups</button>
                 <button class="tab-button" type="button" data-tab-target="internals" aria-controls="tab-internals" aria-selected="false" role="tab">Market Internals</button>
                 <button class="tab-button" type="button" data-tab-target="watchlist" aria-controls="tab-watchlist" aria-selected="false" role="tab">Watchlist</button>
+                <button class="tab-button" type="button" data-tab-target="comparison" aria-controls="tab-comparison" aria-selected="false" role="tab">Comparison</button>
             </nav>
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" data-tab-panel="analyze">
@@ -602,7 +604,173 @@
                         <div class="tv-card tv-card--screener" data-testid="tv-screener" data-tv-widget-target="tv-template-screener"></div>
                     </section>
                 </section>
-                
+
+                <section id="tab-comparison" class="tab-pane" data-tab-panel="comparison" hidden>
+                    <h2 class="eyebrow">Multi-Ticker Comparison</h2>
+
+                    <!-- Comparison Controls -->
+                    <div class="comparison-controls">
+                        <div class="comparison-input-group">
+                            <label for="comparison-tickers">Tickers (2-9, comma-separated)</label>
+                            <input
+                                id="comparison-tickers"
+                                type="text"
+                                placeholder="AAPL, MSFT, GOOGL, META"
+                                class="comparison-input"
+                            />
+                        </div>
+                        <div class="comparison-input-group">
+                            <label for="comparison-benchmark">Benchmark</label>
+                            <input
+                                id="comparison-benchmark"
+                                type="text"
+                                value="SPY"
+                                class="comparison-input-small"
+                            />
+                        </div>
+                        <div class="comparison-input-group">
+                            <label for="comparison-interval">Interval</label>
+                            <select id="comparison-interval" class="select">
+                                <option value="1day">Daily</option>
+                                <option value="1week">Weekly</option>
+                            </select>
+                        </div>
+                        <div class="comparison-input-group">
+                            <label for="comparison-bars">Bars</label>
+                            <input
+                                id="comparison-bars"
+                                type="number"
+                                value="252"
+                                min="10"
+                                max="1000"
+                                class="comparison-input-small"
+                            />
+                        </div>
+                        <div class="comparison-actions">
+                            <button id="comparison-analyze-btn" class="btn btn-primary">Compare</button>
+                            <button id="comparison-export-csv-btn" class="btn btn-secondary">Export CSV</button>
+                        </div>
+                    </div>
+
+                    <!-- Sub-tabs for different views -->
+                    <div class="comparison-subtabs">
+                        <button class="comparison-subtab active" data-comparison-view="charts">Multi-Charts</button>
+                        <button class="comparison-subtab" data-comparison-view="metrics">Metrics Table</button>
+                        <button class="comparison-subtab" data-comparison-view="relative-strength">Relative Strength</button>
+                        <button class="comparison-subtab" data-comparison-view="correlation">Correlation</button>
+                        <button class="comparison-subtab" data-comparison-view="pair-trading">Pair Trading</button>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="comparison-loading" class="loading-overlay" role="status" aria-live="polite" hidden>
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span>Analyzing tickers...</span>
+                    </div>
+
+                    <!-- Multi-Chart View -->
+                    <div id="comparison-view-charts" class="comparison-view active">
+                        <div class="comparison-chart-grid" id="comparison-chart-grid">
+                            <p class="placeholder-text">Enter tickers above and click Compare to view charts</p>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Table View -->
+                    <div id="comparison-view-metrics" class="comparison-view" hidden>
+                        <div class="metrics-table-container">
+                            <table id="comparison-metrics-table" class="metrics-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ticker</th>
+                                        <th class="sortable" data-sort="current_price">Price</th>
+                                        <th class="sortable" data-sort="returns_1d">1D %</th>
+                                        <th class="sortable" data-sort="returns_5d">5D %</th>
+                                        <th class="sortable" data-sort="returns_20d">20D %</th>
+                                        <th class="sortable" data-sort="returns_60d">60D %</th>
+                                        <th class="sortable" data-sort="volatility_20d">Vol 20D</th>
+                                        <th class="sortable" data-sort="volume_ratio">Vol Ratio</th>
+                                        <th class="sortable" data-sort="rs_rank">RS Rank</th>
+                                        <th class="sortable" data-sort="dist_from_high_pct">Dist from High</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="10" class="placeholder-text">No data available</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Relative Strength View -->
+                    <div id="comparison-view-relative-strength" class="comparison-view" hidden>
+                        <div class="rs-container">
+                            <div class="rs-chart-panel">
+                                <h3>Relative Strength Rankings</h3>
+                                <div id="rs-rankings-container"></div>
+                            </div>
+                            <div class="rs-leaders-laggards">
+                                <div class="rs-leaders">
+                                    <h4>Leaders</h4>
+                                    <div id="rs-leaders-list"></div>
+                                </div>
+                                <div class="rs-laggards">
+                                    <h4>Laggards</h4>
+                                    <div id="rs-laggards-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Correlation View -->
+                    <div id="comparison-view-correlation" class="comparison-view" hidden>
+                        <div class="correlation-container">
+                            <div class="correlation-matrix-panel">
+                                <h3>Price Correlation Matrix</h3>
+                                <div id="price-correlation-matrix"></div>
+                            </div>
+                            <div class="correlation-matrix-panel">
+                                <h3>Volume Correlation Matrix</h3>
+                                <div id="volume-correlation-matrix"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pair Trading View -->
+                    <div id="comparison-view-pair-trading" class="comparison-view" hidden>
+                        <div class="pair-trading-controls">
+                            <div class="form-group">
+                                <label for="pair-ticker1">Ticker 1</label>
+                                <input id="pair-ticker1" type="text" placeholder="GLD" class="comparison-input-small" />
+                            </div>
+                            <div class="form-group">
+                                <label for="pair-ticker2">Ticker 2</label>
+                                <input id="pair-ticker2" type="text" placeholder="GDX" class="comparison-input-small" />
+                            </div>
+                            <button id="pair-analyze-btn" class="btn btn-primary">Analyze Pair</button>
+                        </div>
+
+                        <div id="pair-trading-loading" class="loading-overlay" role="status" hidden>
+                            <span class="spinner"></span>
+                            <span>Analyzing pair...</span>
+                        </div>
+
+                        <div id="pair-trading-results" class="pair-trading-results">
+                            <div class="pair-spread-chart">
+                                <h3>Spread Chart</h3>
+                                <canvas id="pair-spread-canvas"></canvas>
+                            </div>
+                            <div class="pair-zscore-chart">
+                                <h3>Z-Score</h3>
+                                <canvas id="pair-zscore-canvas"></canvas>
+                            </div>
+                            <div class="pair-stats">
+                                <h3>Pair Trading Statistics</h3>
+                                <div id="pair-stats-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
             </div>
         </section>
     </main>
@@ -613,7 +781,9 @@
     <!--TV_WIDGET_TEMPLATES-->
 
     <!-- Load scripts at end of body for proper initialization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/comparison.js?v={{ build_sha }}"></script>
 </body>
 </html>
