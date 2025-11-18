@@ -1,0 +1,90 @@
+# System Health and Resource Alerts
+
+groups:
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Database connection pool exhaustion
+      - alert: DatabaseConnectionPoolHigh
+        expr: |
+          (db_connections_total{state="active"} / db_connections_pool_size) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Database connection pool usage high"
+          description: "Connection pool is {{ $value | humanizePercentage }} full - consider increasing pool size"
+
+      # Database connection pool critical
+      - alert: DatabaseConnectionPoolCritical
+        expr: |
+          (db_connections_total{state="active"} / db_connections_pool_size) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Connection pool is {{ $value | humanizePercentage }} full - immediate action required"
+
+      # Database health check failed
+      - alert: DatabaseHealthCheckFailed
+        expr: |
+          health_check_status{component="database"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database health check failing"
+          description: "Database health check has been failing for 2 minutes"
+
+      # Redis health check failed
+      - alert: RedisHealthCheckFailed
+        expr: |
+          health_check_status{component="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis health check failing"
+          description: "Redis health check has been failing for 2 minutes - cache may be unavailable"
+
+      # External API health check failed
+      - alert: ExternalAPIDown
+        expr: |
+          health_check_status{component=~"api_.*"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: external
+        annotations:
+          summary: "External API {{ $labels.component }} is down"
+          description: "{{ $labels.component }} health check has been failing for 5 minutes"
+
+      # High cache miss rate
+      - alert: HighCacheMissRate
+        expr: |
+          sum(rate(cache_misses_total[5m])) by (name) /
+          (sum(rate(cache_hits_total[5m])) by (name) + sum(rate(cache_misses_total[5m])) by (name)) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "High cache miss rate for {{ $labels.name }}"
+          description: "Cache miss rate is {{ $value | humanizePercentage }} - cache may not be working effectively"
+
+      # Application uptime
+      - alert: ApplicationRestarted
+        expr: |
+          uptime_seconds < 300
+        for: 1m
+        labels:
+          severity: info
+          category: system
+        annotations:
+          summary: "Application recently restarted"
+          description: "Application has been up for only {{ $value }}s - monitoring restart"
