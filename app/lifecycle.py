@@ -141,12 +141,32 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.warning("⚠️ Failed to start monitoring services (non-critical): %s", exc)
 
+    # Start real-time WebSocket streaming service
+    try:
+        from app.services.realtime_streamer import get_streamer
+
+        streamer = get_streamer()
+        await streamer.start()
+        logger.info("📡 Real-time WebSocket streamer started")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to start WebSocket streamer (non-critical): %s", exc)
+
     logger.info("✅ Bot started successfully!")
 
     yield
 
     # === SHUTDOWN ===
     logger.info("Shutting down...")
+
+    # Stop real-time WebSocket streaming service
+    try:
+        from app.services.realtime_streamer import get_streamer
+
+        streamer = get_streamer()
+        await streamer.stop()
+        logger.info("✅ WebSocket streamer stopped")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to stop WebSocket streamer: %s", exc)
 
     # Stop monitoring and alerting services
     try:

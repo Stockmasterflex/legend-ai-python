@@ -1,0 +1,428 @@
+/**
+ * Real-Time WebSocket Styles
+ */
+
+/* Connection Status Indicator */
+.ws-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.ws-status.connected {
+    background-color: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.ws-status.disconnected {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.ws-status .status-dot {
+    font-size: 0.8rem;
+    animation: pulse 2s infinite;
+}
+
+.ws-status.connected .status-dot {
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes pulse-green {
+    0%, 100% {
+        opacity: 1;
+        filter: brightness(1);
+    }
+    50% {
+        opacity: 0.8;
+        filter: brightness(1.2);
+    }
+}
+
+/* Notification Container */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.notification {
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(99, 102, 241, 0.2);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+    position: relative;
+    overflow: hidden;
+    min-width: 300px;
+}
+
+.notification::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--notification-color);
+}
+
+.notification.info {
+    --notification-color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.notification.success {
+    --notification-color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.notification.warning {
+    --notification-color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.notification.error {
+    --notification-color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.notification-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f9fafb;
+    margin-bottom: 6px;
+}
+
+.notification-message {
+    font-size: 0.9rem;
+    color: #d1d5db;
+    line-height: 1.5;
+}
+
+.notification-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #9ca3af;
+    font-size: 1.5rem;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.notification-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #f9fafb;
+}
+
+/* Animation */
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification.slide-in {
+    animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Price Update Animations */
+@keyframes priceUp {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: rgba(16, 185, 129, 0.2);
+    }
+}
+
+@keyframes priceDown {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: rgba(239, 68, 68, 0.2);
+    }
+}
+
+.price-update-up {
+    animation: priceUp 1s ease-out;
+}
+
+.price-update-down {
+    animation: priceDown 1s ease-out;
+}
+
+/* Price Change Colors */
+.change.positive {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.change.negative {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Pattern Detected Animation */
+@keyframes patternPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+}
+
+.pattern-detected {
+    animation: patternPulse 2s ease-in-out 3;
+    border-color: #3b82f6 !important;
+}
+
+/* Alert Triggered Animation */
+@keyframes alertPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(245, 158, 11, 0);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+    }
+}
+
+.alert-triggered {
+    animation: alertPulse 2s ease-in-out 5;
+    border-color: #f59e0b !important;
+}
+
+/* Market Status */
+.market-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.market-status.open {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #10b981;
+}
+
+.market-status.closed {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.2) 0%, rgba(75, 85, 99, 0.2) 100%);
+    border: 1px solid rgba(107, 114, 128, 0.4);
+    color: #9ca3af;
+}
+
+/* WebSocket Stats Display */
+.ws-stats {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(17, 24, 39, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 300px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+}
+
+.ws-stats h4 {
+    margin: 0 0 12px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f9fafb;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    padding-bottom: 8px;
+}
+
+.ws-stats > div {
+    font-size: 0.85rem;
+    color: #d1d5db;
+    line-height: 1.8;
+}
+
+/* Watchlist Table Real-Time Enhancements */
+[data-ticker] {
+    transition: all 0.3s ease;
+}
+
+[data-ticker]:hover {
+    background-color: rgba(99, 102, 241, 0.05);
+}
+
+[data-ticker] .price,
+[data-ticker] .change,
+[data-ticker] .volume {
+    transition: all 0.3s ease;
+}
+
+/* Live Indicator */
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #10b981;
+    font-weight: 500;
+}
+
+.live-indicator::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background-color: #10b981;
+    border-radius: 50%;
+    animation: pulse-green 2s infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .notification-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+
+    .notification {
+        min-width: auto;
+    }
+
+    .ws-stats {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+}
+
+/* Loading Skeleton for Real-Time Data */
+.skeleton {
+    background: linear-gradient(90deg, rgba(55, 65, 81, 0.4) 25%, rgba(75, 85, 99, 0.4) 50%, rgba(55, 65, 81, 0.4) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Connection Health Indicator */
+.connection-health {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    background: rgba(31, 41, 55, 0.5);
+}
+
+.connection-health-bar {
+    width: 60px;
+    height: 4px;
+    background: rgba(75, 85, 99, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.connection-health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+    transition: width 0.5s ease;
+}
+
+/* Ticker Badge with Live Status */
+.ticker-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #818cf8;
+}
+
+.ticker-badge.live::after {
+    content: '●';
+    color: #10b981;
+    animation: pulse-green 2s infinite;
+}
+
+/* Queue Indicator */
+.queue-indicator {
+    position: fixed;
+    bottom: 80px;
+    left: 20px;
+    background: rgba(245, 158, 11, 0.9);
+    color: #1f2937;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.queue-indicator.active {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+}

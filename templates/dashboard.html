@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/realtime.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
     <main class="container" data-dashboard-shell>
@@ -615,5 +616,7 @@
     <!-- Load scripts at end of body for proper initialization -->
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/websocket-client.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/realtime-dashboard.js?v={{ build_sha }}"></script>
 </body>
 </html>
