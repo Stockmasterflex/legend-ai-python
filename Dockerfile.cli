@@ -1,0 +1,49 @@
+# Legend AI CLI Docker Image
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir typer[all]>=0.12.0 rich>=13.7.0 pyyaml>=6.0.1 textual>=0.47.0
+
+# Copy application code
+COPY app/ ./app/
+COPY legend_cli/ ./legend_cli/
+COPY setup.py .
+COPY pyproject.toml .
+COPY README.md .
+
+# Install package
+RUN pip install -e .
+
+# Create config directory
+RUN mkdir -p /root/.legend
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV LEGEND_API_URL=http://localhost:8000
+
+# Default command (interactive shell with legend available)
+CMD ["/bin/bash"]
+
+# Labels
+LABEL maintainer="Legend AI Team <contact@legend-ai.com>"
+LABEL description="Legend AI CLI - Professional trading pattern scanner"
+LABEL version="1.0.0"
+
+# Usage:
+# Build: docker build -f Dockerfile.cli -t legend-ai-cli .
+# Run CLI: docker run -it --rm legend-ai-cli legend --help
+# Run TUI: docker run -it --rm legend-ai-cli legend tui
+# Interactive: docker run -it --rm legend-ai-cli

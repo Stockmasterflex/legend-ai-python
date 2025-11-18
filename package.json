@@ -1,5 +1,50 @@
 {
+  "name": "legend-ai-cli",
+  "version": "1.0.0",
+  "description": "Professional trading pattern scanner and analysis CLI (Node.js wrapper)",
+  "main": "index.js",
+  "bin": {
+    "legend": "./bin/legend.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "trading",
+    "stocks",
+    "patterns",
+    "technical-analysis",
+    "cli",
+    "finance",
+    "investing"
+  ],
+  "author": "Legend AI Team <contact@legend-ai.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Stockmasterflex/legend-ai-python.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Stockmasterflex/legend-ai-python/issues"
+  },
+  "homepage": "https://github.com/Stockmasterflex/legend-ai-python#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "dependencies": {},
   "devDependencies": {
     "playwright": "^1.56.1"
-  }
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ]
 }

@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legend-ai"
+version = "1.0.0"
+description = "Professional trading pattern scanner and analysis platform with CLI, API, and TUI"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Legend AI Team", email = "contact@legend-ai.com"}
+]
+keywords = ["trading", "stocks", "patterns", "technical-analysis", "cli", "tui", "api"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "python-telegram-bot==21.9",
+    "httpx==0.28.1",
+    "redis==5.2.1",
+    "pydantic==2.10.6",
+    "pydantic-settings==2.7.1",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "python-multipart==0.0.18",
+    "aiofiles==23.2.1",
+    "python-dotenv==1.0.0",
+    "prometheus-client>=0.20.0",
+    "sqlalchemy==2.0.36",
+    "psycopg2-binary==2.9.10",
+    "alembic==1.14.0",
+    "pandas==2.2.3",
+    "numpy==1.26.4",
+    "scipy==1.14.1",
+    "openai==1.59.7",
+    "gradio==5.9.1",
+    # CLI dependencies
+    "typer[all]>=0.12.0",
+    "rich>=13.7.0",
+    "pyyaml>=6.0.1",
+]
+
+[project.optional-dependencies]
+tui = [
+    "textual>=0.47.0",
+]
+dev = [
+    "pytest==8.4.2",
+    "pytest-asyncio==1.3.0",
+    "pytest-cov==6.0.0",
+    "mypy==1.13.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "legend-ai[tui,dev]",
+]
+
+[project.scripts]
+legend = "legend_cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/Stockmasterflex/legend-ai-python"
+Documentation = "https://github.com/Stockmasterflex/legend-ai-python#readme"
+Repository = "https://github.com/Stockmasterflex/legend-ai-python"
+Issues = "https://github.com/Stockmasterflex/legend-ai-python/issues"
+
+[tool.setuptools]
+packages = ["app", "legend_cli", "tests"]
+
+[tool.setuptools.package-data]
+legend_cli = ["*.yaml", "*.json"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
