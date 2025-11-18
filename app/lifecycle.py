@@ -113,9 +113,38 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.warning("⚠️ Telegram webhook setup failed (non-critical): %s", exc)
 
+    # Start monitoring and alerting services
+    try:
+        from app.telemetry.monitoring import get_monitoring_service
+        from app.telemetry.alerter import get_alerter
+
+        monitoring_service = get_monitoring_service()
+        await monitoring_service.start_monitoring()
+        logger.info("🔍 Monitoring service started")
+
+        alerter = get_alerter()
+        await alerter.start_alerting()
+        logger.info("🚨 Monitoring alerter started")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to start monitoring services (non-critical): %s", exc)
+
     logger.info("✅ Bot started successfully!")
 
     yield
 
     # === SHUTDOWN ===
     logger.info("Shutting down...")
+
+    # Stop monitoring and alerting services
+    try:
+        from app.telemetry.monitoring import get_monitoring_service
+        from app.telemetry.alerter import get_alerter
+
+        monitoring_service = get_monitoring_service()
+        await monitoring_service.stop_monitoring()
+
+        alerter = get_alerter()
+        await alerter.stop_alerting()
+        logger.info("✅ Monitoring services stopped")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to stop monitoring services: %s", exc)
