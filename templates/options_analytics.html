@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Analytics | Legend AI</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- ApexCharts for advanced charts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        body {
+            background: #0a0a0f;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .cyberpunk-border {
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .card {
+            background: rgba(15, 15, 30, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-inactive {
+            background: rgba(15, 15, 30, 0.5);
+            color: #9ca3af;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .bullish { color: #10b981; }
+        .bearish { color: #ef4444; }
+        .neutral { color: #6b7280; }
+
+        .heatmap-cell {
+            transition: all 0.2s;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .flow-item {
+            border-left: 3px solid;
+            padding-left: 12px;
+        }
+
+        .flow-bullish {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .flow-bearish {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+    </style>
+</head>
+<body class="p-6">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">
+                    <span class="gradient-bg bg-clip-text text-transparent">Options Analytics</span>
+                </h1>
+                <p class="text-gray-400">Advanced options analysis, flow tracking, and strategy building</p>
+            </div>
+            <div class="flex gap-4 items-center">
+                <a href="/dashboard" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition">
+                    ← Back to Dashboard
+                </a>
+                <div class="px-4 py-2 card">
+                    <span class="text-gray-400">Build:</span>
+                    <span class="font-mono text-sm">{{ build_sha }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Symbol Input -->
+    <div class="mb-6 card p-6">
+        <div class="flex gap-4 items-end">
+            <div class="flex-1">
+                <label class="block text-sm font-medium mb-2">Symbol</label>
+                <input
+                    id="symbol-input"
+                    type="text"
+                    placeholder="Enter ticker (e.g., SPY)"
+                    class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none"
+                    value="SPY"
+                >
+            </div>
+            <button
+                id="load-data-btn"
+                class="px-6 py-3 gradient-bg rounded-lg font-medium hover:opacity-90 transition"
+            >
+                Load Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Tabs -->
+    <div class="mb-6">
+        <div class="flex gap-2 border-b border-gray-800">
+            <button class="tab-btn px-6 py-3 rounded-t-lg font-medium tab-active" data-tab="chain">
+                📊 Options Chain
+            </button>
+            <button class="tab-btn px-6 py-3 rounded-t-lg font-medium tab-inactive" data-tab="flow">
+                💰 Options Flow
+            </button>
+            <button class="tab-btn px-6 py-3 rounded-t-lg font-medium tab-inactive" data-tab="volatility">
+                📈 Volatility Surface
+            </button>
+            <button class="tab-btn px-6 py-3 rounded-t-lg font-medium tab-inactive" data-tab="strategies">
+                🎯 Strategy Builder
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Content: Options Chain -->
+    <div id="tab-chain" class="tab-content">
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="kpi-card p-4 rounded-lg">
+                <div class="text-sm text-gray-400 mb-1">Max Pain</div>
+                <div id="kpi-max-pain" class="text-2xl font-bold">--</div>
+            </div>
+            <div class="kpi-card p-4 rounded-lg">
+                <div class="text-sm text-gray-400 mb-1">Put/Call Ratio</div>
+                <div id="kpi-pc-ratio" class="text-2xl font-bold">--</div>
+            </div>
+            <div class="kpi-card p-4 rounded-lg">
+                <div class="text-sm text-gray-400 mb-1">Total OI</div>
+                <div id="kpi-total-oi" class="text-2xl font-bold">--</div>
+            </div>
+            <div class="kpi-card p-4 rounded-lg">
+                <div class="text-sm text-gray-400 mb-1">Gamma Exposure</div>
+                <div id="kpi-gex" class="text-2xl font-bold">--</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Options Chain Table -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4">Options Chain</h2>
+                <div class="overflow-auto max-h-96">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-gray-900">
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-2">Strike</th>
+                                <th class="text-right py-2">Call IV</th>
+                                <th class="text-right py-2">Put IV</th>
+                                <th class="text-right py-2">OI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chain-table">
+                            <tr>
+                                <td colspan="4" class="text-center text-gray-500 py-8">Load data to view chain</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Open Interest Heatmap -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4">Open Interest Heatmap</h2>
+                <div id="oi-heatmap" class="h-80"></div>
+            </div>
+        </div>
+
+        <!-- Unusual Activity -->
+        <div class="card p-6 mt-6">
+            <h2 class="text-xl font-bold mb-4">Unusual Activity</h2>
+            <div id="unusual-activity" class="space-y-3 max-h-64 overflow-auto">
+                <p class="text-gray-500 text-center py-8">No unusual activity detected</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content: Options Flow -->
+    <div id="tab-flow" class="tab-content hidden">
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Live Flow Feed -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4">Real-Time Flow</h2>
+                <div id="flow-feed" class="space-y-2 max-h-96 overflow-auto">
+                    <p class="text-gray-500 text-center py-8">Load data to view flow</p>
+                </div>
+            </div>
+
+            <!-- Flow Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">Flow by Type</h2>
+                    <canvas id="flow-type-chart"></canvas>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">Sentiment Analysis</h2>
+                    <canvas id="sentiment-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content: Volatility Surface -->
+    <div id="tab-volatility" class="tab-content hidden">
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Volatility Skew -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4">Volatility Skew</h2>
+                <div id="vol-skew-chart" class="h-80"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Term Structure -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">Term Structure</h2>
+                    <div id="term-structure-chart" class="h-64"></div>
+                </div>
+
+                <!-- IV Percentile -->
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-4">IV Analysis</h2>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Current IV</span>
+                            <span id="current-iv" class="text-xl font-bold">--</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">IV Percentile</span>
+                            <span id="iv-percentile" class="text-xl font-bold">--</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Crush Risk</span>
+                            <span id="crush-risk" class="text-xl font-bold">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content: Strategy Builder -->
+    <div id="tab-strategies" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Strategy Selector -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4">Select Strategy</h2>
+                <div class="space-y-3">
+                    <button class="strategy-btn w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition" data-strategy="vertical">
+                        Vertical Spread
+                    </button>
+                    <button class="strategy-btn w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition" data-strategy="iron-condor">
+                        Iron Condor
+                    </button>
+                    <button class="strategy-btn w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition" data-strategy="straddle">
+                        Straddle
+                    </button>
+                    <button class="strategy-btn w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition" data-strategy="butterfly">
+                        Butterfly
+                    </button>
+                </div>
+
+                <!-- Strategy Parameters -->
+                <div id="strategy-params" class="mt-6 space-y-3">
+                    <p class="text-gray-500 text-sm">Select a strategy to configure</p>
+                </div>
+            </div>
+
+            <!-- P&L Chart -->
+            <div class="lg:col-span-2 card p-6">
+                <h2 class="text-xl font-bold mb-4">P&L Diagram</h2>
+                <div id="pnl-chart" class="h-96"></div>
+
+                <!-- Strategy Metrics -->
+                <div class="grid grid-cols-3 gap-4 mt-6">
+                    <div class="kpi-card p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Max Profit</div>
+                        <div id="strategy-max-profit" class="text-xl font-bold bullish">--</div>
+                    </div>
+                    <div class="kpi-card p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Max Loss</div>
+                        <div id="strategy-max-loss" class="text-xl font-bold bearish">--</div>
+                    </div>
+                    <div class="kpi-card p-4 rounded-lg">
+                        <div class="text-sm text-gray-400 mb-1">Risk/Reward</div>
+                        <div id="strategy-rr" class="text-xl font-bold">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/options_analytics.js?v={{ build_sha }}"></script>
+</body>
+</html>

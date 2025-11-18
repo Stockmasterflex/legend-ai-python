@@ -12,6 +12,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # locally and inside Railway containers.
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
 TV_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "partials" / "tv_widget_templates.html"
+OPTIONS_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "options_analytics.html"
 
 
 @router.get("", response_class=HTMLResponse)
@@ -55,6 +56,45 @@ async def get_dashboard():
             <h1>Dashboard Error</h1>
             <p class="error">Could not load dashboard: {str(e)}</p>
             <p><a href="/docs" style="color: #3b82f6;">View API Documentation</a></p>
+        </body>
+        </html>
+        """
+
+
+@router.get("/options", response_class=HTMLResponse)
+async def get_options_analytics():
+    """
+    Serve the Options Analytics dashboard
+
+    Advanced options analytics with:
+    - Options Chain with live Greeks and max pain
+    - Options Flow tracking and unusual activity
+    - Volatility Surface and IV analysis
+    - Strategy Builder with P&L diagrams
+    """
+    try:
+        html_content = OPTIONS_TEMPLATE_PATH.read_text(encoding="utf-8")
+        build_sha = _resolve_build_sha()
+        html_content = html_content.replace("{{ build_sha }}", build_sha)
+
+        logger.info("📊 Serving options analytics dashboard")
+        return html_content
+
+    except Exception as e:
+        logger.error(f"Error loading options analytics dashboard: {e}")
+        return f"""
+        <html>
+        <head>
+            <title>Legend AI - Options Analytics Error</title>
+            <style>
+                body {{ background: #0f0f0f; color: #e5e7eb; font-family: sans-serif; padding: 40px; }}
+                .error {{ color: #ef4444; }}
+            </style>
+        </head>
+        <body>
+            <h1>Options Analytics Error</h1>
+            <p class="error">Could not load options analytics: {str(e)}</p>
+            <p><a href="/dashboard" style="color: #3b82f6;">Back to Dashboard</a></p>
         </body>
         </html>
         """
