@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/sentiment-widget.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
     <main class="container" data-dashboard-shell>
@@ -185,9 +186,57 @@
 
                         <div class="tv-demo-news-section">
                             <div class="tv-demo-widget-header">
-                                <span class="tv-demo-widget-title">Market News & Analysis</span>
+                                <span class="tv-demo-widget-title">News Sentiment & Analysis</span>
+                                <div class="sentiment-header-controls">
+                                    <button id="refresh-sentiment" class="btn-icon" title="Refresh sentiment">
+                                        <span>↻</span>
+                                    </button>
+                                </div>
                             </div>
-                            <div data-tv-widget-target="tv-template-news-timeline"></div>
+
+                            <!-- Sentiment Summary Card -->
+                            <div id="sentiment-summary" class="sentiment-summary">
+                                <div class="sentiment-score-card">
+                                    <div class="sentiment-label">Overall Sentiment</div>
+                                    <div id="sentiment-score-display" class="sentiment-score">--</div>
+                                    <div id="sentiment-label-display" class="sentiment-status">Loading...</div>
+                                </div>
+                                <div class="sentiment-stats">
+                                    <div class="stat">
+                                        <span class="stat-label">Positive</span>
+                                        <span id="sentiment-positive-count" class="stat-value">--</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Negative</span>
+                                        <span id="sentiment-negative-count" class="stat-value">--</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Neutral</span>
+                                        <span id="sentiment-neutral-count" class="stat-value">--</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Trend</span>
+                                        <span id="sentiment-trend-display" class="stat-value">--</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sentiment Alerts -->
+                            <div id="sentiment-alerts" class="sentiment-alerts" style="display: none;">
+                                <div class="alert-banner" id="sentiment-alert-banner">
+                                    <span class="alert-icon">⚠️</span>
+                                    <span id="sentiment-alert-message"></span>
+                                </div>
+                            </div>
+
+                            <!-- News Feed -->
+                            <div id="sentiment-news-feed" class="sentiment-news-feed">
+                                <div class="loading-overlay" id="sentiment-loading">
+                                    <span class="spinner"></span>
+                                    <span>Loading news sentiment...</span>
+                                </div>
+                                <div id="news-feed-content" class="news-feed-content"></div>
+                            </div>
                         </div>
                     </section>
                 </section>
@@ -615,5 +664,6 @@
     <!-- Load scripts at end of body for proper initialization -->
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/sentiment-widget.js?v={{ build_sha }}"></script>
 </body>
 </html>

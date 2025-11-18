@@ -25,6 +25,14 @@ scipy==1.14.1
 # AI/ML
 openai==1.59.7
 
+# News & Sentiment Analysis
+vaderSentiment==3.3.2
+transformers==4.46.3
+torch==2.5.1
+sentencepiece==0.2.0
+feedparser==6.0.11
+beautifulsoup4==4.12.3
+
 # Phase 2: Gradio Dashboard
 gradio==5.9.1
 

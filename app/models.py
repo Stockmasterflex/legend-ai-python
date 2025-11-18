@@ -3,7 +3,7 @@ Database models for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -102,3 +102,57 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class NewsArticle(Base):
+    """News articles for sentiment analysis"""
+    __tablename__ = "news_articles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    symbol = Column(String(10), index=True, nullable=False)
+    title = Column(Text, nullable=False)
+    summary = Column(Text)
+    url = Column(Text)
+    source = Column(String(100))  # "alpha_vantage", "finnhub", "newsapi", etc.
+    author = Column(String(255))
+    published_at = Column(DateTime(timezone=True), index=True)
+    category = Column(String(50))  # "earnings", "merger", "general", etc.
+    tags = Column(JSON, nullable=True)  # ["tech", "AI", "earnings"]
+    image_url = Column(Text)
+    is_breaking = Column(Boolean, default=False, index=True)
+    fetched_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class SentimentScore(Base):
+    """Sentiment analysis scores for news and market data"""
+    __tablename__ = "sentiment_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    symbol = Column(String(10), index=True, nullable=False)
+    news_article_id = Column(Integer, ForeignKey("news_articles.id"), nullable=True, index=True)
+
+    # Sentiment scores (-1 to 1)
+    score = Column(Float, nullable=False)  # Overall sentiment score
+    positive = Column(Float, default=0.0)
+    negative = Column(Float, default=0.0)
+    neutral = Column(Float, default=0.0)
+
+    # Analysis metadata
+    analyzer = Column(String(50))  # "vader", "finbert", "openai", etc.
+    confidence = Column(Float)  # Confidence level 0-1
+    sentiment_label = Column(String(20), index=True)  # "positive", "negative", "neutral"
+
+    # Market impact
+    price_change_1h = Column(Float, nullable=True)  # Price change % 1 hour after
+    price_change_24h = Column(Float, nullable=True)  # Price change % 24 hours after
+    volume_change = Column(Float, nullable=True)  # Volume change % after news
+
+    # Sentiment shift detection
+    is_shift = Column(Boolean, default=False, index=True)  # Significant sentiment shift
+    shift_magnitude = Column(Float, nullable=True)  # Magnitude of shift
+    previous_sentiment = Column(Float, nullable=True)  # Previous sentiment score
+
+    # Timestamps
+    analyzed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

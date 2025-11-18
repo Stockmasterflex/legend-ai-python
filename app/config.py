@@ -78,11 +78,17 @@ class Settings(BaseSettings):
     finnhub_api_key: Optional[str] = None
     alpha_vantage_api_key: Optional[str] = None
 
+    # News & Sentiment APIs
+    newsapi_api_key: Optional[str] = None
+    benzinga_api_key: Optional[str] = None
+
     # API Rate Limits (daily)
     twelvedata_daily_limit: int = 800
     finnhub_daily_limit: int = 60
     alpha_vantage_daily_limit: int = 500
     chartimg_daily_limit: int = 500
+    newsapi_daily_limit: int = 100
+    benzinga_daily_limit: int = 200
 
     # Redis
     redis_url: str = "redis://localhost:6379"
@@ -106,12 +112,23 @@ class Settings(BaseSettings):
     cache_ttl_market_data: int = 900  # 15 minutes
     cache_ttl_charts: int = 7200  # 2 hours
     cache_ttl_ai_responses: int = 1800  # 30 minutes
+    cache_ttl_news: int = 3600  # 1 hour for news articles
+    cache_ttl_sentiment: int = 900  # 15 minutes for sentiment scores
 
     rate_limit_per_minute: int = 60
     ai_rate_limit_per_minute: int = 20
     market_data_rate_limit: int = 30
 
     data_source_priority: str = "twelvedata,finnhub,alphavantage"
+
+    # Sentiment Analysis Settings
+    sentiment_analyzer: str = "vader"  # "vader", "finbert", "openai"
+    sentiment_threshold_positive: float = 0.05  # Threshold for positive sentiment
+    sentiment_threshold_negative: float = -0.05  # Threshold for negative sentiment
+    sentiment_shift_threshold: float = 0.3  # Minimum change to detect sentiment shift
+    news_lookback_hours: int = 24  # How far back to fetch news
+    breaking_news_keywords: str = "breaking,alert,urgent,emergency,halt"  # Comma-separated
+    sentiment_update_interval: int = 900  # 15 minutes
 
     # Multi-Tier Cache Settings
     cache_hot_ttl_min: int = 300  # 5 minutes (Redis hot tier)
