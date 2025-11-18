@@ -421,7 +421,7 @@ class DatabaseService:
                         "id": r[0],
                         "ticker": r[1],
                         "reason": r[2],
-                        "tags": r[3],
+                        "tags": [tag.strip() for tag in (r[3] or "").split(",") if tag.strip()],
                         "status": r[4],
                         "added_at": r[5].isoformat() if r[5] else None,
                     }
@@ -444,6 +444,45 @@ class DatabaseService:
             return True
         except Exception as e:
             logger.warning(f"add_watchlist_symbol failed: {e}")
+            return False
+
+    def update_watchlist_symbol(self, symbol: str, reason: Optional[str] = None, tags: Optional[str] = None, status: Optional[str] = None) -> bool:
+        try:
+            if not self.engine:
+                return False
+            self.ensure_watchlist_table()
+            with self.engine.begin() as conn:
+                result = conn.execute(
+                    text(
+                        """
+                        update watchlist
+                        set
+                          reason = coalesce(:reason, reason),
+                          tags = coalesce(:tags, tags),
+                          status = coalesce(:status, status)
+                        where symbol = :symbol
+                        """
+                    ),
+                    {"reason": reason, "tags": tags, "status": status, "symbol": symbol.upper()},
+                )
+            return result.rowcount > 0
+        except Exception as e:
+            logger.warning(f"update_watchlist_symbol failed: {e}")
+            return False
+
+    def remove_watchlist_symbol(self, symbol: str) -> bool:
+        try:
+            if not self.engine:
+                return False
+            self.ensure_watchlist_table()
+            with self.engine.begin() as conn:
+                result = conn.execute(
+                    text("delete from watchlist where symbol = :symbol"),
+                    {"symbol": symbol.upper()},
+                )
+            return result.rowcount > 0
+        except Exception as e:
+            logger.warning(f"remove_watchlist_symbol failed: {e}")
             return False
 
 # Global database service instance

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
 </head>
-<body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
+<body class="app-shell">
     <main class="container" data-dashboard-shell>
         <header class="hero">
             <div class="hero-content">
@@ -21,19 +21,10 @@
                 </div>
                 <div class="hero-actions">
                     <label for="quick-symbol-input">Quick symbol</label>
-                    <form class="quick-search" id="quick-scan-form">
-                        <input
-                            id="quick-symbol-input"
-                            type="text"
-                            placeholder="AAPL"
-                            value="AAPL"
-                            required
-                            pattern="[A-Z][A-Z0-9.^-]{0,9}"
-                            maxlength="10"
-                            title="Enter ticker symbol (e.g., AAPL, BRK.B)"
-                        />
-                        <button type="submit" id="quick-scan-button" class="btn btn-primary">Scan</button>
-                    </form>
+                    <div class="quick-search">
+                        <input id="quick-symbol-input" type="text" placeholder="NVDA" value="NVDA" />
+                        <button id="quick-scan-button" class="btn btn-primary">Scan</button>
+                    </div>
                     <div class="quick-search">
                         <select id="quick-timeframe" class="select">
                             <option value="1day">Daily</option>
@@ -55,146 +46,52 @@
             </nav>
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" data-tab-panel="analyze">
-                    <h2 class="eyebrow">Analyze Ticker</h2>
-                    <div class="analyze-grid">
-                        <div class="analyze-main">
-                            <div class="chart-container card">
-                                <div class="card-header">
-                                    <h3 id="analyze-chart-title">Chart View</h3>
-                                    <span id="analyze-chart-status" class="chart-status">Idle</span>
-                                </div>
-                                <div class="chart-shell" id="analyze-chart" aria-live="polite">
-                                    <div class="chart-placeholder">
-                                        <p>Enter a ticker and click "Analyze" to see the chart.</p>
-                                    </div>
-                                </div>
-                            </div>
+                    <h2 class="eyebrow">Analyze (Daily or Weekly only – intraday coming later)</h2>
+                    <form id="pattern-form" class="form-grid">
+                        <div class="form-field">
+                            <label for="pattern-ticker">Ticker</label>
+                            <input id="pattern-ticker" type="text" value="NVDA" placeholder="NVDA" />
                         </div>
-                        <aside class="analyze-sidebar">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3>Analysis</h3>
-                                </div>
-                                <div id="pattern-loading" class="loading-overlay" role="status" aria-live="polite">
-                                    <span class="spinner" aria-hidden="true"></span>
-                                    <span>Scanning Minervini template…</span>
-                                </div>
-                                <div id="pattern-results" class="results-grid">
-                                    <div class="placeholder-text">
-                                        <p>Analysis results will appear here.</p>
-                                    </div>
-                                </div>
+                        <div class="form-field">
+                            <label for="pattern-interval">Interval</label>
+                        <select id="pattern-interval">
+                            <option value="1day">Daily</option>
+                            <option value="1week">Weekly</option>
+                        </select>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" type="submit">Analyze pattern</button>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button id="pattern-add-watchlist" class="btn btn-secondary" type="button">Add to watchlist</button>
+                        </div>
+                        <div class="form-field">
+                            <label>&nbsp;</label>
+                            <button id="pattern-snapshot" class="btn btn-ghost" type="button">Generate snapshot</button>
+                        </div>
+                    </form>
+                    <div class="analyze-panels">
+                        <div class="analyze-results">
+                            <div id="pattern-loading" class="loading-overlay">
+                                <span class="spinner" aria-hidden="true"></span>
+                                <span>Scanning Minervini template…</span>
                             </div>
+                            <div id="pattern-results" class="results-grid"></div>
+                        </div>
+                        <aside class="analyze-chart-panel">
+                            <div class="panel-header">
+                                <div>
+                                    <p class="eyebrow">Chart View</p>
+                                    <h3 id="analyze-chart-title">Waiting for scan</h3>
+                                </div>
+                                <span id="analyze-chart-status" class="chart-status">Idle</span>
+                            </div>
+                            <div class="chart-shell" id="analyze-chart" aria-live="polite"></div>
+                            <p class="chart-hint">Charts auto-sync after each analysis. Use Snapshot for a shareable link.</p>
                         </aside>
                     </div>
-                    <div class="analyze-form-container card">
-                        <form id="pattern-form" class="analyze-form">
-                            <div class="form-group">
-                                <label for="pattern-ticker">Ticker Symbol</label>
-                                <input
-                                    id="pattern-ticker"
-                                    type="text"
-                                    value="AAPL"
-                                    placeholder="e.g., AAPL, BRK.B, SPY"
-                                    required
-                                    pattern="[A-Z][A-Z0-9.^-]{0,9}"
-                                    maxlength="10"
-                                    title="Enter ticker symbol (e.g., AAPL, BRK.B)"
-                                    class="ticker-input"
-                                    list="popular-tickers"
-                                />
-                                <datalist id="popular-tickers">
-                                    <option value="NASDAQ:NVDA">NVIDIA</option>
-                                    <option value="NASDAQ:AAPL">Apple</option>
-                                    <option value="NASDAQ:TSLA">Tesla</option>
-                                    <option value="NASDAQ:MSFT">Microsoft</option>
-                                    <option value="NASDAQ:GOOGL">Google</option>
-                                    <option value="NYSE:SPY">S&P 500 ETF</option>
-                                </datalist>
-                            </div>
-                            <div class="form-group">
-                                <label>Timeframe</label>
-                                <div class="radio-group">
-                                    <label class="radio-label">
-                                        <input type="radio" name="pattern-timeframe" value="1day" checked />
-                                        <span>Daily</span>
-                                    </label>
-                                    <label class="radio-label">
-                                        <input type="radio" name="pattern-timeframe" value="1week" />
-                                        <span>Weekly</span>
-                                    </label>
-                                </div>
-                                <select id="pattern-interval" hidden>
-                                    <option value="1day" selected>Daily</option>
-                                    <option value="1week">Weekly</option>
-                                </select>
-                            </div>
-                            <div class="form-actions">
-                                <button class="btn btn-primary" type="submit">Analyze</button>
-                                <button id="pattern-add-watchlist" class="btn btn-secondary" type="button">Add to Watchlist</button>
-                                <button id="pattern-snapshot" class="btn btn-ghost" type="button">Snapshot</button>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="analyze-tv-divider" aria-hidden="true"></div>
-                    <section class="tradingview-demo-layout" aria-label="TradingView trading interface">
-                        <div class="tv-demo-header">
-                            <div class="tv-demo-title">
-                                <h3 class="tv-demo-symbol" data-tv-symbol-label>NASDAQ:AAPL</h3>
-                                <span class="tv-demo-subtitle">Live Trading Interface</span>
-                            </div>
-                            <div class="tv-demo-actions">
-                                <button class="tv-demo-btn tv-demo-btn--primary" id="tv-daily-toggle">Daily View</button>
-                                <button class="tv-demo-btn tv-demo-btn--secondary" id="tv-weekly-toggle">Weekly View</button>
-                            </div>
-                        </div>
-
-                        <div class="tv-demo-main-chart">
-                            <div class="tv-demo-chart-container">
-                                <div data-tv-widget-target="tv-template-advanced-chart"></div>
-                            </div>
-                            <div class="tv-demo-chart-weekly" style="display: none;">
-                                <div data-tv-widget-target="tv-template-advanced-chart-weekly"></div>
-                            </div>
-                        </div>
-
-                        <div class="tv-demo-widgets-grid">
-                            <div class="tv-demo-widget tv-demo-widget--symbol">
-                                <div class="tv-demo-widget-header">
-                                    <span class="tv-demo-widget-title">Symbol Info</span>
-                                </div>
-                                <div data-tv-widget-target="tv-template-symbol-info"></div>
-                            </div>
-
-                            <div class="tv-demo-widget tv-demo-widget--technical">
-                                <div class="tv-demo-widget-header">
-                                    <span class="tv-demo-widget-title">Technical Analysis</span>
-                                </div>
-                                <div data-tv-widget-target="tv-template-technical-analysis"></div>
-                            </div>
-
-                            <div class="tv-demo-widget tv-demo-widget--profile">
-                                <div class="tv-demo-widget-header">
-                                    <span class="tv-demo-widget-title">Company Profile</span>
-                                </div>
-                                <div data-tv-widget-target="tv-template-company-profile"></div>
-                            </div>
-
-                            <div class="tv-demo-widget tv-demo-widget--fundamentals">
-                                <div class="tv-demo-widget-header">
-                                    <span class="tv-demo-widget-title">Fundamentals</span>
-                                </div>
-                                <div data-tv-widget-target="tv-template-fundamentals"></div>
-                            </div>
-                        </div>
-
-                        <div class="tv-demo-news-section">
-                            <div class="tv-demo-widget-header">
-                                <span class="tv-demo-widget-title">Market News & Analysis</span>
-                            </div>
-                            <div data-tv-widget-target="tv-template-news-timeline"></div>
-                        </div>
-                    </section>
                 </section>
 
                 <section id="tab-scanner" class="tab-pane" data-tab-panel="scanner" hidden>
@@ -216,17 +113,17 @@
                                 </select>
                             </div>
                             <div class="form-field">
-                                <label for="universe-limit">Max symbols to scan</label>
-                                <input id="universe-limit" type="number" value="50" min="10" max="150" />
-                                <small>Scans the first N tickers per universe (sorted by RS strength).</small>
+                                <label for="universe-limit">Universe slice</label>
+                                <input id="universe-limit" type="number" value="30" min="5" max="120" />
+                                <small>More symbols = slower scans</small>
                             </div>
                             <div class="form-field">
                                 <label for="universe-score">Min legend score</label>
-                                <input id="universe-score" type="number" value="6.5" min="0" max="10" step="0.5" />
+                                <input id="universe-score" type="number" value="7" min="0" max="10" step="0.5" />
                             </div>
                             <div class="form-field">
                                 <label for="universe-rs">Min RS rating</label>
-                                <input id="universe-rs" type="number" value="55" min="0" max="100" />
+                                <input id="universe-rs" type="number" value="60" min="0" max="100" />
                             </div>
                             <div class="form-field">
                                 <label for="scanner-atr">Max ATR%</label>
@@ -234,31 +131,22 @@
                             </div>
                             <div class="form-field full">
                                 <label for="scanner-patterns">Pattern focus</label>
-                                <select id="scanner-patterns" multiple size="8">
-                                    <option value="all" selected>All implemented patterns</option>
-                                    <!-- Continuation Patterns -->
-                                    <option value="VCP">Volatility Contraction Pattern (VCP)</option>
+                                <select id="scanner-patterns" multiple size="6">
+                                    <option value="all" selected>All patterns</option>
+                                    <option value="VCP">Volatility Contraction</option>
                                     <option value="Flat Base">Flat Base</option>
-                                    <option value="Cup &amp; Handle">Cup with Handle</option>
+                                    <option value="Cup &amp; Handle">Cup &amp; Handle</option>
+                                    <option value="Breakout">Breakout</option>
+                                    <option value="Rising Wedge">Rising Wedge</option>
+                                    <option value="Falling Wedge">Falling Wedge</option>
+                                    <option value="Ascending Triangle">Ascending Triangle</option>
+                                    <option value="Symmetrical Triangle">Symmetrical Triangle</option>
+                                    <option value="Head & Shoulders">Head &amp; Shoulders</option>
+                                    <option value="Inverse H&S">Inverse Head &amp; Shoulders</option>
                                     <option value="21 EMA Pullback">Pullback to 21 EMA</option>
                                     <option value="50 SMA Pullback">Pullback to 50 SMA</option>
-                                    <!-- Triangle Patterns -->
-                                    <option value="Ascending Triangle">Ascending Triangle</option>
-                                    <option value="Descending Triangle">Descending Triangle</option>
-                                    <option value="Symmetrical Triangle">Symmetrical Triangle</option>
-                                    <!-- Wedge Patterns -->
-                                    <option value="Rising Wedge">Rising Wedge (Bearish)</option>
-                                    <option value="Falling Wedge">Falling Wedge (Bullish)</option>
-                                    <!-- Reversal Patterns -->
-                                    <option value="Head &amp; Shoulders">Head &amp; Shoulders</option>
-                                    <option value="Inverse Head &amp; Shoulders">Inverse Head &amp; Shoulders</option>
-                                    <option value="Double Top">Double Top</option>
-                                    <option value="Double Bottom">Double Bottom</option>
-                                    <!-- Channel Patterns -->
-                                    <option value="Channel Up">Channel Up</option>
-                                    <option value="Channel Down">Channel Down</option>
                                 </select>
-                                <small>Use Cmd/Ctrl-click to select multiple patterns. 17 patterns now available!</small>
+                                <small>Use Cmd/Ctrl-click to select multiple patterns.</small>
                             </div>
                             <div class="form-field">
                                 <label for="scanner-sector">Sector filter</label>
@@ -315,40 +203,29 @@
                             </div>
                         </aside>
                     </div>
-                    <div id="universe-loading" class="loading-overlay" role="status" aria-live="polite">
-                        <span class="spinner" aria-hidden="true"></span>
+                    <div id="universe-loading" class="loading-overlay">
+                        <span class="spinner"></span>
                         <span>Scanning universe…</span>
                     </div>
-                        <div class="table-wrapper scanner-table-wrapper">
+                    <div class="table-wrapper scanner-table-wrapper">
                         <table class="table scanner-table" aria-live="polite">
                             <thead>
                                 <tr>
                                     <th>Ticker</th>
                                     <th>Pattern</th>
                                     <th>Score</th>
-                                    <th title="Relative Strength - measures stock performance vs market (0-100, higher is stronger)">RS</th>
-                                    <th title="Average True Range % - daily price volatility as % of stock price">ATR%</th>
+                                    <th>RS</th>
+                                    <th>ATR%</th>
                                     <th>Sector</th>
                                     <th>Entry</th>
                                     <th>Stop</th>
                                     <th>Target</th>
-                                    <th title="Risk:Reward ratio - potential reward divided by risk (higher is better, 2:1 minimum recommended)">R:R</th>
+                                    <th>R:R</th>
                                     <th>Chart</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="trading-interface-body">
-                                <tr class="empty-state">
-                                    <td colspan="12">
-                                        <div class="empty-state-content">
-                                            <div class="empty-icon">📊</div>
-                                            <h3>No Analysis Results Yet</h3>
-                                            <p>Configure your scan parameters above and click "Run scan" to find trading setups.</p>
-                                            <p class="hint">Supported timeframes: Daily, Weekly</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
+                            <tbody id="universe-table"></tbody>
                         </table>
                     </div>
                 </section>
@@ -361,67 +238,22 @@
                         </div>
                         <div class="top-setups-actions">
                             <span id="top-setups-meta" class="top-setups-meta">Waiting for first fetch…</span>
-                            <button id="top-setups-export" class="btn btn-ghost" type="button">Export CSV</button>
                             <button id="top-setups-refresh" class="btn btn-secondary" type="button">Refresh</button>
                         </div>
                     </div>
-                    <div class="scan-status-bar">
-                        <div class="status-item">
-                            <span class="status-label">Last scan:</span>
-                            <span class="status-value" id="last-scan-time">Never</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Next scan:</span>
-                            <span class="status-value" id="next-scan-time">Today 4:05 PM ET</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Setups Found:</span>
-                            <span class="status-value" id="setups-count">0</span>
-                        </div>
-                        <button id="manual-scan-btn" class="btn btn-secondary btn-sm" type="button">Run Manual Scan</button>
-                    </div>
-                    <div id="top-setups-loading" class="loading-overlay" role="status" aria-live="polite">
-                        <span class="spinner" aria-hidden="true"></span>
+                    <div id="top-setups-loading" class="loading-overlay">
+                        <span class="spinner"></span>
                         <span>Fetching setups…</span>
                     </div>
-                    <div class="table-wrapper top-setups-table-wrapper">
-                        <table class="table top-setups-table" aria-live="polite">
-                            <tbody id="top-setups-body">
-                                <tr class="empty-state">
-                                    <td colspan="8">
-                                        <div class="empty-state-content">
-                                            <div class="empty-icon">⭐</div>
-                                            <h3>No Top Setups in Watchlist</h3>
-                                            <p>Scans run daily at market open for S&amp;P 500 + NASDAQ stocks.</p>
-                                            <div class="scan-status">
-                                                <span>Last scan: <strong>—</strong></span>
-                                                <span>Next scan: <strong>—</strong></span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <div id="top-setups-empty" class="top-setups-empty">No setups yet. Run a scan or try again later.</div>
                     <div id="top-setups-grid" class="results-grid"></div>
                 </section>
 
-                    <section id="tab-watchlist" class="tab-pane" data-tab-panel="watchlist" hidden>
+                <section id="tab-watchlist" class="tab-pane" data-tab-panel="watchlist" hidden>
                     <form id="watchlist-form" class="watchlist-form">
-                        <div class="form-field full watchlist-form-banner">
-                            <p id="watchlist-mode-indicator" aria-live="polite">Adding new ticker</p>
-                        </div>
                         <div class="form-field">
                             <label for="watchlist-symbol">Ticker</label>
-                            <input
-                                id="watchlist-symbol"
-                                type="text"
-                                placeholder="TSLA"
-                                required
-                                pattern="[A-Z][A-Z0-9.^-]{0,9}"
-                                maxlength="10"
-                                title="Enter ticker symbol (e.g., TSLA, BRK.B)"
-                            />
+                            <input id="watchlist-symbol" type="text" placeholder="TSLA" />
                         </div>
                         <div class="form-field">
                             <label for="watchlist-status">Status</label>
@@ -437,46 +269,28 @@
                             <input id="watchlist-reason" type="text" placeholder="VCP base, post-earnings drift…" />
                         </div>
                         <div class="form-field full">
-                            <label for="watchlist-tags-select">Tags</label>
-                            <select id="watchlist-tags-select" multiple size="6" class="select">
+                            <label for="watchlist-tags">Tags</label>
+                            <select id="watchlist-tags" multiple size="4">
                                 <option value="Breakout">Breakout</option>
                                 <option value="Momentum">Momentum</option>
                                 <option value="VCP">VCP</option>
                                 <option value="Pullback">Pullback</option>
                                 <option value="Earnings">Earnings</option>
-                                <option value="Post-earnings drift">Post-earnings drift</option>
-                                <option value="Leader">Leader</option>
-                                <option value="Laggard">Laggard</option>
-                                <option value="Reclaim of 21 EMA">Reclaim of 21 EMA</option>
-                                <option value="Reclaim of 50 SMA">Reclaim of 50 SMA</option>
-                                <option value="First pullback">First pullback</option>
-                                <option value="Late-stage base">Late-stage base</option>
-                                <option value="Extended">Extended</option>
-                                <option value="Gap up">Gap up</option>
-                                <option value="Base-on-base">Base-on-base</option>
-                                <option value="Short squeeze">Short squeeze</option>
-                                <option value="Power trend">Power trend</option>
+                                <option value="IPO">IPO</option>
+                                <option value="Swing">Swing</option>
+                                <option value="Oversold">Oversold</option>
                             </select>
-                            <small>Hold Ctrl/Cmd to select multiple tags.</small>
+                            <small>Use Cmd/Ctrl-click to select tags.</small>
                         </div>
                         <div class="form-field">
                             <label>&nbsp;</label>
                             <div class="button-row">
                                 <button class="btn btn-primary" type="submit" id="watchlist-submit">Add to watchlist</button>
-                                <button class="btn btn-secondary" type="button" id="watchlist-cancel">Cancel edit</button>
+                                <button class="btn btn-ghost" type="button" id="watchlist-cancel">Cancel edit</button>
                             </div>
                         </div>
                     </form>
                     <div class="watchlist-toolbar">
-                        <div class="form-field">
-                            <label for="watchlist-search">Search</label>
-                            <input
-                                id="watchlist-search"
-                                type="text"
-                                placeholder="Search ticker or notes..."
-                                class="input"
-                            />
-                        </div>
                         <div class="form-field">
                             <label for="watchlist-filter">Status filter</label>
                             <select id="watchlist-filter">
@@ -488,35 +302,17 @@
                             </select>
                         </div>
                         <div class="form-field">
-                            <label for="watchlist-tag-filter-select">Tag filter</label>
-                            <select id="watchlist-tag-filter-select" multiple size="4" class="select">
-                                <option value="">All Tags</option>
+                            <label for="watchlist-tag-filter">Tag filter</label>
+                            <select id="watchlist-tag-filter" multiple size="3">
                                 <option value="Breakout">Breakout</option>
                                 <option value="Momentum">Momentum</option>
                                 <option value="VCP">VCP</option>
                                 <option value="Pullback">Pullback</option>
                                 <option value="Earnings">Earnings</option>
-                                <option value="Post-earnings drift">Post-earnings drift</option>
-                                <option value="Leader">Leader</option>
-                                <option value="Laggard">Laggard</option>
-                                <option value="Reclaim of 21 EMA">Reclaim of 21 EMA</option>
-                                <option value="Reclaim of 50 SMA">Reclaim of 50 SMA</option>
-                                <option value="First pullback">First pullback</option>
-                                <option value="Late-stage base">Late-stage base</option>
-                                <option value="Extended">Extended</option>
-                                <option value="Gap up">Gap up</option>
-                                <option value="Base-on-base">Base-on-base</option>
-                                <option value="Short squeeze">Short squeeze</option>
-                                <option value="Power trend">Power trend</option>
+                                <option value="IPO">IPO</option>
+                                <option value="Swing">Swing</option>
+                                <option value="Oversold">Oversold</option>
                             </select>
-                            <small>Hold Ctrl/Cmd to select multiple tags. Filters apply immediately.</small>
-                        </div>
-                        <div class="watchlist-density" role="group" aria-label="Watchlist density">
-                            <span class="meta-label">Density</span>
-                            <div class="watchlist-density-toggle">
-                                <button type="button" class="btn btn-ghost btn-compact active" data-density="comfortable">Comfortable</button>
-                                <button type="button" class="btn btn-ghost btn-compact" data-density="compact">Compact</button>
-                            </div>
                         </div>
                     </div>
                     <div id="watchlist-empty" class="watchlist-empty">No watchlist items yet.</div>
@@ -526,8 +322,6 @@
                                 <tr>
                                     <th>Ticker</th>
                                     <th>Status</th>
-                                    <th title="Relative Strength - measures stock performance vs market (0-100, higher is stronger)">RS</th>
-                                    <th title="Average True Range % - daily price volatility as % of stock price">ATR%</th>
                                     <th>Reason</th>
                                     <th>Tags</th>
                                     <th>Added</th>
@@ -540,72 +334,24 @@
                 </section>
 
                 <section id="tab-internals" class="tab-pane" data-tab-panel="internals" hidden>
-                    <div class="tab-section-header">
-                        <div>
-                            <h2 class="eyebrow">Market Internals</h2>
-                            <p>Live breadth, volatility, and sector structure powered by TradingView widgets.</p>
-                        </div>
-                        <button id="market-refresh" class="btn btn-secondary" type="button">Refresh data</button>
-                    </div>
                     <div class="internals-summary-stack">
-                        <div id="market-loading" class="loading-overlay" role="status" aria-live="polite">
-                            <span class="spinner" aria-hidden="true"></span>
+                        <div id="market-loading" class="loading-overlay">
+                            <span class="spinner"></span>
                             <span>Fetching breadth + volatility…</span>
                         </div>
                         <div id="market-results" class="internals-summary"></div>
                     </div>
-
-                    <section class="internals-section">
-                        <div class="internals-section-header">
-                            <div>
-                                <p class="eyebrow">World markets</p>
-                                <h3>TradingView market overview</h3>
-                            </div>
-                        </div>
-                        <div class="tv-card tv-card--wide tv-market-overview" id="tv-market-overview" data-testid="tv-market-overview" data-tv-widget-target="tv-template-market-overview"></div>
-                    </section>
-
-                    <section class="internals-section internals-grid">
-                        <div>
-                            <div class="internals-section-header">
-                                <div>
-                                    <p class="eyebrow">Heatmaps</p>
-                                    <h3>SPX sector map</h3>
-                                </div>
-                            </div>
-                            <div class="tv-card tv-card--heatmap" id="tv-heatmap" data-testid="tv-stock-heatmap" data-tv-widget-target="tv-template-stock-heatmap"></div>
-                        </div>
-                        <div>
-                            <div class="internals-section-header">
-                                <div>
-                                    <p class="eyebrow">Rotation</p>
-                                    <h3>ETF landscape</h3>
-                                </div>
-                            </div>
-                            <div class="tv-card tv-card--heatmap" id="tv-etf-heatmap" data-testid="tv-etf-heatmap" data-tv-widget-target="tv-template-etf-heatmap"></div>
-                        </div>
-                    </section>
-
-                    <section class="internals-section">
-                        <div class="internals-section-header">
-                            <div>
-                                <p class="eyebrow">Catalysts</p>
-                                <h3>Economic calendar</h3>
-                            </div>
-                        </div>
-                        <div class="tv-card tv-card--calendar" data-testid="tv-economic-calendar" data-tv-widget-target="tv-template-economic-calendar"></div>
-                    </section>
-
-                    <section class="internals-section">
-                        <div class="internals-section-header">
-                            <div>
-                                <p class="eyebrow">Screeners</p>
-                                <h3>TradingView stock screener</h3>
-                                <small>Use this liquidity + momentum pre-filter; the backend still enforces the full Minervini Trend Template.</small>
-                            </div>
-                        </div>
-                        <div class="tv-card tv-card--screener" data-testid="tv-screener" data-tv-widget-target="tv-template-screener"></div>
-                    </section>
+                    <div class="internals-minis">
+                        <div class="tv-card mini-card" id="tv-ticker-tape" aria-label="Live market ticker"></div>
+                        <div class="tv-card mini-card" id="tv-mini-spy" aria-label="SPY mini chart"></div>
+                        <div class="tv-card mini-card" id="tv-mini-qqq" aria-label="QQQ mini chart"></div>
+                        <div class="tv-card mini-card" id="tv-mini-iwm" aria-label="IWM mini chart"></div>
+                    </div>
+                    <div class="tv-grid">
+                        <div class="tv-card" id="tv-market-overview"></div>
+                        <div class="tv-card" id="tv-heatmap"></div>
+                        <div class="tv-card" id="tv-calendar"></div>
+                    </div>
                 </section>
                 
             </div>
@@ -614,11 +360,8 @@
 
     <div id="toast-stack" class="toast-stack"></div>
 
-    <!-- Shared TradingView templates -->
-    <!--TV_WIDGET_TEMPLATES-->
-
     <!-- Load scripts at end of body for proper initialization -->
-    <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+    <script async src="https://s3.tradingview.com/tv.js"></script>
 </body>
 </html>
