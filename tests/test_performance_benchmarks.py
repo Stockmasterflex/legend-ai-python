@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.core.detectors.vcp_detector import VCPDetector
 from app.core.detectors.cup_handle_detector import CupHandleDetector
 from app.core.detectors.triangle_detector import TriangleDetector
-from app.core.detector_registry import detector_registry
+from app.core.detector_registry import get_detector_registry
 
 
 # Mark all tests in this module as benchmarks
@@ -90,7 +90,7 @@ def test_benchmark_all_detectors():
     timings = {}
 
     for name in detector_names:
-        detector = detector_registry.get_detector(name)
+        detector = get_detector_registry().get_detector(name)
         if detector:
             start_time = time.perf_counter()
             results = detector.find(df, "1D", "BENCHMARK")
