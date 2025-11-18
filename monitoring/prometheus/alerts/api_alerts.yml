@@ -1,0 +1,77 @@
+# API Performance and Error Alerts
+
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(error_rate_total{severity="error"}[5m])) by (endpoint) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          category: api
+        annotations:
+          summary: "High error rate on {{ $labels.endpoint }}"
+          description: "{{ $labels.endpoint }} is experiencing {{ $value }} errors/sec (>0.1/sec threshold)"
+
+      # High 4xx error rate (client errors)
+      - alert: High4xxRate
+        expr: |
+          sum(rate(http_requests_total{status_code=~"4.."}[5m])) by (endpoint) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          category: api
+        annotations:
+          summary: "High 4xx error rate on {{ $labels.endpoint }}"
+          description: "{{ $labels.endpoint }} is experiencing {{ $value }} 4xx errors/sec"
+
+      # Slow API response time
+      - alert: SlowAPIResponseTime
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint)) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Slow API response time on {{ $labels.endpoint }}"
+          description: "95th percentile response time is {{ $value }}s (>5s threshold)"
+
+      # Very slow API response time
+      - alert: VerySlowAPIResponseTime
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint)) > 10
+        for: 2m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: "Very slow API response time on {{ $labels.endpoint }}"
+          description: "95th percentile response time is {{ $value }}s (>10s threshold) - immediate action required"
+
+      # API endpoint down
+      - alert: APIEndpointDown
+        expr: |
+          sum(rate(http_requests_total[5m])) by (endpoint) == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "API endpoint {{ $labels.endpoint }} appears down"
+          description: "No requests received for {{ $labels.endpoint }} in the last 5 minutes"
+
+      # High request rate (potential DDoS or traffic spike)
+      - alert: HighRequestRate
+        expr: |
+          sum(rate(http_requests_total[1m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+          category: traffic
+        annotations:
+          summary: "High request rate detected"
+          description: "Request rate is {{ $value }} req/sec (>100 req/sec)"

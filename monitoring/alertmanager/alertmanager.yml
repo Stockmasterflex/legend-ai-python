@@ -1,0 +1,82 @@
+# Alertmanager Configuration
+# Routes alerts to Telegram and other channels
+
+global:
+  resolve_timeout: 5m
+
+# Templates for alert formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route configuration
+route:
+  # Default receiver
+  receiver: 'telegram-default'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'cluster', 'service']
+
+  # Wait before sending notification for a group
+  group_wait: 10s
+
+  # Wait before sending notification about new alerts
+  group_interval: 10s
+
+  # Wait before sending notification about resolved alerts
+  repeat_interval: 12h
+
+  # Routes for specific alert types
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'telegram-critical'
+      group_wait: 0s
+      repeat_interval: 4h
+
+    # Warning alerts - batched notifications
+    - match:
+        severity: warning
+      receiver: 'telegram-warnings'
+      group_wait: 30s
+      repeat_interval: 12h
+
+    # Info alerts - less frequent notifications
+    - match:
+        severity: info
+      receiver: 'telegram-info'
+      group_wait: 5m
+      repeat_interval: 24h
+
+# Inhibition rules (suppress certain alerts when others are firing)
+inhibit_rules:
+  # Suppress warnings if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+# Receivers configuration
+receivers:
+  - name: 'telegram-default'
+    # Note: Telegram receiver requires alertmanager-telegram-bot
+    # For now, this is a placeholder - actual integration happens via webhook
+    webhook_configs:
+      - url: 'http://app:8000/api/alerts/webhook'
+        send_resolved: true
+
+  - name: 'telegram-critical'
+    webhook_configs:
+      - url: 'http://app:8000/api/alerts/webhook?priority=critical'
+        send_resolved: true
+
+  - name: 'telegram-warnings'
+    webhook_configs:
+      - url: 'http://app:8000/api/alerts/webhook?priority=warning'
+        send_resolved: true
+
+  - name: 'telegram-info'
+    webhook_configs:
+      - url: 'http://app:8000/api/alerts/webhook?priority=info'
+        send_resolved: true
