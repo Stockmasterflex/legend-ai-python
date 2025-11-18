@@ -131,6 +131,11 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
+    # TradingView Integration
+    tradingview_webhook_secret: Optional[str] = None
+    tradingview_api_key: Optional[str] = None
+    tradingview_rate_limit_per_minute: int = 100
+
 
 
 @lru_cache()

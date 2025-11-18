@@ -65,6 +65,14 @@ tags_metadata = [
         "name": "advanced_analysis",
         "description": "🧪 **Advanced Analysis** - Multi-timeframe and advanced technical analysis",
     },
+    {
+        "name": "tradingview",
+        "description": "📡 **TradingView Integration** - Webhook receiver, alert processing, two-way sync, and strategy backtesting",
+        "externalDocs": {
+            "description": "TradingView Integration Guide",
+            "url": "https://github.com/Stockmasterflex/legend-ai-python/blob/main/docs/TRADINGVIEW_INTEGRATION.md"
+        }
+    },
 ]
 
 # Custom OpenAPI schema
