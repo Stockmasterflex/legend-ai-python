@@ -113,6 +113,16 @@ class Settings(BaseSettings):
 
     data_source_priority: str = "twelvedata,finnhub,alphavantage"
 
+    # Multi-Tier Cache Settings
+    cache_hot_ttl_min: int = 300  # 5 minutes (Redis hot tier)
+    cache_hot_ttl_max: int = 900  # 15 minutes (Redis hot tier)
+    cache_warm_ttl: int = 3600  # 1 hour (Database warm tier)
+    cache_cdn_ttl: int = 86400  # 24 hours (CDN/static files)
+    cache_promotion_threshold: int = 3  # Access count to promote from warm to hot
+    cache_hot_max_size: int = 10000  # Max keys in hot tier before eviction
+    cache_enable_warming: bool = True  # Enable cache warming on startup
+    cache_cdn_path: str = "/tmp/legend-ai-cdn"  # Path for CDN static cache
+
     # Email & Alerts (optional for Phase 4)
     sendgrid_api_key: Optional[str] = None
     alert_email: Optional[str] = None

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.services.universe_store import universe_store
+from app.services.cache_warmer import get_cache_warmer
 from app.utils.build_info import resolve_build_sha
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await setup_telegram_webhook()
     except Exception as exc:
         logger.warning("⚠️ Telegram webhook setup failed (non-critical): %s", exc)
+
+    # Warm multi-tier cache (non-critical, won't block startup)
+    if settings.cache_enable_warming:
+        try:
+            logger.info("🔥 Starting multi-tier cache warming...")
+            cache_warmer = get_cache_warmer()
+            warm_stats = await cache_warmer.warm_all()
+            logger.info(f"✅ Cache warming completed: {warm_stats}")
+        except Exception as exc:
+            logger.warning("⚠️ Cache warming failed (non-critical): %s", exc)
+    else:
+        logger.info("⚠️ Cache warming disabled in settings")
 
     logger.info("✅ Bot started successfully!")
 
