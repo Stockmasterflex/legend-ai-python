@@ -434,3 +434,39 @@ async def get_nasdaq100():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/seed")
+async def seed_universe_manual():
+    """
+    Manually trigger universe seeding
+
+    This endpoint forces a refresh of the universe store, loading all
+    S&P 500 and NASDAQ 100 tickers with metadata. Use this if:
+    - Health check shows "seeded": false
+    - Top setups are timing out
+    - After Railway deployment to ensure universe is populated
+
+    Returns:
+        Dictionary with success status and number of symbols loaded
+    """
+    try:
+        logger.info("🔄 Manual universe seed triggered")
+        result = await universe_store.seed(force=True)
+        symbol_count = len(result) if isinstance(result, dict) else 0
+
+        logger.info(f"✅ Universe seeded successfully: {symbol_count} symbols")
+
+        return {
+            "success": True,
+            "symbols_loaded": symbol_count,
+            "message": f"Universe seeded with {symbol_count} symbols",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"❌ Manual universe seed failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to seed universe: {str(e)}"
+        )
+
