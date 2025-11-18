@@ -1,0 +1,172 @@
+================================================================================
+                 LEGEND AI DASHBOARD - FILE LOCATIONS SUMMARY
+================================================================================
+
+PROJECT ROOT: /home/user/legend-ai-python/
+
+CRITICAL FILES FOR DASHBOARD OPTIMIZATION:
+================================================================================
+
+1. MAIN ENTRY POINT
+   /home/user/legend-ai-python/app/main.py
+   - FastAPI app initialization
+   - Middleware configuration
+   - Route registration
+   - Static file mounting
+
+2. DASHBOARD RENDERING
+   /home/user/legend-ai-python/app/api/dashboard.py
+   - GET /dashboard endpoint
+   - Template loading and injection
+   - Build SHA resolution
+   - TradingView template injection
+
+3. HTML TEMPLATE (STRUCTURE)
+   /home/user/legend-ai-python/templates/dashboard.html [619 lines]
+   ├─ <head> imports (viewport, fonts, CSS)
+   ├─ Hero section (title, quick search)
+   ├─ Tab navigation (5 buttons)
+   └─ Tab panes:
+       ├─ tab-analyze (lines 57-193)
+       ├─ tab-scanner (lines 195-349)
+       ├─ tab-top (lines 351-402)
+       ├─ tab-watchlist (lines 404-536)
+       └─ tab-internals (lines 537+)
+
+4. JAVASCRIPT CONTROLLER
+   /home/user/legend-ai-python/static/js/dashboard.js [2,073 lines]
+   ├─ IIFE module wrapper
+   ├─ State management
+   ├─ DOM caching
+   ├─ Event binding
+   ├─ API calls
+   ├─ Tab navigation
+   └─ Data manipulation
+
+5. TRADINGVIEW INTEGRATION
+   /home/user/legend-ai-python/static/js/tv-widgets.js [122 lines]
+   ├─ TradingView widget loader
+   └─ Symbol synchronization
+
+6. DESIGN SYSTEM (TOKENS)
+   /home/user/legend-ai-python/static/css/cyberpunk-design-system.css [891 lines]
+   ├─ CSS custom properties (colors, spacing, etc.)
+   ├─ Base styles (html, body, typography)
+   ├─ Component styles (buttons, forms, modals, tables)
+   ├─ Mobile breakpoint (768px)
+   ├─ Accessibility rules (reduced-motion)
+   └─ Print styles
+
+7. DASHBOARD LAYOUT STYLES
+   /home/user/legend-ai-python/static/css/dashboard.css [2,336 lines]
+   ├─ Container & hero section
+   ├─ KPI grid styles
+   ├─ Tab navigation styles
+   ├─ Form layout styles
+   ├─ Results grid layouts
+   ├─ Table styles (scanner, top, watchlist)
+   ├─ TradingView demo grid
+   ├─ Responsive breakpoints:
+   │  ├─ @media (max-width: 1440px) - Large screens
+   │  ├─ @media (max-width: 900px) - Tablets
+   │  ├─ @media (max-width: 768px) - Tablets/phones
+   │  └─ @media (max-width: 480px) - Small phones
+   └─ Loading states & animations
+
+8. PARTIAL TEMPLATES
+   /home/user/legend-ai-python/templates/partials/tv_widget_templates.html
+   └─ TradingView widget embed snippets
+
+API ROUTERS REFERENCED BY DASHBOARD:
+================================================================================
+
+/home/user/legend-ai-python/app/api/patterns.py
+└─ GET /api/patterns/analyze - Pattern detection
+
+/home/user/legend-ai-python/app/api/universe.py
+└─ GET /api/universe/scan - Bulk scanning
+
+/home/user/legend-ai-python/app/api/watchlist.py
+├─ GET /api/watchlist - List
+├─ POST /api/watchlist - Create
+├─ PUT /api/watchlist/{id} - Update
+└─ DELETE /api/watchlist/{id} - Delete
+
+/home/user/legend-ai-python/app/api/charts.py
+└─ POST /api/charts/generate - Generate snapshots
+
+/home/user/legend-ai-python/app/api/market.py
+└─ GET /api/market/internals - Market data
+
+/home/user/legend-ai-python/app/api/version.py
+└─ GET /api/version - Build info
+
+/home/user/legend-ai-python/app/api/cache_mgmt.py
+└─ GET /api/cache/stats - Cache statistics
+
+STATIC ASSETS:
+================================================================================
+
+/home/user/legend-ai-python/static/
+├─ css/
+│   ├─ cyberpunk-design-system.css [891 lines]
+│   └─ dashboard.css [2,336 lines]
+├─ js/
+│   ├─ dashboard.js [2,073 lines]
+│   └─ tv-widgets.js [122 lines]
+└─ images/
+    └─ [logo assets, if any]
+
+CONFIGURATION FILES:
+================================================================================
+
+/home/user/legend-ai-python/app/config.py
+└─ Settings & environment variables
+
+/home/user/legend-ai-python/app/main.py (lines 44-66)
+└─ FastAPI configuration (docs, redoc, openapi)
+
+KEY DIRECTORIES FOR EXPANSION:
+================================================================================
+
+/home/user/legend-ai-python/app/middleware/
+├─ metrics_middleware.py - Performance tracking
+├─ structured_logging.py - Logging
+└─ rate_limit.py - Rate limiting
+
+/home/user/legend-ai-python/app/services/
+└─ [Business logic services]
+
+/home/user/legend-ai-python/app/core/
+└─ [Core functionality]
+
+/home/user/legend-ai-python/app/utils/
+└─ [Utility functions]
+
+CURRENT BRANCH INFO:
+================================================================================
+Branch: claude/mobile-dashboard-optimization-01PbjSgkPUV8zqzCeJ1voxGM
+Status: Clean (no uncommitted changes)
+Recent: Multiple optimization & feature branches merged
+
+================================================================================
+                      KEY STATISTICS
+================================================================================
+
+Frontend Code:
+  - Total JS: 2,195 lines (dashboard.js + tv-widgets.js)
+  - Total CSS: 3,227 lines (design-system + dashboard)
+  - HTML Template: 619 lines
+  - Total Frontend: 6,041 lines
+
+Backend (Dashboard-related):
+  - Main app: 273 lines
+  - Dashboard router: 157 lines
+  - API routers: 20+ modules
+
+CSS Breakpoints Defined: 4 (1440px, 900px, 768px, 480px)
+Design Tokens: 50+ CSS custom properties
+React Components: 0 (Vanilla JS only)
+Mobile Considerations: Already extensive
+
+================================================================================

@@ -1,0 +1,269 @@
+================================================================================
+                   LEGEND AI DASHBOARD - QUICK REFERENCE
+================================================================================
+
+ROOT DIRECTORY: /home/user/legend-ai-python/
+
+FRONTEND ENTRY POINT:
+  ├─ /dashboard  →  GET /dashboard  →  /app/api/dashboard.py  →  /templates/dashboard.html
+
+CORE FILES (ABSOLUTE PATHS):
+  ├─ /home/user/legend-ai-python/app/main.py                    [273 lines] Main FastAPI app
+  ├─ /home/user/legend-ai-python/app/api/dashboard.py           [157 lines] Dashboard route
+  ├─ /home/user/legend-ai-python/templates/dashboard.html       [619 lines] Main HTML template
+  ├─ /home/user/legend-ai-python/static/js/dashboard.js         [2,073 lines] Main JS controller
+  ├─ /home/user/legend-ai-python/static/js/tv-widgets.js        [122 lines] TradingView integration
+  ├─ /home/user/legend-ai-python/static/css/dashboard.css       [2,336 lines] Dashboard layout
+  └─ /home/user/legend-ai-python/static/css/cyberpunk-design-system.css [891 lines] Design tokens
+
+================================================================================
+                            DASHBOARD STRUCTURE
+================================================================================
+
+5 MAIN TABS (Switch via Dashboard.focusTab()):
+  1. ANALYZE (tab-analyze)              [Lines 57-193]
+     - Single ticker pattern analysis
+     - Form: ticker, timeframe radio
+     - Results grid + Chart panel + TradingView widgets
+     
+  2. PATTERN SCANNER (tab-scanner)      [Lines 195-349]
+     - Bulk universe scanning (NASDAQ 100, S&P 500, focus)
+     - Filters: score, RS, ATR%, sector, pattern-type
+     - Results table (12 columns)
+     
+  3. TOP SETUPS (tab-top)               [Lines 351-402]
+     - Daily best ideas (S&P 500 + NASDAQ)
+     - Status bar, refresh button
+     - Results table/grid
+     
+  4. MARKET INTERNALS (tab-internals)   [Lines 537+]
+     - Market regime display
+     - Breadth indicators
+     
+  5. WATCHLIST (tab-watchlist)          [Lines 404-536]
+     - Add/manage watched stocks
+     - Status: Watching, Setup, Triggered, Closed
+     - Tags system (Breakout, Momentum, VCP, etc.)
+
+================================================================================
+                          LAYOUT BREAKPOINTS
+================================================================================
+
+DESKTOP (1440px+):
+  ├─ 2-column grid layouts
+  ├─ Wide hero section
+  ├─ Side-by-side panels (results + chart)
+  └─ 4-column widget grids
+
+LAPTOP (900px - 1439px):
+  ├─ 1.1fr balanced 2-column
+  ├─ Form controls flow horizontally
+  └─ Internals: 2-column grid
+
+TABLET (768px - 899px):
+  ├─ Single column layouts
+  ├─ Full-width buttons
+  ├─ Hero: 2em font size
+  ├─ All grids: 1 column
+  └─ Forms stack vertically
+
+MOBILE (480px - 767px):
+  ├─ Minimal padding (8px)
+  ├─ Compact hero
+  ├─ 1.75em hero title
+  └─ Touch-friendly buttons
+
+SMALL MOBILE (<480px):
+  ├─ Super compact padding
+  ├─ Hero: 1.75em
+  └─ Minimal margins
+
+KEY RESPONSIVE UNITS:
+  ├─ clamp(1.75rem, 5vw, 3rem)     - Fluid heading sizing
+  ├─ repeat(auto-fit, minmax(...)) - Flexible grids
+  ├─ min(320px, 100%)              - Responsive maxwidth
+  └─ flex-direction: column         - Mobile stacking
+
+================================================================================
+                        CSS DESIGN TOKENS (Variables)
+================================================================================
+
+COLORS:
+  ├─ --color-bg-primary:     #0b0f14 (dark background)
+  ├─ --color-neon-purple:    #9b5cff (accent)
+  ├─ --color-neon-aqua:      #20f0ff (accent)
+  ├─ --color-success:        #22c55e (green)
+  └─ --color-error:          #ef4444 (red)
+
+TYPOGRAPHY:
+  ├─ --font-sans: Inter
+  ├─ --font-mono: JetBrains Mono
+  ├─ --font-size-base: 1rem (16px)
+  └─ Sizes: xs(12px) → 4xl(36px)
+
+SPACING (8px base):
+  ├─ --spacing-sm:  0.5rem  (8px)
+  ├─ --spacing-md:  1rem    (16px)
+  ├─ --spacing-lg:  1.5rem  (24px)
+  └─ --spacing-xl:  2rem    (32px)
+
+TRANSITIONS:
+  ├─ --transition-fast: 150ms
+  ├─ --transition-base: 250ms
+  └─ --transition-slow: 350ms
+
+SHADOWS & GLOWS:
+  ├─ --shadow-md/lg/xl
+  ├─ --glow-purple-sm/md/lg
+  ├─ --glow-aqua-sm/md/lg
+  └─ --glow-success-sm / --glow-error-sm
+
+================================================================================
+                      JAVASCRIPT MODULE STRUCTURE
+================================================================================
+
+IIFE Pattern (Encapsulated Module):
+  ├─ State object
+  │   ├─ activeTab, currentTicker, currentInterval
+  │   ├─ chartRequestId, watchlistItems, topSetups
+  │   └─ cacheStats, universeRows, ...
+  │
+  ├─ DOM Cache (els object)
+  │   ├─ patternForm, patternTicker, patternResults
+  │   ├─ patternChart, patternLoading, analyzeChartStatus
+  │   ├─ universeForm, universeTable, watchlistTable
+  │   └─ [~50 cached DOM references]
+  │
+  ├─ Helper Objects
+  │   ├─ LoadingStates { show(), hide(), toast() }
+  │   └─ WATCHLIST_TAG_LIBRARY [ array of 17 tags ]
+  │
+  ├─ Core Functions
+  │   ├─ cacheDom()              - Cache DOM references
+  │   ├─ bindEvents()            - Attach event listeners
+  │   ├─ initTabNavigation()     - Tab switching
+  │   ├─ switchTab(tab)          - Show/hide panes
+  │   ├─ fetchAnalyze()          - Call pattern API
+  │   ├─ handleUniverseScan()    - Bulk scan
+  │   ├─ loadWatchlist()         - Load saved list
+  │   ├─ loadTopSetups()         - Load daily ideas
+  │   ├─ toast()                 - Show notifications
+  │   └─ safeFetch()             - Error-wrapped fetch
+  │
+  └─ Event Listeners
+      ├─ Form submissions (pattern, scanner, watchlist)
+      ├─ Tab button clicks
+      ├─ Watchlist CRUD buttons
+      ├─ Export CSV buttons
+      ├─ Quick search form
+      └─ TradingView symbol sync
+
+GLOBAL NAMESPACE:
+  └─ window.Dashboard { focusTab, initialized }
+
+================================================================================
+                       COMPONENT LOCATIONS
+================================================================================
+
+FORM COMPONENTS:
+  ├─ Pattern Form       [dashboard.html:59-113]    ticker + timeframe
+  ├─ Scanner Form       [dashboard.html:197-278]   10+ controls
+  ├─ Watchlist Form     [dashboard.html:405-536]   symbol + status + tags
+  └─ Quick Search       [dashboard.html:24-36]     header search bar
+
+DATA DISPLAY:
+  ├─ Results Grid       [dashboard.html:120]       .results-grid
+  ├─ Scanner Table      [dashboard.html:318-347]   .scanner-table (12 cols)
+  ├─ Top Setups Table   [dashboard.html:383-400]   .top-setups-table
+  ├─ Watchlist Table    [dashboard.html varies]    .watchlist-table
+  └─ KPI Cards Grid     [dashboard.html:39-43]     .kpi-grid
+
+UI OVERLAYS:
+  ├─ Loading Overlay    [dashboard.html:116-119]   .loading-overlay
+  ├─ Toast Container    [dashboard.html varies]    .toast-container
+  └─ Chart Shell        [dashboard.html:130]       #analyze-chart
+
+SPECIALIZED SECTIONS:
+  ├─ Hero              [dashboard.html:15-46]      .hero
+  ├─ Tabs Navigation   [dashboard.html:48-55]      .tabs-header
+  ├─ TradingView Demo  [dashboard.html:135-192]    .tradingview-demo-layout
+  └─ Market Internals  [dashboard.html:537+]       .internals-grid
+
+================================================================================
+                         RESPONSIVE PATTERNS
+================================================================================
+
+GRID LAYOUT EXAMPLES:
+
+Auto-fit grids (responsive):
+  ├─ KPI Cards:        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))
+  ├─ Results:          grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr))
+  └─ Small Cards:      grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr))
+
+Two-column layouts (break to 1 at 900px):
+  ├─ Analyze Panels:   grid-template-columns: minmax(0, 1fr) minmax(min(320px, 100%), 1.2fr)
+  └─ At 900px:         grid-template-columns: 1fr (single column)
+
+Mobile adjustments (@media 768px):
+  ├─ All grids → 1fr (single column)
+  ├─ Buttons → flex: 1 (full width)
+  ├─ Forms → flex-direction: column (stack)
+  └─ Font sizes reduce 15-20%
+
+ACCESSIBILITY:
+  ├─ @media prefers-reduced-motion: disable animations
+  ├─ ARIA labels on all forms
+  ├─ Role="tab", aria-selected states
+  ├─ Semantic HTML (<form>, <table>, <nav>)
+  └─ Color contrast meets WCAG AA
+
+================================================================================
+                           API ENDPOINTS
+================================================================================
+
+PATTERN ANALYSIS:
+  GET /api/patterns/analyze?ticker=AAPL&interval=1day
+
+UNIVERSE SCANNING:
+  GET /api/universe/scan?universe=sp500&interval=1day&limit=50
+
+WATCHLIST OPERATIONS:
+  GET  /api/watchlist
+  POST /api/watchlist
+  PUT  /api/watchlist/{id}
+  DELETE /api/watchlist/{id}
+
+TOP SETUPS:
+  GET /api/top-setups
+  POST /api/universe/scan/top (manual trigger)
+
+CHARTS & DATA:
+  POST /api/charts/generate
+  GET  /api/market/internals
+  GET  /api/version
+  GET  /api/cache/stats
+
+================================================================================
+                        MOBILE OPTIMIZATION STATUS
+================================================================================
+
+CURRENT FEATURES:
+  ✅ Responsive design (4 breakpoints)
+  ✅ Viewport meta tag
+  ✅ Touch-friendly buttons (min 44px height)
+  ✅ Full-width forms on mobile
+  ✅ Table horizontal scrolling
+  ✅ Fluid typography (clamp)
+  ✅ Accessible form controls
+  ✅ Loading states with spinners
+
+POTENTIAL IMPROVEMENTS:
+  ⚠ TradingView widget grid (consider mobile layout)
+  ⚠ Table columns (consider card view on mobile)
+  ⚠ Bottom navigation tabs (vs top tabs)
+  ⚠ Progressive image loading (lazy loading)
+  ⚠ Service Worker for offline mode
+  ⚠ Touch gestures for chart interactions
+  ⚠ Mobile app with React Native/Flutter
+
+================================================================================

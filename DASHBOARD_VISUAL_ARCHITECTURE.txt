@@ -1,0 +1,333 @@
+================================================================================
+                   LEGEND AI DASHBOARD - VISUAL ARCHITECTURE
+================================================================================
+
+BROWSER REQUEST FLOW:
+================================================================================
+
+1. User navigates to /dashboard
+   │
+   └─→ FastAPI app/main.py (line 127)
+       │
+       └─→ app/api/dashboard.py :: get_dashboard()
+           │
+           ├─→ Load template: /templates/dashboard.html
+           ├─→ Inject TradingView partials
+           ├─→ Resolve build SHA
+           │
+           └─→ Return HTML with:
+               ├─ CSS links
+               │  ├─ cyberpunk-design-system.css
+               │  └─ dashboard.css
+               └─ JS script tags
+                  ├─ dashboard.js (main controller)
+                  └─ tv-widgets.js (TradingView integration)
+
+================================================================================
+
+DASHBOARD HTML STRUCTURE (619 lines):
+================================================================================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css" />
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
+</head>
+<body class="app-shell">
+  
+  <main class="container">
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║                         HERO SECTION                                    ║
+    ║  ┌──────────────────────────────────────┬──────────────────────────┐   ║
+    ║  │ Title: Pattern Intelligence for     │  Quick Symbol Input      │   ║
+    ║  │ Traders                             │  + Timeframe Selector    │   ║
+    ║  │ Legend AI — BUILD [sha]             │  + Snapshot Button       │   ║
+    ║  └──────────────────────────────────────┴──────────────────────────┘   ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║                      TABS NAVIGATION                                    ║
+    ║  ┌────────┬─────────┬──────────┬────────────┬──────────┐               ║
+    ║  │Analyze │ Scanner │Top Setup │Internals  │Watchlist │               ║
+    ║  └────────┴─────────┴──────────┴────────────┴──────────┘               ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ TAB 1: ANALYZE (Tab Panel)                                             ║
+    ║ ┌────────────────────────────────────────────────────────────────────┐ ║
+    ║ │  Form Group:                                                       │ ║
+    ║ │  • Ticker input (text field with datalist)                        │ ║
+    ║ │  • Timeframe (radio: Daily/Weekly)                                │ ║
+    ║ │  • Buttons: Analyze | Add Watchlist | Snapshot                   │ ║
+    ║ └────────────────────────────────────────────────────────────────────┘ ║
+    ║                                                                        ║
+    ║  DESKTOP (2 column):                     MOBILE (<900px, 1 column):   ║
+    ║  ┌───────────────────┬─────────────────┐ ┌──────────────────────────┐ ║
+    ║  │ Results Grid      │ Chart Panel    │ │ Results Grid            │ ║
+    ║  │ (responsive cards)│ (side panel)   │ │                         │ ║
+    ║  │                   │                 │ │ Chart Panel             │ ║
+    ║  │                   │ Chart-IMG       │ │ (below results)         │ ║
+    ║  └───────────────────┴─────────────────┘ │                         │ ║
+    ║                                           │ TradingView Widgets     │ ║
+    ║  TradingView Widgets:                     │ (responsive grid)       │ ║
+    ║  ┌──────────────────────────────────────┐ │                         │ ║
+    ║  │ Advanced Chart (Daily/Weekly toggle) │ │                         │ ║
+    ║  │ ┌─────────┬──────────┬────────────┐ │ │                         │ ║
+    ║  │ │ Symbol  │Technical │Company     │ │ │                         │ ║
+    ║  │ │ Info    │ Analysis │Profile     │ │ │                         │ ║
+    ║  │ └─────────┴──────────┴────────────┘ │ │                         │ ║
+    ║  │ ┌──────────────────────────────────┐ │ │                         │ ║
+    ║  │ │ Fundamentals | Market News       │ │ │                         │ ║
+    ║  │ └──────────────────────────────────┘ │ │                         │ ║
+    ║  └──────────────────────────────────────┘ │                         │ ║
+    ║                                           └──────────────────────────┘ ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ TAB 2: PATTERN SCANNER                                                 ║
+    ║ ┌────────────────────────────────────────────────────────────────────┐ ║
+    ║ │  Scanner Form (10+ controls):                                      │ ║
+    ║ │  ┌────────────────────┬──────────────────┬────────────────────┐   │ ║
+    ║ │  │ Universe          │ Timeframe        │ Limit              │   │ ║
+    ║ │  │ (NASDAQ/S&P/Focus)│ (Daily/Weekly)   │ (10-150)           │   │ ║
+    ║ │  └────────────────────┴──────────────────┴────────────────────┘   │ ║
+    ║ │  ┌────────────────┬──────────────┬──────────────────────────────┐ │ ║
+    ║ │  │ Score (≥)      │ RS (≥)       │ Pattern Focus               │ │ ║
+    ║ │  │                │              │ (multi-select, 17 patterns) │ │ ║
+    ║ │  └────────────────┴──────────────┴──────────────────────────────┘ │ ║
+    ║ │  ┌──────────────────────┬──────────────────────────────────────┐  │ ║
+    ║ │  │ Sector Filter        │ Max ATR%                           │  │ ║
+    ║ │  └──────────────────────┴──────────────────────────────────────┘  │ ║
+    ║ │  [Run Scan] [Export CSV]                                          │ ║
+    ║ └────────────────────────────────────────────────────────────────────┘ ║
+    ║                                                                        ║
+    ║  SCAN STATS PANEL (Meta):                                            ║
+    ║  ┌──────────────────────────────────────┐                            ║
+    ║  │ Universe | Sector | Timeframe        │                            ║
+    ║  │ Scanned  | Cache | Score | RS | ATR │                            ║
+    ║  └──────────────────────────────────────┘                            ║
+    ║                                                                        ║
+    ║  RESULTS TABLE (12 columns - scrollable on mobile):                  ║
+    ║  ┌────────────────────────────────────────────────────────────────┐ ║
+    ║  │ Ticker│Pattern│Score│RS│ATR%│Sector│Entry│Stop│Target│R:R│.. │ ║
+    ║  ├────────────────────────────────────────────────────────────────┤ ║
+    ║  │ NVDA  │VCP    │8.2  │78│2.1│IT    │500  │490 │540   │2:1│.. │ ║
+    ║  │ AAPL  │Cup H  │7.8  │72│1.8│IT    │185  │180 │200   │3:1│.. │ ║
+    ║  │ ...   │...    │...  │..│...│...   │...  │... │...   │...│.. │ ║
+    ║  └────────────────────────────────────────────────────────────────┘ ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ TAB 3: TOP SETUPS                                                      ║
+    ║ ┌────────────────────────────────────────────────────────────────────┐ ║
+    ║ │  Header:                                                           │ ║
+    ║ │  Daily best ideas from S&P 500 + NASDAQ scans (Score ≥ 7)        │ ║
+    ║ │  [Last Scan: 4 hours ago] [Next Scan: 4:05 PM ET] [0 setups]    │ ║
+    ║ │  [Refresh] [Export CSV] [Run Manual Scan]                        │ ║
+    ║ └────────────────────────────────────────────────────────────────────┘ ║
+    ║                                                                        ║
+    ║  TOP SETUPS TABLE (scrollable):                                       ║
+    ║  ┌────────────────────────────────────────────────────────────────┐ ║
+    ║  │ Ticker│ Setup Type│ Score│ Entry│ Target│ R:R│ Chart│ Actions   │ ║
+    ║  ├────────────────────────────────────────────────────────────────┤ ║
+    ║  │ [empty by default - populated by scheduled scans]              │ ║
+    ║  └────────────────────────────────────────────────────────────────┘ ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ TAB 4: MARKET INTERNALS                                                ║
+    ║ ┌────────────────────────────────────────────────────────────────────┐ ║
+    ║ │  Market Regime & Breadth Indicators                               │ ║
+    ║ │  ┌──────────────────┬──────────────────┬──────────────────┐      │ ║
+    ║ │  │ Market Regime    │ Breadth %        │ Trend            │      │ ║
+    ║ │  │ (Uptrend/Down..) │ (Advances/Decs)  │ (Strong/Weak)    │      │ ║
+    ║ │  └──────────────────┴──────────────────┴──────────────────┘      │ ║
+    ║ │  Additional widgets as available from API                        │ ║
+    ║ └────────────────────────────────────────────────────────────────────┘ ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+    
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ TAB 5: WATCHLIST                                                       ║
+    ║ ┌────────────────────────────────────────────────────────────────────┐ ║
+    ║ │  Form (Add/Edit):                                                  │ ║
+    ║ │  ┌──────────────────┬──────────────────┬──────────────────┐       │ ║
+    ║ │  │ Ticker (text)    │ Status (dropdown)│ Notes            │       │ ║
+    ║ │  │                  │ - Watching       │ (VCP base, etc)  │       │ ║
+    ║ │  │                  │ - Setup building │                  │       │ ║
+    ║ │  │                  │ - Triggered      │                  │       │ ║
+    ║ │  │                  │ - Closed         │                  │       │ ║
+    ║ │  └──────────────────┴──────────────────┴──────────────────┘       │ ║
+    ║ │                                                                    │ ║
+    ║ │  Tags (multi-select):                                             │ ║
+    ║ │  ☐ Breakout        ☐ VCP              ☐ Earnings                  │ ║
+    ║ │  ☐ Momentum        ☐ Pullback         ☐ Post-earnings drift       │ ║
+    ║ │  ☐ Leader          ☐ Laggard          ☐ 21 EMA Reclaim            │ ║
+    ║ │  [Add] [Clear]                                                     │ ║
+    ║ └────────────────────────────────────────────────────────────────────┘ ║
+    ║                                                                        ║
+    ║  WATCHLIST TABLE (scrollable):                                        ║
+    ║  ┌────────────────────────────────────────────────────────────────┐ ║
+    ║  │ Ticker│ Status │ Notes│ Tags│ Entry│ Current│ Chart│ Edit│Del  │ ║
+    ║  ├────────────────────────────────────────────────────────────────┤ ║
+    ║  │ [User-saved securities with status & tracking info]            │ ║
+    ║  └────────────────────────────────────────────────────────────────┘ ║
+    ║                                                                        ║
+    ║  COMPACT/NORMAL TOGGLE (bottom right):                               ║
+    ║  [Compact] [Normal]                                                   ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+  
+  </main>
+  
+</body>
+</html>
+
+================================================================================
+
+CSS BREAKPOINT TRANSFORMATION DIAGRAM:
+================================================================================
+
+DESKTOP (1440px+)          LAPTOP (900-1439px)     TABLET (768-899px)       MOBILE (<768px)
+═══════════════════════    ═══════════════════════  ════════════════════     ════════════════════
+
+┌─────────────────────┐   ┌─────────────────────┐  ┌──────────────────┐    ┌──────────────────┐
+│  Hero Section       │   │  Hero Section       │  │  Hero Section   │    │ Hero Section    │
+│  (full width)       │   │  (1.1fr balanced)   │  │  (single col)   │    │ (compact)       │
+└─────────────────────┘   └─────────────────────┘  └──────────────────┘    └──────────────────┘
+
+┌──────────────┬──────┐   ┌──────────────┬──────┐  ┌──────────────────┐    ┌──────────────────┐
+│ Results Grid │Chart │   │ Results Grid │Chart │  │  Results Grid   │    │  Results Grid   │
+│ (2+ cols)    │Panel │   │ (1.1fr each) │Panel │  │  (1 column)     │    │  (1 column)     │
+│              │(side)│   │              │(side)│  │                 │    │                 │
+├──────────────┴──────┤   ├──────────────┴──────┤  ├──────────────────┤    ├──────────────────┤
+│  TradingView Grid   │   │  TradingView Grid   │  │Chart Panel      │    │Chart Panel      │
+│  (4 cols)          │   │  (2 cols)          │  │(below results)  │    │(below results)  │
+│  ┌─┬─┬─┬─┐         │   │  ┌──────┬──────┐   │  │                │    │                │
+│  │S│T│C│F│         │   │  │ Left │Right │   │  │TradingView      │    │TradingView      │
+│  └─┴─┴─┴─┘         │   │  └──────┴──────┘   │  │(responsive grid)│    │(responsive grid)│
+└──────────────────────┘   └────────────────────┘  │                │    │                │
+                                                   └──────────────────┘    └──────────────────┘
+
+Font Sizes:
+H1: clamp(1.75rem, 5vw, 3rem) → responsive fluid scaling
+    ├─ Min: 1.75rem (at 360px)
+    ├─ Max: 3rem (at 1440px)
+    └─ Scales with viewport
+
+Grid Columns:
+Desktop:  repeat(auto-fit, minmax(460px, 1fr))
+Tablet:   repeat(auto-fit, minmax(360px, 1fr))  
+Mobile:   1fr (single column)
+
+Button Width:
+Desktop:  Auto (intrinsic width)
+Tablet:   width: 100% (flex: 1)
+Mobile:   width: 100% (full screen)
+
+================================================================================
+
+JAVASCRIPT STATE & EVENT FLOW:
+================================================================================
+
+User Action                    Event Handler              API Call              DOM Update
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+1. Click "Analyze pattern"  → patternForm.onsubmit  → GET /api/patterns/analyze  → pattern-results
+                                                                                   analyze-chart
+2. Click tab button        → tab-button.onclick   → [internal state switch]  → switchTab()
+                                                                               show/hide panes
+
+3. Submit universe scan    → universeForm.onsubmit → GET /api/universe/scan  → trading-interface
+                                                                               universe-meta
+4. Click watchlist button  → watchlist button.onclick → POST/PUT/DELETE       → watchlist-table
+                                                      /api/watchlist         refresh DOM
+
+5. Click export CSV        → export button.onclick → [client-side gen]        → Download file
+                                                     (no API call)
+
+6. Page load              → DOMContentLoaded event → GET /api/watchlist   → Load initial state
+                                                    GET /api/top-setups
+                                                    GET /api/market/internals
+
+7. Fast symbol search     → quick-scan-form.onsubmit → Same as #1         → pattern-results
+                                                       (ticker from search)
+
+8. Symbol sync (TV)       → hydrateAnalyzeFromTv()  → [internal only]       → Hydrate form
+
+================================================================================
+
+RESPONSIVE GRID TRANSFORMATION EXAMPLE:
+================================================================================
+
+Results Grid CSS:
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr));
+    gap: 20px;
+  }
+
+What happens at different screen sizes:
+
+DESKTOP (1440px):
+  ┌──────────────────────┬──────────────────────┐
+  │     Card 1           │     Card 2           │
+  │   460px × 280px      │   460px × 280px      │
+  ├──────────────────────┼──────────────────────┤
+  │     Card 3           │     Card 4           │
+  │   460px × 280px      │   460px × 280px      │
+  └──────────────────────┴──────────────────────┘
+  → 2 columns (460px + 460px + 40px gap = ~960px)
+
+TABLET (900px):
+  ┌──────────────────────┐
+  │     Card 1           │
+  │   860px × 280px      │
+  ├──────────────────────┤
+  │     Card 2           │
+  │   860px × 280px      │
+  ├──────────────────────┤
+  │     Card 3           │
+  │   860px × 280px      │
+  └──────────────────────┘
+  → 1 column (< 460px + 460px, so wraps to 1)
+
+MOBILE (375px):
+  ┌──────────────┐
+  │    Card 1    │
+  │  355px       │
+  │  × 280px     │
+  ├──────────────┤
+  │    Card 2    │
+  │  355px       │
+  │  × 280px     │
+  ├──────────────┤
+  │    Card 3    │
+  │  355px       │
+  │  × 280px     │
+  └──────────────┘
+  → 1 column (min(460px, 100%) = 100% = 355px)
+
+================================================================================
+
+COLOR PALETTE (Cyberpunk Dark Mode):
+================================================================================
+
+Background:          Text:
+#0b0f14 (primary)    #e5e7eb (primary)
+#1a1a2e (secondary)  #9ca3af (secondary)
+#16213e (elevated)   #6b7280 (muted)
+
+Accents:
+#9b5cff (purple)     #20f0ff (aqua)
+#ff2ecd (magenta)    #a6ff00 (lime)
+
+Semantic:
+#22c55e (success)    #fb923c (warning)    #ef4444 (error)    #3b82f6 (info)
+
+Glows (for hover/active):
+box-shadow: 0 0 10px rgba(155, 92, 255, 0.3)   [purple glow]
+box-shadow: 0 0 10px rgba(32, 240, 255, 0.3)   [aqua glow]
+
+================================================================================

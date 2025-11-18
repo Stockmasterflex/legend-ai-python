@@ -2,13 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f14" />
+    <meta name="description" content="Pattern Intelligence for Traders - Scan patterns, analyze tickers, build plans. Fast." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/static/manifest.json" />
     <title>Legend AI — Pattern Intelligence for Traders</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/mobile.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
     <main class="container" data-dashboard-shell>
@@ -615,5 +622,34 @@
     <!-- Load scripts at end of body for proper initialization -->
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/mobile.js?v={{ build_sha }}"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered:', registration.scope);
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    if (window.MobileUtils && window.MobileUtils.showToast) {
+                                        window.MobileUtils.showToast('New version available! Refresh to update.', 'info');
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.warn('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
