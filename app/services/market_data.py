@@ -110,10 +110,14 @@ class MarketDataService:
         self,
         ticker: str,
         interval: str = "1day",
-        outputsize: int = 500
+        outputsize: int = 500,
+        prefer_free: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
         Get OHLCV time series data with intelligent fallback
+
+        Args:
+            prefer_free: If True, prefer Yahoo Finance for historical data (cost optimization)
 
         Returns:
             {
@@ -136,12 +140,29 @@ class MarketDataService:
             cached_data["source"] = DataSource.CACHE
             return cached_data
 
+        # Determine if this is historical data request (large outputsize = historical)
+        is_historical = outputsize >= 100
+
+        # Smart source selection based on data type
+        if prefer_free or is_historical:
+            # For historical data, try Yahoo first (free, unlimited)
+            data = await self._get_from_yahoo(ticker, interval)
+            if data:
+                # Cache historical data for much longer
+                cache_ttl = 604800 if is_historical else 3600  # 7 days vs 1 hour
+                await self.cache.set(cache_key, data, ttl=cache_ttl)
+                data["cached"] = False
+                data["source"] = DataSource.YAHOO
+                logger.info(f"💰 Using free Yahoo Finance for {ticker} (cost optimization)")
+                return data
+
         # 2. Try TwelveData (primary) only if API key configured
         if self.settings.twelvedata_api_key and await self._check_rate_limit(DataSource.TWELVE_DATA):
             data = await self._get_from_twelvedata(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.TWELVE_DATA)
-                await self.cache.set(cache_key, data, ttl=900)  # 15 min cache
+                cache_ttl = 604800 if is_historical else 900  # Smart TTL
+                await self.cache.set(cache_key, data, ttl=cache_ttl)
                 data["cached"] = False
                 data["source"] = DataSource.TWELVE_DATA
                 return data
@@ -151,7 +172,8 @@ class MarketDataService:
             data = await self._get_from_finnhub(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.FINNHUB)
-                await self.cache.set(cache_key, data, ttl=900)
+                cache_ttl = 604800 if is_historical else 900
+                await self.cache.set(cache_key, data, ttl=cache_ttl)
                 data["cached"] = False
                 data["source"] = DataSource.FINNHUB
                 return data
@@ -161,18 +183,21 @@ class MarketDataService:
             data = await self._get_from_alpha_vantage(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.ALPHA_VANTAGE)
-                await self.cache.set(cache_key, data, ttl=900)
+                cache_ttl = 604800 if is_historical else 900
+                await self.cache.set(cache_key, data, ttl=cache_ttl)
                 data["cached"] = False
                 data["source"] = DataSource.ALPHA_VANTAGE
                 return data
 
-        # 5. Try Yahoo Finance (last resort)
-        data = await self._get_from_yahoo(ticker, interval)
-        if data:
-            await self.cache.set(cache_key, data, ttl=900)
-            data["cached"] = False
-            data["source"] = DataSource.YAHOO
-            return data
+        # 5. Try Yahoo Finance (last resort) if not already tried
+        if not (prefer_free or is_historical):
+            data = await self._get_from_yahoo(ticker, interval)
+            if data:
+                cache_ttl = 604800 if is_historical else 3600
+                await self.cache.set(cache_key, data, ttl=cache_ttl)
+                data["cached"] = False
+                data["source"] = DataSource.YAHOO
+                return data
 
         logger.error(f"❌ All data sources failed for {ticker}")
         return None
@@ -485,6 +510,72 @@ class MarketDataService:
             }
 
         return None
+
+    async def get_time_series_batch(
+        self,
+        tickers: List[str],
+        interval: str = "1day",
+        outputsize: int = 500,
+        prefer_free: bool = True
+    ) -> Dict[str, Optional[Dict[str, Any]]]:
+        """
+        Batch fetch time series data for multiple tickers concurrently
+
+        This significantly reduces overall API call time by running requests in parallel.
+        Cost optimization: Uses free Yahoo Finance by default for batch requests.
+
+        Args:
+            tickers: List of ticker symbols
+            interval: Time interval (1day, 1week, etc.)
+            outputsize: Number of data points
+            prefer_free: Use free data sources (default True for cost savings)
+
+        Returns:
+            Dict mapping ticker -> time series data (or None if failed)
+        """
+        logger.info(f"📦 Batch fetching {len(tickers)} symbols")
+
+        # Check cache for all tickers first
+        results = {}
+        uncached_tickers = []
+
+        for ticker in tickers:
+            cache_key = f"timeseries:{ticker}:{interval}"
+            cached_data = await self.cache.get(cache_key)
+            if cached_data:
+                cached_data["cached"] = True
+                cached_data["source"] = DataSource.CACHE
+                results[ticker] = cached_data
+            else:
+                uncached_tickers.append(ticker)
+
+        cache_hits = len(tickers) - len(uncached_tickers)
+        logger.info(f"⚡ Cache: {cache_hits}/{len(tickers)} hits ({cache_hits/len(tickers)*100:.1f}%)")
+
+        # Fetch uncached tickers in parallel
+        if uncached_tickers:
+            tasks = [
+                self.get_time_series(ticker, interval, outputsize, prefer_free)
+                for ticker in uncached_tickers
+            ]
+            fetched_data = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for ticker, data in zip(uncached_tickers, fetched_data):
+                if isinstance(data, Exception):
+                    logger.error(f"Error fetching {ticker}: {data}")
+                    results[ticker] = None
+                else:
+                    results[ticker] = data
+
+        # Log source distribution for cost tracking
+        sources = {}
+        for ticker, data in results.items():
+            if data:
+                source = data.get("source", "unknown")
+                sources[source] = sources.get(source, 0) + 1
+
+        logger.info(f"📊 Batch sources: {sources}")
+        return results
 
     async def close(self):
         """Close HTTP client"""
