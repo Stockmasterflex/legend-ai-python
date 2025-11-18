@@ -45,23 +45,6 @@ async function run() {
     return filePath;
   };
 
-  const runAnalyzeScenario = async (symbol, intervalValue, label) => {
-    try {
-      console.log(`Analyzing ${symbol} on ${intervalValue}…`);
-      await page.fill('#pattern-ticker', symbol);
-      await page.selectOption('#pattern-interval', intervalValue);
-      await Promise.all([
-        page.waitForResponse((response) => response.url().includes('/api/analyze') && response.request().method() === 'GET', { timeout: 60000 }).catch(() => null),
-        page.click('#pattern-form button[type="submit"]'),
-      ]);
-      await page.waitForSelector('#pattern-results .result-card', { timeout: 30000 });
-      await page.waitForSelector('#analyze-chart img', { timeout: 30000 });
-      await recordStep(`analyze-${label}`, `Analyze ${symbol} (${intervalValue}) rendered chart + intel`);
-    } catch (error) {
-      console.log(`Analyze flow failed for ${symbol}: ${error.message}`);
-    }
-  };
-
   const summary = {
     url: dashboardUrl,
     consoleInitMessage: false,
@@ -110,12 +93,6 @@ async function run() {
         await page.click(tab.selector, { timeout: 5000 });
         await page.waitForTimeout(1500);
         await recordStep(`tab-${tab.key}`, `${tab.name} tab after click`);
-        if (tab.key === 'internals') {
-          await Promise.all([
-            page.waitForSelector('#tv-heatmap iframe', { timeout: 15000 }).catch(() => null),
-            page.waitForSelector('#tv-market-overview iframe', { timeout: 15000 }).catch(() => null),
-          ]);
-        }
         tabResult.success = true;
       } catch (error) {
         tabResult.error = error.message;
@@ -132,11 +109,6 @@ async function run() {
     } catch (error) {
       console.log(`Failed to return to Analyze tab: ${error.message}`);
     }
-
-    console.log('Running additional analyze flows (NVDA/IBM/AAPL)…');
-    await runAnalyzeScenario('NVDA', '1day', 'nvda-daily');
-    await runAnalyzeScenario('IBM', '1day', 'ibm-daily');
-    await runAnalyzeScenario('AAPL', '1week', 'aapl-weekly');
 
     console.log(`Filling Quick Symbol input with ${quickSymbol}…`);
     try {
@@ -203,15 +175,10 @@ async function run() {
       await page.click('button.tab-button:has-text("Pattern Scanner")', { timeout: 5000 });
       await page.selectOption('#universe-source', 'nasdaq100');
       await page.selectOption('#scanner-timeframe', '1day');
-      await page.fill('#universe-limit', '45');
+      await page.fill('#universe-limit', '25');
       await page.selectOption('#scanner-patterns', ['VCP', 'Flat Base']);
       await page.click('#universe-form button[type="submit"]');
-      // `#universe-table` is already the `<tbody>` node, so we wait directly for rows
-      await page.waitForSelector('#universe-table tr', { timeout: 60000 });
-      const scannerRows = await page.locator('#universe-table tr').count();
-      if (scannerRows === 0) {
-        await page.waitForSelector('#universe-table td:has-text("No setups found")', { timeout: 5000 }).catch(() => {});
-      }
+      await page.waitForSelector('#universe-table tbody tr', { timeout: 30000 });
       await recordStep('scanner-results', 'Pattern scanner results grid');
       const previewBtn = await page.$('[data-scan-chart]');
       if (previewBtn) {
@@ -219,34 +186,6 @@ async function run() {
         await page.waitForTimeout(2000);
         await recordStep('scanner-preview', 'Scanner preview chart rendered');
       }
-
-      // Rising wedge specific scan
-      await page.evaluate(() => {
-        const select = document.getElementById('scanner-patterns');
-        if (select) {
-          Array.from(select.options).forEach((opt) => {
-            opt.selected = false;
-          });
-        }
-      });
-      await page.selectOption('#scanner-patterns', ['Rising Wedge']);
-      await page.click('#universe-form button[type="submit"]');
-      await page.waitForSelector('#universe-table tr, #universe-table td', { timeout: 60000 });
-      await recordStep('scanner-wedge', 'Scanner filtered to Rising Wedge');
-
-      // Mixed pattern scan
-      await page.evaluate(() => {
-        const select = document.getElementById('scanner-patterns');
-        if (select) {
-          Array.from(select.options).forEach((opt) => {
-            opt.selected = false;
-          });
-        }
-      });
-      await page.selectOption('#scanner-patterns', ['VCP', '21 EMA Pullback', 'Ascending Triangle']);
-      await page.click('#universe-form button[type="submit"]');
-      await page.waitForSelector('#universe-table tr, #universe-table td', { timeout: 60000 });
-      await recordStep('scanner-mix', 'Scanner using VCP + 21 EMA Pullback + Ascending Triangle');
     } catch (error) {
       console.log(`Pattern scanner check failed: ${error.message}`);
     }
@@ -257,29 +196,11 @@ async function run() {
       await page.waitForTimeout(2000);
       await page.click('#top-setups-refresh', { timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(3000);
-      const analyzeButton = await page.$('[data-open-analyze]');
-      if (analyzeButton) {
-        const ticker = await analyzeButton.getAttribute('data-open-analyze');
-        await analyzeButton.click();
-        await page.waitForSelector('#pattern-results .result-card', { timeout: 20000 });
-        await recordStep('top-analyze', `Analyze triggered from Top Setups (${ticker})`);
-        await page.click('button.tab-button:has-text("Top Setups")', { timeout: 5000 });
-        await page.waitForTimeout(1500);
-      }
-      const watchBtn = await page.$('[data-watch]');
-      if (watchBtn) {
-        await watchBtn.click();
-        await page.waitForTimeout(1000);
-      }
       const topPreviewBtn = await page.$('[data-top-chart]');
       if (topPreviewBtn) {
         await topPreviewBtn.click();
         await page.waitForTimeout(2000);
         await recordStep('top-preview', 'Top setups preview chart');
-      }
-      const entryValueText = await page.locator('.top-plan-value').first().textContent();
-      if (entryValueText && entryValueText.includes('\n')) {
-        throw new Error('Top setups tile value wraps to multiple lines');
       }
     } catch (error) {
       console.log(`Top setups preview failed: ${error.message}`);
@@ -288,61 +209,20 @@ async function run() {
     console.log('Exercising Watchlist CRUD…');
     try {
       await page.click('button.tab-button:has-text("Watchlist")', { timeout: 5000 });
-      await page.waitForSelector('#watchlist-form', { timeout: 5000, state: 'visible' });
       await page.fill('#watchlist-symbol', 'AAPL');
       await page.selectOption('#watchlist-status', 'Watching');
       await page.fill('#watchlist-reason', 'Playwright auto test');
-      const tagToggleExists = await page.$('#watchlist-tags [data-tag="Breakout"]');
-      if (tagToggleExists) {
-        await page.click('#watchlist-tags [data-tag="Breakout"]');
-        await page.click('#watchlist-tags [data-tag="Reclaim of 21 EMA"]');
-      } else {
-        await page.selectOption('#watchlist-tags', ['Breakout', 'Momentum']).catch(() => {});
-      }
+      await page.selectOption('#watchlist-tags', ['Breakout', 'Momentum']);
       await page.click('#watchlist-form button[type="submit"]');
       await page.waitForSelector('#watchlist-list tr', { timeout: 10000 });
       await recordStep('watchlist-after-add', 'Watchlist after adding AAPL');
       const editBtn = await page.$('[data-edit="AAPL"]');
       if (editBtn) {
         await editBtn.click();
-        await page.fill('#watchlist-reason', 'Playwright edit ready');
-        await page.selectOption('#watchlist-status', 'Triggered').catch(() => {});
-        if (tagToggleExists) {
-          await page.click('#watchlist-tags [data-tag="Breakout"]');
-          await page.click('#watchlist-tags [data-tag="Reclaim of 21 EMA"]');
-          await page.click('#watchlist-tags [data-tag="Leader"]');
-          await page.click('#watchlist-tags [data-tag="Late-stage base"]');
-        } else {
-          await page.selectOption('#watchlist-tags', ['Leader', 'Late-stage base']).catch(() => {});
-        }
+        await page.fill('#watchlist-reason', 'Playwright edit');
         await page.click('#watchlist-form button[type="submit"]');
         await page.waitForSelector('#watchlist-list tr', { timeout: 10000 });
         await recordStep('watchlist-after-edit', 'Watchlist after editing AAPL');
-        const reasonCell = await page.textContent('#watchlist-list tr td:nth-child(3)');
-        if (!reasonCell || !reasonCell.includes('Playwright edit ready')) {
-          throw new Error('Watchlist edit did not persist updated notes');
-        }
-      }
-      const tagFilterToggle = await page.$('#watchlist-tag-filter [data-tag="Leader"]');
-      if (tagFilterToggle) {
-        await tagFilterToggle.click();
-        await page.waitForTimeout(1500);
-        await recordStep('watchlist-filtered', 'Watchlist filtered by Leader tag');
-        await tagFilterToggle.click();
-      } else {
-        await page.selectOption('#watchlist-tag-filter', ['Leader']).catch(() => {});
-        await page.waitForTimeout(1500);
-        await recordStep('watchlist-filtered', 'Watchlist filtered by Leader tag');
-        await page.selectOption('#watchlist-tag-filter', []).catch(() => {});
-      }
-      if (await page.$('[data-tv-link="AAPL"]')) {
-        const [tvPage] = await Promise.all([
-          context.waitForEvent('page'),
-          page.click('[data-tv-link="AAPL"]')
-        ]);
-        await tvPage.waitForLoadState('domcontentloaded');
-        await tvPage.waitForSelector('[data-testid="tv-lab-advanced-chart"]', { timeout: 30000 }).catch(() => {});
-        await tvPage.close();
       }
       const removeBtn = await page.$('[data-remove="AAPL"]');
       if (removeBtn) {

@@ -5,7 +5,7 @@ Provides endpoints for scanning S&P 500 and NASDAQ 100 for pattern setups.
 """
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any, Set
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
 
@@ -19,38 +19,6 @@ from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
 from app.services.universe_store import universe_store
 from app.core.pattern_detector import PatternDetector, PatternResult
-
-PATTERN_ALIAS_MAP: Dict[str, Set[str]] = {
-    "vcp": {"vcp", "volatility contraction"},
-    "cup & handle": {"cup & handle", "cup handle", "cup-and-handle"},
-    "flat base": {"flat base"},
-    "breakout": {"breakout"},
-    "21 ema pullback": {
-        "21 ema pullback",
-        "ema pullback",
-        "pullback to 21 ema",
-        "21ema pullback",
-    },
-    "50 sma pullback": {
-        "50 sma pullback",
-        "pullback to 50 sma",
-        "pullback to 50",
-        "pullback to 50-day",
-    },
-    "rising wedge": {"rising wedge", "ascending wedge"},
-    "falling wedge": {"falling wedge", "descending wedge"},
-    "ascending triangle": {"ascending triangle", "flat top triangle"},
-    "symmetrical triangle": {"symmetrical triangle", "sym triangle", "triangle"},
-    "head & shoulders": {"head & shoulders", "head and shoulders", "hs"},
-    "inverse head & shoulders": {
-        "inverse head & shoulders",
-        "inverse hs",
-        "inverse h&s",
-        "inverted head & shoulders",
-        "inverted hs",
-        "inverted h&s",
-    },
-}
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +43,6 @@ class ScanResult(BaseModel):
     risk_reward: float
     current_price: Optional[float]
     source: str  # "SP500" or "NASDAQ100"
-    chart_url: Optional[str] = None  # Chart-IMG preview URL
 
 
 class ScanResponse(BaseModel):
@@ -92,48 +59,68 @@ class QuickScanRequest(BaseModel):
     """Request payload for the quick scan endpoint"""
 
     universe: str = "nasdaq100"
-    limit: int = 40
-    min_score: float = 6.5
-    min_rs: float = 55.0
+    limit: int = 25
+    min_score: float = 7.0
+    min_rs: float = 60.0
     pattern_types: Optional[List[str]] = None
     timeframe: str = "1day"
     sector: Optional[str] = None
     max_atr_percent: Optional[float] = None
 
 
-def _normalize_pattern_filters(patterns: Optional[List[str]]) -> Set[str]:
+def _normalize_pattern_filters(patterns: Optional[List[str]]) -> set[str]:
     """Map UI pattern labels to internal detector names."""
     if not patterns:
         return set()
-
-    normalized: Set[str] = set()
+    alias_map = {
+        "vcp": {
+            "vcp",
+            "volatility contraction",
+            "pullback to 21 ema",
+            "pullback to 21",
+        },
+        "cup & handle": {
+            "cup & handle",
+            "cup handle",
+            "cup-and-handle",
+        },
+        "flat base": {
+            "flat base",
+            "pullback to 50",
+            "pullback to 50 sma",
+            "pullback to 50-day",
+        },
+        "breakout": {
+            "breakout",
+            "ascending triangle",
+            "symmetrical triangle",
+            "triangle",
+            "rising wedge",
+            "falling wedge",
+            "head & shoulders",
+            "inverse head & shoulders",
+        },
+    }
+    normalized = set()
     for raw in patterns:
-        canonical = _canonicalize_pattern_name(raw)
-        if canonical and canonical != "all":
-            normalized.add(canonical)
+        if not raw:
+            continue
+        slug = (
+            raw.replace("&amp;", "&")
+            .replace("-", " ")
+            .strip()
+            .lower()
+        )
+        if slug in {"", "all"}:
+            continue
+        slug = " ".join(slug.split())
+        for canonical, aliases in alias_map.items():
+            if slug == canonical or slug in aliases:
+                normalized.add(canonical)
+                break
     return normalized
 
 
-def _canonicalize_pattern_name(raw_name: Optional[str]) -> Optional[str]:
-    """Normalize any human-readable pattern label to our canonical slug."""
-    if not raw_name:
-        return None
-
-    slug = (
-        raw_name.replace("&amp;", "&")
-        .replace("-", " ")
-        .strip()
-        .lower()
-    )
-    if not slug:
-        return None
-    slug = " ".join(slug.split())
-
-    for canonical, aliases in PATTERN_ALIAS_MAP.items():
-        if slug == canonical or slug in aliases:
-            return canonical
-
-    return slug
 @router.get("/health")
 async def health():
     """Health check for universe service"""
@@ -269,7 +256,7 @@ async def quick_scan(request: QuickScanRequest):
     universe_map = {
         "nasdaq100": ("NASDAQ 100", get_nasdaq),
         "sp500": ("S&P 500", get_sp500),
-        "focus": ("Focus", get_quick_scan_universe),
+        "focus": ("Trend Template", get_quick_scan_universe),
     }
 
     try:
@@ -277,26 +264,10 @@ async def quick_scan(request: QuickScanRequest):
         sector_filter = (request.sector or "").strip().lower() or None
         requested_interval = (request.timeframe or "1day").lower()
         interval = "1week" if "week" in requested_interval else "1day"
-        normalized_patterns = _normalize_pattern_filters(request.pattern_types)
 
         universe_key = request.universe.lower().strip()
         label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
         tickers = universe_fn()
-
-        stats = {
-            "universe": label,
-            "requested_universe": request.universe,
-            "candidates": len(tickers),
-            "scanned": 0,
-            "cache_hits": 0,
-            "min_score": request.min_score,
-            "min_rs": request.min_rs,
-            "timeframe": interval,
-        }
-        if sector_filter:
-            stats["sector_filter"] = sector_filter
-        if normalized_patterns:
-            stats["pattern_filters"] = sorted(normalized_patterns)
 
         def _matches_sector(symbol: str) -> bool:
             if not sector_filter:
@@ -316,10 +287,14 @@ async def quick_scan(request: QuickScanRequest):
 
         detector = PatternDetector()
         cache = get_cache_service()
-        spy_data = await market_data_service.get_time_series("SPY", "1day", 400)
+        cache_hits = 0
+        spy_data = await market_data_service.get_time_series(
+            "SPY",
+            interval,
+            400 if interval == "1day" else 260,
+        )
 
-        stats["candidates"] = len(filtered_universe)
-        stats["scanned"] = len(tickers_to_scan)
+        normalized_patterns = _normalize_pattern_filters(request.pattern_types)
 
         rows: List[Dict[str, Any]] = []
 
@@ -331,7 +306,7 @@ async def quick_scan(request: QuickScanRequest):
                 cache_interval = interval
                 cached_pattern = await cache.get_pattern(ticker, cache_interval)
                 if cached_pattern:
-                    stats["cache_hits"] += 1
+                    cache_hits += 1
                     if isinstance(cached_pattern.get("timestamp"), str):
                         cached_pattern["timestamp"] = datetime.fromisoformat(cached_pattern["timestamp"])
 
@@ -357,9 +332,10 @@ async def quick_scan(request: QuickScanRequest):
                 if request.min_rs and (rs_rating is None or rs_rating < request.min_rs):
                     continue
 
-                pattern_slug = _canonicalize_pattern_name(pattern_result.pattern)
-                if normalized_patterns and pattern_slug not in normalized_patterns:
-                    continue
+                if request.pattern_types:
+                    pattern_name = (pattern_result.pattern or "").strip().lower()
+                    if normalized_patterns and pattern_name not in normalized_patterns:
+                        continue
 
                 if price_data is None:
                     price_data = await market_data_service.get_time_series(ticker, interval, 200)
@@ -395,11 +371,22 @@ async def quick_scan(request: QuickScanRequest):
 
         rows.sort(key=lambda item: item.get("score", 0), reverse=True)
         limited_rows = rows[: scan_limit]
+        stats_payload = {
+            "universe": label,
+            "requested_universe": request.universe,
+            "candidates": len(filtered_universe),
+            "scanned": len(tickers_to_scan),
+            "cache_hits": cache_hits,
+            "min_score": request.min_score,
+            "min_rs": request.min_rs,
+            "timeframe": interval,
+            "sector_filter": sector_filter or "all",
+        }
 
         return {
             "success": True,
             "data": limited_rows,
-            "stats": stats,
+            "stats": stats_payload,
             "message": f"Quick scan completed for {label}",
         }
 
@@ -434,39 +421,3 @@ async def get_nasdaq100():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/seed")
-async def seed_universe_manual():
-    """
-    Manually trigger universe seeding
-
-    This endpoint forces a refresh of the universe store, loading all
-    S&P 500 and NASDAQ 100 tickers with metadata. Use this if:
-    - Health check shows "seeded": false
-    - Top setups are timing out
-    - After Railway deployment to ensure universe is populated
-
-    Returns:
-        Dictionary with success status and number of symbols loaded
-    """
-    try:
-        logger.info("🔄 Manual universe seed triggered")
-        result = await universe_store.seed(force=True)
-        symbol_count = len(result) if isinstance(result, dict) else 0
-
-        logger.info(f"✅ Universe seeded successfully: {symbol_count} symbols")
-
-        return {
-            "success": True,
-            "symbols_loaded": symbol_count,
-            "message": f"Universe seeded with {symbol_count} symbols",
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"❌ Manual universe seed failed: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to seed universe: {str(e)}"
-        )
-
