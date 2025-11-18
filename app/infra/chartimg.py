@@ -110,6 +110,9 @@ async def build_analyze_chart(
     except Exception as exc:
         logger.debug("chartimg cache get failed: %s", exc)
 
+    # Get smart TTL from config (respects market hours)
+    settings = get_settings()
+
     # Backoff with jitter up to 4 tries
     last_err: Optional[Exception] = None
     for attempt in range(4):
@@ -137,7 +140,8 @@ async def build_analyze_chart(
                             chart_url = data.get("url") or data.get("imageUrl") or data.get("image_url")
                             if chart_url:
                                 try:
-                                    await cache.set_chart(t, interval, chart_url, ttl=900)
+                                    # Use smart caching with config TTL (market hours aware)
+                                    await cache.set_chart(t, interval, chart_url)
                                 except Exception as exc:
                                     logger.debug("chartimg cache set failed: %s", exc)
                             else:
