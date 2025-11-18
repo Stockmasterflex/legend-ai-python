@@ -33,6 +33,18 @@ pytest==8.4.2
 pytest-asyncio==1.3.0
 pytest-cov==6.0.0
 mypy==1.13.0
+
+# PDF Report Generation
+reportlab==4.2.5
+weasyprint==62.3
+matplotlib==3.9.0
+Pillow==10.4.0
+jinja2==3.1.4
+
+# Scheduling & Delivery
+apscheduler==3.10.4
+google-auth==2.29.0
+google-api-python-client==2.136.0
+
 # Optional for future phases
-# jinja2==3.1.2  # Phase 3
 # sse-starlette==1.8.2  # Phase 3
