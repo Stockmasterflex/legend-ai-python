@@ -12,9 +12,15 @@ aiofiles==23.2.1
 python-dotenv==1.0.0
 prometheus-client>=0.20.0
 
+# GraphQL
+strawberry-graphql[fastapi]==0.243.0
+aiodataloader==0.2.1
+
 # Database
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.10
+asyncpg==0.29.0  # Async PostgreSQL driver for GraphQL
+aiosqlite==0.19.0  # Async SQLite driver for GraphQL
 alembic==1.14.0
 
 # Data processing
