@@ -67,6 +67,139 @@ class HeadShouldersDetector(Detector):
 
         return results
 
+    def _has_prior_uptrend(self, ohlcv: pd.DataFrame, pattern_start_idx: int, lookback: int = 30) -> bool:
+        """
+        Check if there's a prior uptrend before the pattern.
+        Required for bearish H&S (reversal pattern - must reverse from uptrend).
+
+        Args:
+            ohlcv: Price data
+            pattern_start_idx: Index where pattern starts (left shoulder)
+            lookback: Number of bars to look back before pattern
+
+        Returns:
+            True if prior uptrend exists
+        """
+        if pattern_start_idx < lookback:
+            return False
+
+        # Get prices before pattern
+        start = max(0, pattern_start_idx - lookback)
+        end = pattern_start_idx
+        prior_prices = ohlcv['close'].iloc[start:end]
+
+        if len(prior_prices) < 20:
+            return False
+
+        # Check if trend is rising (first half < second half)
+        mid = len(prior_prices) // 2
+        first_half_avg = prior_prices.iloc[:mid].mean()
+        second_half_avg = prior_prices.iloc[mid:].mean()
+
+        # Must have at least 5% rise in the prior period
+        trend_rise = (second_half_avg - first_half_avg) / first_half_avg
+        return trend_rise > 0.05
+
+    def _has_prior_downtrend(self, ohlcv: pd.DataFrame, pattern_start_idx: int, lookback: int = 30) -> bool:
+        """
+        Check if there's a prior downtrend before the pattern.
+        Required for inverse H&S (reversal pattern - must reverse from downtrend).
+
+        Args:
+            ohlcv: Price data
+            pattern_start_idx: Index where pattern starts (left shoulder)
+            lookback: Number of bars to look back before pattern
+
+        Returns:
+            True if prior downtrend exists
+        """
+        if pattern_start_idx < lookback:
+            return False
+
+        # Get prices before pattern
+        start = max(0, pattern_start_idx - lookback)
+        end = pattern_start_idx
+        prior_prices = ohlcv['close'].iloc[start:end]
+
+        if len(prior_prices) < 20:
+            return False
+
+        # Check if trend is falling (first half > second half)
+        mid = len(prior_prices) // 2
+        first_half_avg = prior_prices.iloc[:mid].mean()
+        second_half_avg = prior_prices.iloc[mid:].mean()
+
+        # Must have at least 5% decline in the prior period
+        trend_decline = (first_half_avg - second_half_avg) / first_half_avg
+        return trend_decline > 0.05
+
+    def _has_declining_volume(self, ohlcv: pd.DataFrame, start_idx: int, end_idx: int) -> bool:
+        """
+        Check if volume is declining through the pattern.
+        H&S patterns typically show declining volume as pattern forms.
+
+        Args:
+            ohlcv: Price data
+            start_idx: Pattern start index
+            end_idx: Pattern end index
+
+        Returns:
+            True if volume is declining
+        """
+        if 'volume' not in ohlcv.columns:
+            return True  # Skip if no volume data
+
+        pattern_volume = ohlcv['volume'].iloc[start_idx:end_idx+1]
+
+        if len(pattern_volume) < 10:
+            return True
+
+        # Compare first half vs second half volume
+        mid = len(pattern_volume) // 2
+        first_half_avg = pattern_volume.iloc[:mid].mean()
+        second_half_avg = pattern_volume.iloc[mid:].mean()
+
+        # Second half should have at least 10% lower volume
+        return second_half_avg < first_half_avg * 0.9
+
+    def _is_below_neckline(self, ohlcv: pd.DataFrame, neckline_slope: float, neckline_intercept: float) -> bool:
+        """
+        Check if current price is below neckline (bearish confirmation).
+
+        Args:
+            ohlcv: Price data
+            neckline_slope: Neckline slope
+            neckline_intercept: Neckline intercept
+
+        Returns:
+            True if current price is below neckline
+        """
+        current_idx = len(ohlcv) - 1
+        current_price = ohlcv['close'].iloc[-1]
+        expected_neckline = neckline_slope * current_idx + neckline_intercept
+
+        # Price must be at least 1% below neckline for bearish confirmation
+        return current_price < expected_neckline * 0.99
+
+    def _is_above_neckline(self, ohlcv: pd.DataFrame, neckline_slope: float, neckline_intercept: float) -> bool:
+        """
+        Check if current price is above neckline (bullish confirmation).
+
+        Args:
+            ohlcv: Price data
+            neckline_slope: Neckline slope
+            neckline_intercept: Neckline intercept
+
+        Returns:
+            True if current price is above neckline
+        """
+        current_idx = len(ohlcv) - 1
+        current_price = ohlcv['close'].iloc[-1]
+        expected_neckline = neckline_slope * current_idx + neckline_intercept
+
+        # Price must be at least 1% above neckline for bullish confirmation
+        return current_price > expected_neckline * 1.01
+
     def _detect_regular_hs(
         self,
         ohlcv: pd.DataFrame,
@@ -92,6 +225,10 @@ class HeadShouldersDetector(Detector):
             head = peaks[i + 1]
             right_shoulder = peaks[i + 2]
 
+            # ✅ VALIDATION 1: Prior uptrend required (bearish H&S is a REVERSAL pattern)
+            if not self._has_prior_uptrend(ohlcv, left_shoulder['index']):
+                continue
+
             # Head must be highest
             if head['price'] <= max(left_shoulder['price'], right_shoulder['price']):
                 continue
@@ -101,9 +238,9 @@ class HeadShouldersDetector(Detector):
             if head_prominence < self.cfg.HEAD_MIN_RATIO:
                 continue
 
-            # Shoulders should be similar height (within tolerance)
+            # ✅ VALIDATION 2: Shoulders must be very similar (tightened from 15% to 5% tolerance)
             shoulder_ratio = min(left_shoulder['price'], right_shoulder['price']) / max(left_shoulder['price'], right_shoulder['price'])
-            if shoulder_ratio < getattr(self.cfg, 'SHOULDER_SYMMETRY', 0.85):
+            if shoulder_ratio < 0.95:  # Tightened from 0.85 to 0.95 (5% max difference)
                 continue
 
             # Find valleys between peaks for neckline
@@ -144,6 +281,19 @@ class HeadShouldersDetector(Detector):
             if r_squared < self.cfg.NECKLINE_MIN_R_SQUARED:
                 continue
 
+            # Build pattern window for validation
+            start_idx = left_shoulder['index']
+            end_idx = right_shoulder['index']
+
+            # ✅ VALIDATION 3: Volume must be declining through pattern
+            if not self._has_declining_volume(ohlcv, start_idx, end_idx):
+                continue
+
+            # ✅ VALIDATION 4: Current price must be below neckline (bearish confirmation)
+            # Only detect confirmed patterns, not just formations
+            if not self._is_below_neckline(ohlcv, slope, intercept):
+                continue
+
             # Calculate confidence
             confidence = self._calculate_confidence(
                 head_prominence,
@@ -154,10 +304,6 @@ class HeadShouldersDetector(Detector):
 
             if confidence < 0.40:
                 continue
-
-            # Build pattern window
-            start_idx = left_shoulder['index']
-            end_idx = right_shoulder['index']
 
             window_start = ohlcv.index[start_idx].isoformat() if hasattr(ohlcv.index[start_idx], 'isoformat') else str(ohlcv.index[start_idx])
             window_end = ohlcv.index[end_idx].isoformat() if hasattr(ohlcv.index[end_idx], 'isoformat') else str(ohlcv.index[end_idx])
@@ -219,6 +365,10 @@ class HeadShouldersDetector(Detector):
             head = troughs[i + 1]
             right_shoulder = troughs[i + 2]
 
+            # ✅ VALIDATION 1: Prior downtrend required (inverse H&S is a REVERSAL pattern)
+            if not self._has_prior_downtrend(ohlcv, left_shoulder['index']):
+                continue
+
             # Head must be lowest
             if head['price'] >= min(left_shoulder['price'], right_shoulder['price']):
                 continue
@@ -228,9 +378,9 @@ class HeadShouldersDetector(Detector):
             if head_depth < self.cfg.HEAD_MIN_RATIO:
                 continue
 
-            # Shoulders should be similar height
+            # ✅ VALIDATION 2: Shoulders must be very similar (tightened from 15% to 5% tolerance)
             shoulder_ratio = min(left_shoulder['price'], right_shoulder['price']) / max(left_shoulder['price'], right_shoulder['price'])
-            if shoulder_ratio < getattr(self.cfg, 'SHOULDER_SYMMETRY', 0.85):
+            if shoulder_ratio < 0.95:  # Tightened from 0.85 to 0.95 (5% max difference)
                 continue
 
             # Find peaks between troughs for neckline
@@ -271,6 +421,19 @@ class HeadShouldersDetector(Detector):
             if r_squared < self.cfg.NECKLINE_MIN_R_SQUARED:
                 continue
 
+            # Build pattern window for validation
+            start_idx = left_shoulder['index']
+            end_idx = right_shoulder['index']
+
+            # ✅ VALIDATION 3: Volume must be declining through pattern
+            if not self._has_declining_volume(ohlcv, start_idx, end_idx):
+                continue
+
+            # ✅ VALIDATION 4: Current price must be above neckline (bullish confirmation)
+            # Only detect confirmed patterns, not just formations
+            if not self._is_above_neckline(ohlcv, slope, intercept):
+                continue
+
             # Calculate confidence
             confidence = self._calculate_confidence(
                 head_depth,
@@ -281,10 +444,6 @@ class HeadShouldersDetector(Detector):
 
             if confidence < 0.40:
                 continue
-
-            # Build pattern window
-            start_idx = left_shoulder['index']
-            end_idx = right_shoulder['index']
 
             window_start = ohlcv.index[start_idx].isoformat() if hasattr(ohlcv.index[start_idx], 'isoformat') else str(ohlcv.index[start_idx])
             window_end = ohlcv.index[end_idx].isoformat() if hasattr(ohlcv.index[end_idx], 'isoformat') else str(ohlcv.index[end_idx])
