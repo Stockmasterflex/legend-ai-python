@@ -1,0 +1,234 @@
+================================================================================
+LEGEND AI CODEBASE - ANALYSIS SUMMARY
+================================================================================
+
+SYSTEM OVERVIEW:
+  - FastAPI-based trading pattern detection system
+  - Redis caching + PostgreSQL database
+  - 8+ pattern detectors with intelligent API fallback
+  - 60+ API endpoints
+  - ~103 Python files, 550+ lines per core service
+
+================================================================================
+EXTERNAL API CALLS (High-Frequency)
+================================================================================
+
+MARKET DATA - Multi-Source Fallback System:
+  Primary:    TwelveData (800 calls/day) → https://api.twelvedata.com
+  Fallback 1: Finnhub (60 calls/day) → https://finnhub.io/api/v1
+  Fallback 2: Alpha Vantage (500 calls/day) → https://www.alphavantage.co
+  Fallback 3: Yahoo Finance (unlimited) → https://query1.finance.yahoo.com
+  
+  ✓ File: /app/services/market_data.py (492 lines)
+  ✓ Caching: 15-minute TTL for OHLCV data
+  ✓ Rate limiting: Redis-tracked daily counters
+  ✓ Estimated: 100-150 calls/day (19-25% of primary limit)
+
+CHART GENERATION - Chart-IMG API:
+  Endpoint: https://api.chart-img.com/v2/tradingview/advanced-chart/storage
+  Limit: 500 calls/day, 10 calls/sec
+  
+  ✓ File: /app/services/charting.py (550+ lines)
+  ✓ Caching: 15-minute TTL for chart URLs
+  ✓ Rate limiting: Redis token bucket (burst control)
+  ✓ Estimated: 50-100 calls/day (10-20% of limit)
+  ✓ Graceful degradation: SVG fallback if API unavailable
+
+================================================================================
+EXISTING CACHING INFRASTRUCTURE
+================================================================================
+
+Redis Cache Service: /app/services/cache.py (370 lines)
+
+Cache Keys:
+  pattern:ticker={ticker}:interval={interval}     → 1 hour TTL
+  ohlcv:{ticker}:1d:5y                            → 15 minute TTL
+  chart:ticker={ticker}:interval={interval}       → 15 minute TTL
+  api_usage:twelvedata/finnhub/alphavantage       → 24 hour reset
+  chartimg:burst (token bucket)                   → Real-time
+  chartimg:daily_usage                            → Daily tracking
+
+Cache Operations:
+  ✓ get_pattern() / set_pattern() - Pattern detection
+  ✓ get_price_data() / set_price_data() - Market data
+  ✓ get_chart() / set_chart() - Chart URLs
+  ✓ invalidate_pattern() - Manual invalidation
+  ✓ get_cache_stats() - Hit rate monitoring
+
+================================================================================
+DATABASE MODELS & QUERIES
+================================================================================
+
+Tables:
+  tickers           → Stock symbols (symbol: UNIQUE, indexed)
+  pattern_scans     → Detection results (pattern_type: indexed)
+  watchlists        → User tracking (user_id: indexed, status: indexed)
+  scan_logs         → Scan history (scan_type: indexed)
+  universe_scans    → Universe results (scan_date: indexed)
+  alert_logs        → Alert history (ticker_id: indexed)
+
+Database: PostgreSQL with SQLAlchemy 2.0.36
+
+Hot Queries:
+  get_or_create_ticker(symbol)        → CREATE IF NOT EXISTS
+  save_pattern_scan(pattern_data)     → INSERT new pattern
+  get_watchlist(user_id)              → SELECT with status filter
+  update_watchlist_status(id, status) → UPDATE status
+
+================================================================================
+MAIN SERVICES & PATTERN DETECTORS
+================================================================================
+
+Core Services (9):
+  MarketDataService      → Multi-source price data with fallback
+  PatternScannerService  → Multi-detector orchestration (281 lines)
+  ScannerService         → VCP-focused daily scanner (400+ lines)
+  ChartingService        → Chart-IMG integration (550+ lines)
+  CacheService           → Redis caching layer (370 lines)
+  DatabaseService        → PostgreSQL persistence (200 lines)
+  UniverseService        → Stock universe management
+  RiskCalculatorService  → Risk/reward calculations
+  AlertsService          → Telegram/email alerts
+
+Pattern Detectors (8):
+  vcp_detector.py                  → Volatility Contraction Pattern
+  cup_handle_detector.py           → Cup & Handle
+  triangle_detector.py             → Triangle patterns
+  channel_detector.py              → Support/Resistance channels
+  wedge_detector.py                → Rising/Falling wedges
+  head_shoulders_detector.py       → H&S / Inverse H&S
+  double_top_bottom_detector.py    → Double/Multiple tops/bottoms
+  sma50_pullback_detector.py       → Moving average pullback
+
+================================================================================
+API ENDPOINTS (Key Data Flows)
+================================================================================
+
+Pattern Detection (4 endpoints):
+  POST /api/patterns/detect       → Single ticker analysis (1h cache)
+  GET /api/scan                   → Universe scan (VCP focus)
+  POST /api/universe/quick-scan   → Multi-pattern scan
+  GET /api/top-setups             → Dashboard setup list
+
+Chart Generation (5 endpoints):
+  POST /api/charts/generate       → Single chart (15m cache)
+  POST /api/charts/multi          → Multi-timeframe charts
+  POST /api/charts/preview/batch  → Batch previews (24h cache)
+  GET /api/charts/usage           → Chart-IMG stats
+  GET /api/charts/health          → Service health
+
+Market Data (2 endpoints):
+  GET /api/market/breadth         → Market breadth metrics
+  GET /api/market/usage           → API usage stats
+
+Total: 60+ API routes across 15 router files
+
+================================================================================
+CACHING OPPORTUNITIES & OPTIMIZATION
+================================================================================
+
+WELL-OPTIMIZED (✓ Already Good):
+  ✓ Pattern detection results (1 hour cache)
+  ✓ Market data OHLCV (15 minute cache)
+  ✓ Chart URLs (15 minute cache)
+  ✓ API usage tracking (prevents overages)
+  ✓ Chart-IMG rate limiting (burst control)
+
+HIGH-PRIORITY IMPROVEMENTS:
+  🔴 Universe scan results (2-4h cache)         → 60% time savings
+  🔴 Indicator calculations (EMA/SMA cache)     → 40% computation savings
+  🟠 Universe metadata (24h cache)              → 20% startup time
+  🟠 RS rating/SPY data (24h cache)             → 15% scan time
+  🟠 Detector intermediate results (shared)     → 30% per detector
+
+MEDIUM-PRIORITY IMPROVEMENTS:
+  🟡 Symbol resolution mapping (permanent)      → 5% chart time
+  🟡 AI response caching (semantic hash)        → 25% AI calls
+  🟡 Risk calculator results (1h cache)         → 10% chart time
+
+ESTIMATED IMPACT:
+  - Implementing top 3 improvements: 40-60% cost reduction
+  - Maintain real-time accuracy for active traders
+  - Reduce daily API calls from 150-260 to 50-100
+
+================================================================================
+CONFIGURATION & ENVIRONMENT
+================================================================================
+
+Cache TTLs (configurable):
+  cache_ttl_patterns:       3600 seconds (1 hour)
+  cache_ttl_market_data:    900 seconds (15 minutes)
+  cache_ttl_charts:         7200 seconds (2 hours)
+  cache_ttl_ai_responses:   1800 seconds (30 minutes)
+
+Rate Limits:
+  Global:              60 requests/minute
+  AI-specific:         20 requests/minute
+  Market data:         30 requests/minute
+
+API Limits (daily):
+  TwelveData:          800 calls/day
+  Finnhub:             60 calls/day
+  Alpha Vantage:       500 calls/day
+  Chart-IMG:           500 calls/day
+
+Environment Variables:
+  REDIS_URL                → Redis connection
+  DATABASE_URL             → PostgreSQL connection
+  TWELVEDATA_API_KEY       → Market data primary
+  FINNHUB_API_KEY          → Market data fallback 1
+  ALPHA_VANTAGE_API_KEY    → Market data fallback 2
+  CHART_IMG_API_KEY        → Chart generation
+
+================================================================================
+KEY FILES REFERENCE
+================================================================================
+
+Core Services:
+  /app/services/cache.py              (370 lines) - Redis caching
+  /app/services/market_data.py        (492 lines) - Multi-source data
+  /app/services/pattern_scanner.py    (281 lines) - Pattern orchestration
+  /app/services/charting.py           (550+ lines) - Chart generation
+  /app/services/scanner.py            (400+ lines) - VCP scanner
+
+API Endpoints:
+  /app/api/patterns.py                - Pattern detection
+  /app/api/charts.py                  - Chart generation
+  /app/api/scan.py                    - Universe scanning
+  /app/api/universe.py                - Universe management
+  /app/api/market.py                  - Market data
+
+Configuration:
+  /app/config.py                      - Settings & defaults
+  /app/models.py                      - Database models
+  .env.example                        - Environment template
+
+================================================================================
+DEPLOYMENT
+================================================================================
+
+Container Setup:
+  - Docker Compose with FastAPI + PostgreSQL + Redis
+  - Uvicorn on port 8000
+
+Railway Deployment:
+  - Auto-scaling infrastructure
+  - PostgreSQL & Redis provisioned separately
+  - Environment variables auto-configured
+  - Health checks on /healthz endpoint
+
+================================================================================
+ANALYSIS DOCUMENTATION
+================================================================================
+
+Full analysis saved to: /home/user/legend-ai-python/CACHING_ANALYSIS.md
+
+Contains:
+  - Detailed API call patterns
+  - Database query analysis
+  - Cache key schemas
+  - Performance optimization opportunities
+  - Risk/reward of each improvement
+  - Implementation guidance
+
+================================================================================
