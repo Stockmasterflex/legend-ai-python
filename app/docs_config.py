@@ -65,6 +65,14 @@ tags_metadata = [
         "name": "advanced_analysis",
         "description": "🧪 **Advanced Analysis** - Multi-timeframe and advanced technical analysis",
     },
+    {
+        "name": "options",
+        "description": "📊 **Options Analysis** - Options data, screeners, strategies, Greeks, and pattern integration",
+        "externalDocs": {
+            "description": "Options Guide",
+            "url": "https://github.com/Stockmasterflex/legend-ai-python/blob/main/API_REFERENCE.md#options"
+        }
+    },
 ]
 
 # Custom OpenAPI schema

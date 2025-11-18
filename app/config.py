@@ -78,11 +78,20 @@ class Settings(BaseSettings):
     finnhub_api_key: Optional[str] = None
     alpha_vantage_api_key: Optional[str] = None
 
+    # Options Data APIs
+    tradier_api_key: Optional[str] = None
+    tradier_account_id: Optional[str] = None
+    tradier_sandbox: bool = False  # Use sandbox for testing
+    cboe_api_key: Optional[str] = None
+    unusual_whales_api_key: Optional[str] = None  # For flow/dark pool data
+
     # API Rate Limits (daily)
     twelvedata_daily_limit: int = 800
     finnhub_daily_limit: int = 60
     alpha_vantage_daily_limit: int = 500
     chartimg_daily_limit: int = 500
+    tradier_daily_limit: int = 20000  # Tradier allows more calls
+    cboe_daily_limit: int = 1000
 
     # Redis
     redis_url: str = "redis://localhost:6379"
