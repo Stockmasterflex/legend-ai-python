@@ -14,7 +14,11 @@ import json
 from functools import wraps
 
 from app.config import get_settings
-from app.models import Base, Ticker, PatternScan, Watchlist, ScanLog
+from app.models import (
+    Base, Ticker, PatternScan, Watchlist, ScanLog,
+    User, UserProfile, Follow, TradePost, Comment, Reaction,
+    LeaderboardStats, TrendingTicker, TrendingPattern
+)
 
 logger = logging.getLogger(__name__)
 

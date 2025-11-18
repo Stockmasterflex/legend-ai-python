@@ -1,0 +1,285 @@
+╔════════════════════════════════════════════════════════════════════════════════════════╗
+║                     LEGEND AI - SOCIAL TRADING ARCHITECTURE                           ║
+║                        (Existing + Proposed Components)                               ║
+╚════════════════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                            EXISTING DATABASE TABLES                                  │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────┐
+  │  Ticker     │
+  ├─────────────┤
+  │ id (PK)     │
+  │ symbol      │──────┐
+  │ name        │      │
+  │ sector      │      │
+  │ industry    │      │
+  │ exchange    │      │
+  └─────────────┘      │
+                        │
+                        ├──────────────┬──────────────┬──────────────┐
+                        │              │              │              │
+                        ▼              ▼              ▼              ▼
+                   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌──────────────┐
+                   │PatternScan  │ │ Watchlist   │ │ AlertLog    │ │  ScanLog     │
+                   ├─────────────┤ ├─────────────┤ ├─────────────┤ ├──────────────┤
+                   │ id (PK)     │ │ id (PK)     │ │ id (PK)     │ │ id (PK)      │
+                   │ ticker_id   │ │ ticker_id   │ │ ticker_id   │ │ scan_type    │
+                   │ pattern_type│ │ user_id*    │ │ user_id*    │ │ tickers_...  │
+                   │ score       │ │ status      │ │ alert_type  │ │ patterns_... │
+                   │ entry_price │ │ target_*    │ │ trigger_*   │ │ status       │
+                   │ stop_price  │ │ reason      │ │ sent_via    │ │ error_msg    │
+                   │ target_price│ │ notes       │ │ status      │ │ start_time   │
+                   │ ...         │ │ ...         │ │ ...         │ │ end_time     │
+                   └─────────────┘ └─────────────┘ └─────────────┘ └──────────────┘
+
+  * Currently using string-based user_id (Telegram ID or "default")
+
+                        ┌──────────────────────┐
+                        │  UniverseScan        │
+                        ├──────────────────────┤
+                        │ id (PK)              │
+                        │ scan_date            │
+                        │ universe             │
+                        │ total_scanned        │
+                        │ patterns_found       │
+                        │ top_score            │
+                        │ duration_seconds     │
+                        │ status               │
+                        └──────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                         PROPOSED NEW TABLES (SOCIAL)                                 │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+Phase 1: Authentication & Profiles
+═════════════════════════════════════
+
+  ┌─────────────────────┐
+  │      User           │
+  ├─────────────────────┤
+  │ id (PK)             │
+  │ username (UNIQUE)   │◄─────────┐
+  │ email (UNIQUE)      │          │
+  │ password_hash       │          │
+  │ is_active           │          │
+  │ created_at          │          │
+  │ updated_at          │          │
+  └─────────────────────┘          │
+           │                        │
+           │ 1:1                    │
+           ▼                        │
+  ┌─────────────────────────────┐  │
+  │    UserProfile              │  │
+  ├─────────────────────────────┤  │
+  │ id (PK)                     │  │
+  │ user_id (FK) ───────────────┘  │
+  │ display_name                │  │
+  │ bio / description           │  │
+  │ avatar_url                  │  │
+  │ total_trades                │  │
+  │ win_rate                    │  │
+  │ total_profit_loss           │  │
+  │ follower_count              │  │
+  │ following_count             │  │
+  │ created_at / updated_at     │  │
+  └─────────────────────────────┘  │
+                                    │
+     ┌──────────────────────────────┘
+     │
+  Phase 2: Update existing tables to use user_id (FK to User)
+  ═══════════════════════════════════════════════════════════
+     │
+     ├─► Watchlist.user_id FK → User  (was: string)
+     ├─► AlertLog.user_id FK → User   (was: string)
+     └─► Trade (in Redis) needs user_id isolation
+
+
+Phase 3: Social Features - Follow System
+═════════════════════════════════════════
+
+  ┌────────────────────────────┐
+  │      Follow                │
+  ├────────────────────────────┤
+  │ id (PK)                    │
+  │ follower_id (FK) ──────┐   │
+  │ following_id (FK) ──┐  │   │
+  │ created_at         │  │   │
+  │ (Unique on both)   │  │   │
+  └────────────────────┼──┼───┘
+                       │  └────────┐
+                       │           │
+                       ▼           ▼
+                    ┌─────────────────┐
+                    │     User        │
+                    │   (many-to-many)│
+                    │   via Follow    │
+                    └─────────────────┘
+
+
+Phase 4: Social Trading
+═══════════════════════
+
+  ┌───────────────────────────────┐
+  │    SharedTrade              │◄──────────┐
+  ├───────────────────────────────┤          │
+  │ id (PK)                       │          │
+  │ trade_id (original trade)     │          │
+  │ user_id (FK) ──────┐          │          │
+  │ title              │          │          │
+  │ description        │          │          │
+  │ visibility         │          │          │
+  │ likes_count        │          │          │
+  │ comments_count     │          │          │
+  │ copies_count       │          │          │
+  │ created_at         │          │          │
+  │ updated_at         │          │          │
+  └───────────────────┼───────────┘          │
+                      │                      │
+                      ▼                      │
+              ┌─────────────────┐            │
+              │     User        │            │
+              └─────────────────┘            │
+                      │                      │
+                      │1:N              1:N │
+                      ▼                      ▼
+       ┌──────────────────────────┐  ┌──────────────────┐
+       │    TradeComment          │  │   TradeLike      │
+       ├──────────────────────────┤  ├──────────────────┤
+       │ id (PK)                  │  │ id (PK)          │
+       │ shared_trade_id (FK) ◄───┼──┤ shared_trade_id  │
+       │ user_id (FK) ◄───┐       │  │ user_id (FK) ◄┐  │
+       │ comment_text     │       │  │ created_at    │  │
+       │ created_at       │       │  │ (Unique pair) │  │
+       │ updated_at       │       │  └──────────────┘  │
+       └────────────────┼─┘       │                    │
+                        │         │                    │
+                        └─────────┼────────────────────┘
+                                  │
+                                  ▼
+                          ┌──────────────────┐
+                          │     User         │
+                          └──────────────────┘
+
+
+Phase 5: Performance Tracking & Leaderboards
+═════════════════════════════════════════════
+
+  ┌────────────────────────────────┐
+  │   TradePerformance             │
+  ├────────────────────────────────┤
+  │ id (PK)                        │
+  │ user_id (FK) ──────┐           │
+  │ date (indexed)     │           │
+  │ total_trades       │           │
+  │ winning_trades     │           │
+  │ win_rate           │           │
+  │ profit_loss        │           │
+  │ roi                │           │
+  │ average_r_multiple │           │
+  └────────────────────┼───────────┘
+                       │
+                       ▼
+              ┌──────────────────┐
+              │     User         │
+              └──────────────────┘
+                       │
+                       │ 1:N
+                       ▼
+             ┌──────────────────────┐
+             │   Leaderboard        │
+             │  (Materialized View) │
+             ├──────────────────────┤
+             │ id (PK)              │
+             │ user_id (FK) ────┐   │
+             │ period           │   │
+             │ rank             │   │
+             │ metric_type      │   │
+             │ metric_value     │   │
+             │ calculated_at    │   │
+             └────────┬─────────┘   │
+                      │             │
+                      └─────────────┘
+                      Via TradePerformance
+
+╔════════════════════════════════════════════════════════════════════════════════════════╗
+║                            API ROUTING HIERARCHY                                       ║
+╚════════════════════════════════════════════════════════════════════════════════════════╝
+
+/api
+├── /auth (NEW - Phase 1)
+│   ├── POST /register              Create account
+│   ├── POST /login                 Authenticate
+│   ├── POST /refresh               Refresh JWT
+│   ├── POST /logout                Clear token
+│   └── POST /verify                Verify token
+│
+├── /users (NEW - Phase 2)
+│   ├── GET /me                     Get current user profile
+│   ├── PUT /me                     Update profile
+│   ├── GET /{user_id}              Get public profile
+│   ├── GET /{user_id}/stats        Get user stats
+│   └── DELETE /me                  Delete account
+│
+├── /follows (NEW - Phase 3)
+│   ├── POST /{user_id}             Follow user
+│   ├── DELETE /{user_id}           Unfollow
+│   ├── GET /followers              Get my followers
+│   ├── GET /following              Get who I follow
+│   └── GET /{user_id}/followers    Get user's followers
+│
+├── /social-trades (NEW - Phase 4)
+│   ├── POST /create                Share a trade
+│   ├── GET /feed                   Social feed
+│   ├── GET /{trade_id}             View trade
+│   ├── POST /{trade_id}/copy       Copy trade
+│   ├── DELETE /{trade_id}          Delete trade
+│   ├── POST /{trade_id}/like       Like trade
+│   ├── POST /{trade_id}/comments   Add comment
+│   └── GET /{trade_id}/comments    Get comments
+│
+├── /leaderboards (NEW - Phase 5)
+│   ├── GET /winrate                Ranked by win rate
+│   ├── GET /profitability          Ranked by profit
+│   ├── GET /consistency            Ranked by consistency
+│   ├── GET /roi                    Ranked by ROI
+│   └── GET /followers              Ranked by followers
+│
+├── /trades (MODIFIED - Phase 2)
+│   ├── POST /create                Create trade (user isolated)
+│   ├── POST /close                 Close trade (user isolated)
+│   ├── GET /open                   Get user's open trades
+│   ├── GET /closed                 Get user's closed trades
+│   └── GET /statistics             Get user's stats
+│
+├── /patterns                        (Existing - no changes)
+├── /charts                          (Existing - no changes)
+├── /watchlist                       (Modified to be user isolated)
+├── /scan                            (Existing - no changes)
+└── ... (other existing routers)
+
+╔════════════════════════════════════════════════════════════════════════════════════════╗
+║                          DATA ISOLATION & SECURITY                                     ║
+╚════════════════════════════════════════════════════════════════════════════════════════╝
+
+Current State:
+  - Global data visibility (everyone sees everything)
+  - Telegram user_id as identifier (not secure for web)
+  - No authentication on /api/trades endpoints
+  - Trades in Redis (no persistence)
+
+Proposed State:
+  - Per-user data isolation via JWT authentication
+  - User table with bcrypt password hashing
+  - Private/followers-only/public visibility controls
+  - Trades persisted in database with user attribution
+  - Per-user rate limiting (100 req/min per user)
+  - Authorization checks on all CRUD operations
+
+Key Principle: NEVER TRUST REQUEST SOURCE
+  ✓ Always verify user_id from JWT token
+  ✓ Always check authorization before returning data
+  ✓ Never accept user_id from query params/body
+  ✓ Use middleware to inject authenticated user context
+

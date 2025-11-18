@@ -65,6 +65,10 @@ tags_metadata = [
         "name": "advanced_analysis",
         "description": "🧪 **Advanced Analysis** - Multi-timeframe and advanced technical analysis",
     },
+    {
+        "name": "social",
+        "description": "👥 **Social Trading Community** - User profiles, following, trade sharing, leaderboards, and community analytics",
+    },
 ]
 
 # Custom OpenAPI schema
