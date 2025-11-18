@@ -335,65 +335,71 @@ RS Rating: {result.rs_rating:.0f}
             return f"❌ Error: {str(e)}"
 
     async def handle_plan(self, chat_id: str, ticker: str) -> str:
-        """Handle /plan command - trading plan"""
+        """Handle /plan command - AI-powered trading plan"""
         if not ticker:
             return "❌ Please provide a ticker symbol.\n\n*Usage:* `/plan NVDA`"
 
         ticker = ticker.upper().strip()
 
         try:
-            # Get pattern first
-            price_data = await market_data_service.get_time_series(ticker, "1day", 500)
-            if not price_data:
-                return f"❌ Could not fetch data for {ticker}"
+            # Send typing indicator
+            await self.client.post(
+                f"{self.base_url}/sendChatAction",
+                json={"chat_id": chat_id, "action": "typing"}
+            )
 
-            spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
+            # Import plan generator
+            from app.services.plan_generator import get_plan_generator
 
-            detector = PatternDetector()
-            result = await detector.analyze_ticker(ticker, price_data, spy_data)
+            # Generate AI-powered trade plan
+            plan_generator = get_plan_generator()
+            plan_data = await plan_generator.generate_plan(
+                ticker=ticker,
+                account_size=10000.0,
+                risk_percentage=2.0,
+                timeframe="1day",
+                strategy="swing"
+            )
 
-            if not result:
-                return f"❌ Could not analyze {ticker}"
+            # Format multi-scenario response
+            score_emoji = "🔥" if plan_data.pattern_score >= 8.5 else "⭐" if plan_data.pattern_score >= 7 else "📊"
 
-            # Create trading plan
-            account_size = 10000  # Default
-            risk_percent = 2.0
+            response = f"""{score_emoji} *AI Trade Plan: {ticker}*
 
-            risk_amount = account_size * (risk_percent / 100)
-            stop_distance = result.entry - result.stop
-            shares = int(risk_amount / stop_distance) if stop_distance > 0 else 0
-            position_value = shares * result.entry
+*Pattern:* {plan_data.pattern_type} (Score: {plan_data.pattern_score:.1f}/10)
+*Current Price:* ${plan_data.current_price:.2f}
 
-            response = f"""💼 *Trading Plan: {ticker}*
+*📍 Entry Zone:*
+${plan_data.entry_zone.low:.2f} - ${plan_data.entry_zone.high:.2f}
+_Optimal: ${plan_data.entry_zone.optimal:.2f}_
 
-*Pattern:* {result.pattern} ({result.score}/10)
+*🛑 Stop Levels:*
+Initial Stop: ${plan_data.stop_levels.initial_stop:.2f}
+Invalidation: ${plan_data.stop_levels.invalidation_price:.2f}
 
-*Entry & Exit Levels:*
-Entry: ${result.entry:.2f}
-Stop: ${result.stop:.2f}
-Target: ${result.target:.2f}
+*🎯 Multi-Scenario Targets:*
+Best Case: ${plan_data.scenario_analysis.best_case_target:.2f} ({plan_data.scenario_analysis.best_case_rr:.1f}R)
+Base Case: ${plan_data.scenario_analysis.base_case_target:.2f} ({plan_data.scenario_analysis.base_case_rr:.1f}R)
+Worst Case: ${plan_data.scenario_analysis.worst_case_target:.2f} ({plan_data.scenario_analysis.worst_case_rr:.1f}R)
 
-*Position Sizing:*
-Shares: {shares}
-Position Value: ${position_value:,.2f}
-Risk Amount: ${risk_amount:.2f} ({risk_percent}%)
+*💰 Position Sizing:*
+Shares: {plan_data.position_size}
+Position Value: ${plan_data.position_value:,.2f}
+Risk Amount: ${plan_data.risk_amount:.2f}
 
-*Risk/Reward:*
-R:R Ratio: {result.risk_reward:.2f}:1
-Potential Profit: ${(result.target - result.entry) * shares:.2f}
-Potential Loss: ${risk_amount:.2f}
-
-*Account:* ${account_size:,.2f}
-*Risk per Trade:* {risk_percent}%
-
-_Adjust position size based on your account and risk tolerance._
+*✓ Key Checks:*
 """
+            # Add first 3 checklist items
+            for item in plan_data.checklist[:3]:
+                response += f"• {item.replace('✓', '').strip()}\n"
+
+            response += f"\n_Full plan with PDF export available via API_"
 
             return response
 
         except Exception as e:
             logger.error(f"Error in handle_plan: {e}")
-            return f"❌ Error: {str(e)}"
+            return f"❌ Error creating trade plan: {str(e)}"
 
     async def handle_market(self, chat_id: str) -> str:
         """Handle /market command - market internals"""

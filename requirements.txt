@@ -22,6 +22,10 @@ pandas==2.2.3
 numpy==1.26.4  # Stay on 1.x for stability (2.0 has breaking changes)
 scipy==1.14.1
 
+# PDF Generation
+reportlab==4.2.5
+Pillow==11.0.0
+
 # AI/ML
 openai==1.59.7
 
