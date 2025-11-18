@@ -41,7 +41,7 @@ class PatternScan(Base):
     consolidation_days = Column(Integer)
     chart_url = Column(Text, nullable=True)  # URL to generated chart
     rs_rating = Column(Float, nullable=True)  # Relative strength rating
-    scanned_at = Column(DateTime(timezone=True), server_default=func.now())
+    scanned_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 class Watchlist(Base):
     """User watchlist with status tracking and alerts"""
@@ -58,8 +58,8 @@ class Watchlist(Base):
     notes = Column(Text)  # Additional notes
     alerts_enabled = Column(Boolean, default=True)  # Enable/disable price alerts
     alert_threshold = Column(Float, nullable=True)  # Alert when price moves this %
-    added_at = Column(DateTime(timezone=True), server_default=func.now())
-    triggered_at = Column(DateTime(timezone=True), nullable=True)  # When pattern triggered
+    added_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    triggered_at = Column(DateTime(timezone=True), nullable=True, index=True)  # When pattern triggered
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 class ScanLog(Base):
@@ -70,7 +70,7 @@ class ScanLog(Base):
     scan_type = Column(String(50), index=True)  # daily, weekly, custom
     tickers_scanned = Column(Integer)
     patterns_found = Column(Integer)
-    start_time = Column(DateTime(timezone=True))
+    start_time = Column(DateTime(timezone=True), index=True)
     end_time = Column(DateTime(timezone=True))
     status = Column(String(20))  # completed, failed, partial
     error_message = Column(Text)
@@ -98,7 +98,7 @@ class AlertLog(Base):
     alert_type = Column(String(50), index=True)  # "price", "pattern", "breakout", "volume"
     trigger_price = Column(Float, nullable=True)
     trigger_value = Column(Float, nullable=True)
-    alert_sent_at = Column(DateTime(timezone=True), server_default=func.now())
+    alert_sent_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     sent_via = Column(String(50))  # "telegram", "email", "push"
-    user_id = Column(String(100), nullable=True)
+    user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
