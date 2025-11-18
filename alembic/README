@@ -1,0 +1,47 @@
+# Database Migrations with Alembic
+
+This directory contains database migrations for the Legend AI application.
+
+## Quick Start
+
+### Create a new migration
+```bash
+alembic revision --autogenerate -m "description of changes"
+```
+
+### Apply migrations
+```bash
+alembic upgrade head
+```
+
+### Rollback migrations
+```bash
+alembic downgrade -1  # Rollback one migration
+alembic downgrade <revision>  # Rollback to specific revision
+```
+
+### View migration history
+```bash
+alembic history
+alembic current
+```
+
+## Migration Strategy
+
+1. **Development**: Always create migrations using `--autogenerate`
+2. **Review**: Check generated migrations before applying
+3. **Testing**: Test migrations on a copy of production data
+4. **Production**: Apply with `alembic upgrade head`
+
+## Best Practices
+
+- Always review auto-generated migrations
+- Test both upgrade and downgrade paths
+- Keep migrations small and focused
+- Never modify existing migrations after they're deployed
+- Document complex migrations in the docstring
+
+## Initial Setup
+
+The initial migration captures the current database schema with all indexes
+and optimizations added for performance.
