@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Money Analytics Dashboard - Legend AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card {
+            @apply bg-white rounded-lg shadow-md p-6 mb-4;
+        }
+        .metric-card {
+            @apply bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200;
+        }
+        .alert-badge {
+            @apply px-3 py-1 rounded-full text-xs font-semibold;
+        }
+        .alert-high { @apply bg-red-100 text-red-800; }
+        .alert-medium { @apply bg-yellow-100 text-yellow-800; }
+        .alert-low { @apply bg-blue-100 text-blue-800; }
+
+        .sentiment-bullish { @apply text-green-600; }
+        .sentiment-bearish { @apply text-red-600; }
+        .sentiment-neutral { @apply text-gray-600; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">Smart Money Analytics</h1>
+                    <p class="text-blue-100 mt-1">Track institutional flows, dark pool prints, and smart money positioning</p>
+                </div>
+                <a href="/" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition">
+                    <i class="fas fa-home mr-2"></i>Home
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Symbol Search -->
+        <div class="card">
+            <div class="flex gap-4">
+                <input
+                    type="text"
+                    id="symbolInput"
+                    placeholder="Enter ticker symbol (e.g., AAPL)"
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onkeypress="if(event.key === 'Enter') loadDashboard()"
+                >
+                <button
+                    onclick="loadDashboard()"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                    <i class="fas fa-search mr-2"></i>Analyze
+                </button>
+                <button
+                    onclick="generateDemoData()"
+                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fas fa-flask mr-2"></i>Demo Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden card text-center py-8">
+            <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+            <p class="text-gray-600">Loading smart money data...</p>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" class="hidden">
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="metric-card">
+                    <div class="text-sm text-gray-600 mb-1">Smart Money Index</div>
+                    <div class="text-3xl font-bold text-blue-600" id="smartMoneyIndex">--</div>
+                    <div class="text-xs text-gray-500 mt-1">Composite Strength</div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-sm text-gray-600 mb-1">Dark Pool Ratio</div>
+                    <div class="text-3xl font-bold text-indigo-600" id="darkPoolRatio">--</div>
+                    <div class="text-xs text-gray-500 mt-1">% of Total Volume</div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-sm text-gray-600 mb-1">Institutional Ownership</div>
+                    <div class="text-3xl font-bold text-purple-600" id="institutionalOwnership">--</div>
+                    <div class="text-xs text-gray-500 mt-1">% Owned by Institutions</div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-sm text-gray-600 mb-1">Accumulation Score</div>
+                    <div class="text-3xl font-bold text-green-600" id="accumulationScore">--</div>
+                    <div class="text-xs text-gray-500 mt-1">-100 to 100</div>
+                </div>
+            </div>
+
+            <!-- Alerts Section -->
+            <div class="card" id="alertsSection">
+                <h2 class="text-xl font-bold mb-4">
+                    <i class="fas fa-bell text-yellow-500 mr-2"></i>Recent Alerts
+                </h2>
+                <div id="alertsList"></div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Dark Pool Section -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">
+                        <i class="fas fa-eye-slash text-gray-700 mr-2"></i>Dark Pool Activity
+                    </h2>
+                    <div id="darkPoolSummary" class="mb-4"></div>
+                    <div class="max-h-96 overflow-y-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-2 py-2 text-left">Time</th>
+                                    <th class="px-2 py-2 text-right">Size</th>
+                                    <th class="px-2 py-2 text-right">Price</th>
+                                    <th class="px-2 py-2 text-right">Value</th>
+                                    <th class="px-2 py-2 text-center">P/D</th>
+                                </tr>
+                            </thead>
+                            <tbody id="darkPoolPrints"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Institutional Holdings -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">
+                        <i class="fas fa-building text-blue-700 mr-2"></i>Top Institutional Holders
+                    </h2>
+                    <div id="institutionalFlow" class="mb-4"></div>
+                    <div class="max-h-96 overflow-y-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-2 py-2 text-left">Institution</th>
+                                    <th class="px-2 py-2 text-right">Shares</th>
+                                    <th class="px-2 py-2 text-right">%</th>
+                                    <th class="px-2 py-2 text-right">Change</th>
+                                </tr>
+                            </thead>
+                            <tbody id="institutionalHolders"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Block Trades -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">
+                        <i class="fas fa-cubes text-purple-700 mr-2"></i>Recent Block Trades
+                    </h2>
+                    <div id="blockTradesSummary" class="mb-4"></div>
+                    <div class="max-h-96 overflow-y-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-2 py-2 text-left">Time</th>
+                                    <th class="px-2 py-2 text-left">Type</th>
+                                    <th class="px-2 py-2 text-right">Size</th>
+                                    <th class="px-2 py-2 text-right">Value</th>
+                                    <th class="px-2 py-2 text-center">Sentiment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="blockTrades"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Options Positioning -->
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-4">
+                        <i class="fas fa-chart-line text-green-700 mr-2"></i>Options Positioning
+                    </h2>
+                    <div id="optionsPositioning"></div>
+                </div>
+            </div>
+
+            <!-- Smart Money Flow Chart -->
+            <div class="card mt-6">
+                <h2 class="text-xl font-bold mb-4">
+                    <i class="fas fa-water text-blue-700 mr-2"></i>Smart Money Flow Analysis
+                </h2>
+                <div id="flowAnalysis"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSymbol = '';
+
+        async function loadDashboard() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase().trim();
+            if (!symbol) {
+                alert('Please enter a ticker symbol');
+                return;
+            }
+
+            currentSymbol = symbol;
+            showLoading(true);
+
+            try {
+                const response = await fetch(`/smart-money/analytics/${symbol}/dashboard`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayDashboard(data);
+                } else {
+                    throw new Error(data.detail || 'Failed to load data');
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                alert('Error loading data: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function generateDemoData() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase().trim() || 'AAPL';
+            document.getElementById('symbolInput').value = symbol;
+
+            showLoading(true);
+
+            try {
+                const response = await fetch(`/smart-money/demo/${symbol}/generate-data?days=7`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`Demo data generated for ${symbol}. Loading dashboard...`);
+                    await loadDashboard();
+                } else {
+                    throw new Error(data.detail || 'Failed to generate demo data');
+                }
+            } catch (error) {
+                console.error('Error generating demo data:', error);
+                alert('Error generating demo data: ' + error.message);
+                showLoading(false);
+            }
+        }
+
+        function displayDashboard(data) {
+            // Update key metrics
+            const indicators = data.indicators;
+            document.getElementById('smartMoneyIndex').textContent = indicators.smart_money_index.toFixed(1);
+            document.getElementById('darkPoolRatio').textContent = (indicators.dark_pool_ratio * 100).toFixed(2) + '%';
+            document.getElementById('institutionalOwnership').textContent = indicators.institutional_ownership.toFixed(1) + '%';
+            document.getElementById('accumulationScore').textContent = indicators.accumulation_score.toFixed(1);
+
+            // Display alerts
+            displayAlerts(data.alerts);
+
+            // Display dark pool prints
+            displayDarkPoolPrints(data.dark_pool.recent_prints, data.dark_pool.summary);
+
+            // Display institutional holders
+            displayInstitutionalHolders(data.institutional.top_holders, data.institutional.flow);
+
+            // Display block trades
+            displayBlockTrades(data.block_trades.recent_blocks);
+
+            // Display options positioning
+            displayOptionsPositioning(data.block_trades.options_positioning);
+
+            // Display flow analysis
+            displayFlowAnalysis(data.smart_money_flow);
+
+            // Show dashboard
+            document.getElementById('dashboardContent').classList.remove('hidden');
+        }
+
+        function displayAlerts(alerts) {
+            const container = document.getElementById('alertsList');
+            if (!alerts || alerts.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">No recent alerts</p>';
+                return;
+            }
+
+            container.innerHTML = alerts.slice(0, 5).map(alert => `
+                <div class="border-l-4 ${getSeverityBorderColor(alert.severity)} bg-gray-50 p-3 mb-2">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="font-semibold text-sm">${alert.title}</div>
+                            <div class="text-xs text-gray-600 mt-1">${alert.message}</div>
+                            <div class="text-xs text-gray-400 mt-1">${formatTime(alert.timestamp)}</div>
+                        </div>
+                        <span class="alert-badge alert-${alert.severity}">${alert.severity.toUpperCase()}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayDarkPoolPrints(prints, summary) {
+            const tbody = document.getElementById('darkPoolPrints');
+            tbody.innerHTML = prints.slice(0, 20).map(print => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-2 py-2 text-xs">${formatTime(print.timestamp)}</td>
+                    <td class="px-2 py-2 text-right">${formatNumber(print.size)}</td>
+                    <td class="px-2 py-2 text-right">$${print.price.toFixed(2)}</td>
+                    <td class="px-2 py-2 text-right">$${formatValue(print.value)}</td>
+                    <td class="px-2 py-2 text-center">
+                        <span class="${print.is_premium ? 'text-green-600' : 'text-red-600'} text-xs">
+                            ${print.premium_discount > 0 ? '+' : ''}${print.premium_discount.toFixed(2)}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Display summary
+            document.getElementById('darkPoolSummary').innerHTML = `
+                <div class="grid grid-cols-3 gap-2 text-xs mb-2">
+                    <div class="bg-blue-50 p-2 rounded">
+                        <div class="text-gray-600">Total Prints</div>
+                        <div class="font-bold text-blue-600">${summary.total_prints}</div>
+                    </div>
+                    <div class="bg-green-50 p-2 rounded">
+                        <div class="text-gray-600">Total Volume</div>
+                        <div class="font-bold text-green-600">${formatNumber(summary.total_volume)}</div>
+                    </div>
+                    <div class="bg-purple-50 p-2 rounded">
+                        <div class="text-gray-600">Total Value</div>
+                        <div class="font-bold text-purple-600">$${formatValue(summary.total_value)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayInstitutionalHolders(holders, flow) {
+            const tbody = document.getElementById('institutionalHolders');
+            tbody.innerHTML = holders.map(holder => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-2 py-2 text-xs">${holder.name}</td>
+                    <td class="px-2 py-2 text-right text-xs">${formatNumber(holder.shares)}</td>
+                    <td class="px-2 py-2 text-right text-xs">${holder.percentage.toFixed(2)}%</td>
+                    <td class="px-2 py-2 text-right text-xs ${holder.change > 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${holder.change > 0 ? '+' : ''}${holder.change_percentage.toFixed(2)}%
+                    </td>
+                </tr>
+            `).join('');
+
+            // Display flow summary
+            document.getElementById('institutionalFlow').innerHTML = `
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded border border-blue-200 text-sm">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-gray-600">Flow Direction:</span>
+                            <span class="font-bold ml-2">${flow.flow_direction.replace('_', ' ').toUpperCase()}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Net Change:</span>
+                            <span class="font-bold ml-2 ${flow.net_change_percentage > 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${flow.net_change_percentage > 0 ? '+' : ''}${flow.net_change_percentage.toFixed(2)}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayBlockTrades(trades) {
+            const tbody = document.getElementById('blockTrades');
+            tbody.innerHTML = trades.slice(0, 20).map(trade => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-2 py-2 text-xs">${formatTime(trade.timestamp)}</td>
+                    <td class="px-2 py-2 text-xs">
+                        <span class="px-2 py-1 bg-gray-100 rounded text-xs">${trade.trade_type.toUpperCase()}</span>
+                    </td>
+                    <td class="px-2 py-2 text-right text-xs">${formatNumber(trade.size)}</td>
+                    <td class="px-2 py-2 text-right text-xs">$${formatValue(trade.value)}</td>
+                    <td class="px-2 py-2 text-center">
+                        <span class="sentiment-${trade.sentiment} text-xs font-semibold">
+                            ${trade.sentiment.toUpperCase()}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function displayOptionsPositioning(positioning) {
+            document.getElementById('optionsPositioning').innerHTML = `
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-green-50 p-4 rounded border border-green-200">
+                        <div class="text-sm text-gray-600 mb-1">Call Premium</div>
+                        <div class="text-2xl font-bold text-green-600">$${formatValue(positioning.total_call_premium)}</div>
+                        <div class="text-xs text-gray-500 mt-1">${positioning.call_trades} trades</div>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded border border-red-200">
+                        <div class="text-sm text-gray-600 mb-1">Put Premium</div>
+                        <div class="text-2xl font-bold text-red-600">$${formatValue(positioning.total_put_premium)}</div>
+                        <div class="text-xs text-gray-500 mt-1">${positioning.put_trades} trades</div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded text-center">
+                    <div class="text-sm text-gray-600 mb-1">Call/Put Ratio</div>
+                    <div class="text-3xl font-bold text-blue-600">${positioning.call_put_ratio}</div>
+                    <div class="text-sm mt-2">
+                        <span class="px-3 py-1 rounded-full ${getSentimentBgColor(positioning.sentiment)}">
+                            ${positioning.sentiment.replace('_', ' ').toUpperCase()}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayFlowAnalysis(flow) {
+            document.getElementById('flowAnalysis').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-blue-50 p-4 rounded border border-blue-200">
+                        <div class="text-sm text-gray-600 mb-2">Institutional Flow</div>
+                        <div class="text-2xl font-bold ${flow.net_institutional_flow > 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${flow.net_institutional_flow > 0 ? '+' : ''}$${formatValue(Math.abs(flow.net_institutional_flow))}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2">
+                            Buying: $${formatValue(flow.institutional_buying)}<br>
+                            Selling: $${formatValue(flow.institutional_selling)}
+                        </div>
+                    </div>
+                    <div class="bg-indigo-50 p-4 rounded border border-indigo-200">
+                        <div class="text-sm text-gray-600 mb-2">Insider Flow</div>
+                        <div class="text-2xl font-bold ${flow.net_insider_flow > 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${flow.net_insider_flow > 0 ? '+' : ''}$${formatValue(Math.abs(flow.net_insider_flow))}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2">
+                            Buying: $${formatValue(flow.insider_buying)}<br>
+                            Selling: $${formatValue(flow.insider_selling)}
+                        </div>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded border border-purple-200">
+                        <div class="text-sm text-gray-600 mb-2">Overall Signal</div>
+                        <div class="text-2xl font-bold text-purple-600">
+                            ${flow.accumulation_distribution.toUpperCase()}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2">
+                            Confidence: ${flow.smart_money_confidence.toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+            document.getElementById('dashboardContent').classList.toggle('hidden', show);
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+            return num.toLocaleString();
+        }
+
+        function formatValue(val) {
+            if (val >= 1000000000) return (val / 1000000000).toFixed(2) + 'B';
+            if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
+            if (val >= 1000) return (val / 1000).toFixed(2) + 'K';
+            return val.toFixed(2);
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getSeverityBorderColor(severity) {
+            return {
+                'high': 'border-red-500',
+                'medium': 'border-yellow-500',
+                'low': 'border-blue-500'
+            }[severity] || 'border-gray-500';
+        }
+
+        function getSentimentBgColor(sentiment) {
+            if (sentiment.includes('bullish')) return 'bg-green-100 text-green-800';
+            if (sentiment.includes('bearish')) return 'bg-red-100 text-red-800';
+            return 'bg-gray-100 text-gray-800';
+        }
+
+        // Auto-load AAPL on page load
+        window.addEventListener('load', () => {
+            document.getElementById('symbolInput').value = 'AAPL';
+        });
+    </script>
+</body>
+</html>

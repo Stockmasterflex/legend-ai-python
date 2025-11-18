@@ -115,6 +115,15 @@ legend-ai/
 
 ## 🔑 Key Features
 
+### Smart Money Tracking 💰 (NEW!)
+- **Dark Pool Prints** - Real-time dark pool transaction monitoring
+- **Institutional Ownership** - 13F filings and ownership change tracking
+- **Block Trade Alerts** - Large volume spikes and unusual options activity
+- **Analytics Dashboard** - Comprehensive smart money indicators and flows
+- **Interactive UI** - Real-time visualization of institutional activity
+
+See [SMART_MONEY_TRACKING.md](./SMART_MONEY_TRACKING.md) for complete documentation.
+
 ### Phase 1: Backend Foundation (Week 1)
 - **Telegram Bot** - All commands working (/start, /scan, /pattern, /chart)
 - **Pattern Scanner** - Fast async scanning of NASDAQ universe
