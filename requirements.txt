@@ -1,6 +1,7 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 python-telegram-bot==21.9
+discord.py==2.3.2
 httpx==0.28.1
 redis==5.2.1
 pydantic==2.10.6

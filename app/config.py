@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     telegram_chat_id: Optional[str] = None
     telegram_webhook_url: Optional[str] = None
 
+    # Discord
+    discord_bot_token: Optional[str] = None
+    discord_guild_id: Optional[str] = None
+    discord_channel_market_updates: Optional[str] = None
+    discord_channel_signals: Optional[str] = None
+    discord_channel_daily_picks: Optional[str] = None
+
     @property
     def auto_webhook_url(self) -> str:
         """Auto-generate webhook URL from Railway domain"""
