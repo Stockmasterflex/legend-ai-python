@@ -131,6 +131,30 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
+    # Broker Connections
+    # Default broker for live trading
+    default_broker: str = "alpaca"
+    broker_paper_trading: bool = True  # Use paper/simulation trading by default
+
+    # Alpaca
+    alpaca_api_key: Optional[str] = None
+    alpaca_api_secret: Optional[str] = None
+
+    # TD Ameritrade
+    td_ameritrade_api_key: Optional[str] = None
+    td_ameritrade_refresh_token: Optional[str] = None
+    td_ameritrade_account_id: Optional[str] = None
+
+    # Interactive Brokers
+    ib_gateway_url: Optional[str] = None  # Default: https://localhost:5000/v1/api
+    ib_account_id: Optional[str] = None
+
+    # TradeStation
+    tradestation_api_key: Optional[str] = None
+    tradestation_api_secret: Optional[str] = None
+    tradestation_refresh_token: Optional[str] = None
+    tradestation_account_id: Optional[str] = None
+
 
 
 @lru_cache()
