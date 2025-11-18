@@ -3,7 +3,7 @@ Database models for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -102,3 +102,65 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class MacroEvent(Base):
+    """Economic calendar and macro events"""
+    __tablename__ = "macro_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_type = Column(String(50), index=True)  # "FOMC", "CPI", "PPI", "GDP", "UNEMPLOYMENT", "EARNINGS", "OPTIONS_EXP", "DIVIDEND"
+    event_name = Column(String(255), nullable=False)
+    event_date = Column(DateTime(timezone=True), index=True, nullable=False)
+    event_time = Column(String(20), nullable=True)  # "09:30 ET", "14:00 ET", etc.
+    importance = Column(String(20), index=True)  # "HIGH", "MEDIUM", "LOW"
+    previous_value = Column(Float, nullable=True)
+    forecast_value = Column(Float, nullable=True)
+    actual_value = Column(Float, nullable=True)
+    country = Column(String(10), default="US")
+    source = Column(String(50))  # API source
+    description = Column(Text, nullable=True)
+    url = Column(String(500), nullable=True)  # Link to more info
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class EventImpact(Base):
+    """Historical market reaction to macro events"""
+    __tablename__ = "event_impacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, ForeignKey("macro_events.id"), index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=True)  # NULL for market indices
+    symbol = Column(String(20), index=True)  # "SPY", "QQQ", "IWM", sector tickers
+    price_before = Column(Float, nullable=False)
+    price_after_1h = Column(Float, nullable=True)
+    price_after_1d = Column(Float, nullable=True)
+    price_after_1w = Column(Float, nullable=True)
+    volatility_before = Column(Float, nullable=True)  # ATR or IV
+    volatility_after = Column(Float, nullable=True)
+    volume_ratio = Column(Float, nullable=True)  # Volume vs average
+    percent_change_1h = Column(Float, nullable=True)
+    percent_change_1d = Column(Float, nullable=True)
+    percent_change_1w = Column(Float, nullable=True)
+    direction = Column(String(10), nullable=True)  # "UP", "DOWN", "NEUTRAL"
+    magnitude = Column(String(20), nullable=True)  # "EXTREME", "HIGH", "MODERATE", "LOW"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class MarketRegime(Base):
+    """Market regime detection and tracking"""
+    __tablename__ = "market_regimes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    detection_date = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    regime_type = Column(String(50), index=True)  # "BULL", "BEAR", "SIDEWAYS"
+    volatility_regime = Column(String(50), index=True)  # "HIGH_VOL", "LOW_VOL", "NORMAL"
+    rate_environment = Column(String(50), index=True)  # "RISING", "FALLING", "STABLE"
+    seasonal_pattern = Column(String(50), nullable=True)  # "SELL_IN_MAY", "SANTA_RALLY", "JANUARY_EFFECT"
+    vix_level = Column(Float, nullable=True)
+    vix_percentile = Column(Float, nullable=True)  # Historical percentile
+    trend_strength = Column(Float, nullable=True)  # ADX or similar
+    market_breadth = Column(Float, nullable=True)  # Advance/decline ratio
+    fed_funds_rate = Column(Float, nullable=True)
+    rate_trend = Column(String(20), nullable=True)  # "HIKING", "CUTTING", "PAUSE"
+    confidence_score = Column(Float, nullable=True)  # 0-100 confidence in regime
+    indicators = Column(JSON, nullable=True)  # Supporting indicators as JSON
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
