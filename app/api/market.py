@@ -284,7 +284,8 @@ async def get_market_internals():
         # Get API usage
         try:
             api_usage = await market_data_service.get_usage_stats()
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to fetch API usage stats: {e}")
             api_usage = {"status": "unknown"}
 
         # Build response

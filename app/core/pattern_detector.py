@@ -114,7 +114,7 @@ class PatternDetector:
                 return self._create_no_pattern_result(ticker, closes, highs, lows, volumes, metrics, rs_data)
 
         except Exception as e:
-            print(f"Error analyzing {ticker}: {e}")
+            logger.exception(f"Error analyzing {ticker}: {e}")
             return None
 
     def _compute_technical_metrics(self, closes: List[float], highs: List[float],
@@ -433,7 +433,8 @@ class PatternDetector:
             avg_recent = statistics.mean(recent)
             tightness_ratio = stdev_recent / avg_recent if avg_recent > 0 else 1
             tight = tightness_ratio < 0.015
-        except:
+        except (statistics.StatisticsError, ValueError, ZeroDivisionError):
+            # Not enough data points or invalid values
             tight = False
 
         depth_ok = depth <= 12 or (depth <= 15 and tight)

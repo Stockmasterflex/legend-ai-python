@@ -178,7 +178,8 @@ class GeometryHelper:
             inliers = ransac.inlier_mask_
 
             return (slope, intercept, r2, inliers)
-        except:
+        except (ValueError, np.linalg.LinAlgError) as e:
+            # RANSAC can fail with insufficient data or numerical issues
             return None
 
     @staticmethod

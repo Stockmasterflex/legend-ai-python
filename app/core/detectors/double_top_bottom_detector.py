@@ -63,7 +63,7 @@ class DoubleTopBottomDetector(Detector):
                 results.append(double_bottom)
 
         except Exception as e:
-            print(f"Error in Double Top/Bottom detection: {e}")
+            logger.exception(f"Error in Double Top/Bottom detection: {e}")
 
         return results
 

@@ -84,7 +84,8 @@ class MultiTimeframeConfirmation:
         results = {}
         try:
             spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to fetch SPY data for multi-timeframe analysis: {e}")
             spy_data = None
 
         for tf in self.timeframes:

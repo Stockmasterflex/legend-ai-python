@@ -122,7 +122,7 @@ class SMA50PullbackDetector(Detector):
             results.append(result)
 
         except Exception as e:
-            print(f"Error in 50 SMA Pullback detection: {e}")
+            logger.exception(f"Error in 50 SMA Pullback detection: {e}")
 
         return results
 

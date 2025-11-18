@@ -48,7 +48,8 @@ class CacheService:
             if data:
                 try:
                     return json.loads(data)
-                except:
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Cache data not JSON for {key}, returning raw: {e}")
                     return data
             return None
         except Exception as e:
@@ -312,7 +313,8 @@ class CacheService:
             if data:
                 try:
                     return json.loads(data)
-                except:
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Cache data not JSON for {key}, returning raw: {e}")
                     return data
             return None
         except Exception as e:
