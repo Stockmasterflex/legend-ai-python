@@ -1,0 +1,75 @@
+# VCP Breakout Strategy Template
+# Based on Mark Minervini's Volatility Contraction Pattern
+
+name: "VCP Breakout Strategy"
+description: "Enters on VCP pattern completion with volume confirmation"
+category: "Pattern-Based"
+risk_profile: "moderate"
+
+parameters:
+  min_vcp_score: 70.0
+  risk_per_trade: 0.02  # 2% risk per trade
+  reward_ratio: 3.0     # 3R profit target
+  stop_multiplier: 2.0   # 2x ATR stop loss
+
+indicators:
+  - name: sma_50
+    type: SMA
+    parameters:
+      period: 50
+
+  - name: sma_200
+    type: SMA
+    parameters:
+      period: 200
+
+  - name: volume_avg
+    type: SMA
+    parameters:
+      period: 20
+      source: volume
+
+  - name: price
+    type: PRICE
+
+  - name: volume
+    type: VOLUME
+
+entry_rules:
+  operator: AND
+  conditions:
+    - indicator: sma_50
+      operator: ">"
+      value: sma_200
+      description: "50 SMA above 200 SMA (uptrend)"
+
+    - indicator: price
+      operator: crosses_above
+      value: pivot_high_20
+      description: "Price breaks above 20-day high"
+
+    - indicator: volume
+      operator: ">"
+      value: volume_avg_120
+      description: "Volume confirmation"
+
+exit_rules:
+  operator: OR
+  conditions:
+    - type: stop_loss
+      multiplier: 2.0
+      based_on: atr
+
+    - type: take_profit
+      multiplier: 3.0
+      based_on: initial_risk
+
+    - type: trailing_stop
+      activation: 0.10  # After 10% profit
+      trail_percent: 0.05  # Trail by 5%
+
+risk_management:
+  risk_per_trade: 0.02
+  max_position_size: 0.15
+  max_portfolio_heat: 0.06
+  position_sizing_method: "fixed_risk"
