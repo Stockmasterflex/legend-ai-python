@@ -917,7 +917,7 @@
       const risk = computeRiskReward(row.entry, row.stop, row.target);
       const previewMarkup = row.chart_url
         ? `<img src="${row.chart_url}" alt="${row.ticker} chart" class="preview-thumb" loading="lazy" />`
-        : '<p class="chart-empty compact">Use Preview chart to render.</p>';
+        : '<p class="chart-empty compact">Loading chart...</p>';
       return `
         <tr>
           <td>
@@ -938,7 +938,7 @@
               <div class="scanner-chart-slot" data-slot="${row.ticker}">
                 ${previewMarkup}
               </div>
-              <button class="btn btn-ghost btn-compact" type="button" data-scan-chart="${row.ticker}">Preview chart</button>
+              <button class="btn btn-ghost btn-compact" type="button" data-scan-chart="${row.ticker}">Refresh chart</button>
             </div>
           </td>
           <td>
@@ -952,6 +952,8 @@
         </tr>`;
     }).join('');
     attachScannerRowActions();
+    // Auto-load charts for scanner results (up to 10 at a time)
+    autoLoadScannerCharts(rows.slice(0, 10));
   }
 
   function attachScannerRowActions() {
@@ -1028,6 +1030,65 @@
     } catch (error) {
       console.error(`[Scanner Preview] Error for ${ticker}:`, error);
       renderPreviewError(slot, error.message || 'Network error');
+    }
+  }
+
+  async function autoLoadScannerCharts(rows) {
+    if (!rows || rows.length === 0) {
+      console.log('[Scanner Auto-Load] No charts to load');
+      return;
+    }
+
+    // Filter out rows that already have chart_url
+    const rowsNeedingCharts = rows.filter(row => !row.chart_url);
+
+    if (rowsNeedingCharts.length === 0) {
+      console.log('[Scanner Auto-Load] All charts already loaded');
+      return;
+    }
+
+    console.log(`[Scanner Auto-Load] Loading ${rowsNeedingCharts.length} charts...`);
+
+    // Prepare batch request
+    const items = rowsNeedingCharts.map(row => ({
+      symbol: row.ticker || row.symbol,
+      interval: row.timeframe === '1week' ? '1W' : '1D'
+    }));
+
+    try {
+      const res = await fetch('/api/charts/preview/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'scanner',
+          items: items
+        })
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.success) {
+        console.warn('[Scanner Auto-Load] Batch request failed:', payload.error || payload.detail);
+        return;
+      }
+
+      // Update each slot with the chart
+      payload.results.forEach(result => {
+        const slot = els.universeTable?.querySelector(`[data-slot="${result.symbol}"]`);
+        if (!slot) return;
+
+        if (result.status === 'ok' && result.image_url) {
+          renderPreviewImage(slot, result.image_url, `${result.symbol} chart`);
+        } else {
+          renderPreviewError(slot, result.error || 'Failed to load');
+        }
+      });
+
+      const successCount = payload.results.filter(r => r.status === 'ok').length;
+      console.log(`[Scanner Auto-Load] ✓ Loaded ${successCount}/${items.length} charts`);
+
+    } catch (error) {
+      console.error('[Scanner Auto-Load] Error loading charts:', error);
     }
   }
 
