@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 import logging
 from pathlib import Path
@@ -69,6 +70,10 @@ app = FastAPI(
 from app.middleware.metrics_middleware import MetricsMiddleware
 app.add_middleware(MetricsMiddleware)
 logger.info("📊 Metrics middleware enabled")
+
+# GZip compression for responses > 1KB (70-80% size reduction)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+logger.info("🗜️ GZip compression enabled (minimum 1KB)")
 
 # Structured logging sits at the top of the stack to capture everything
 app.add_middleware(StructuredLoggingMiddleware)
