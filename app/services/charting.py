@@ -164,40 +164,11 @@ class ChartingService:
 
     def _get_fallback_url(self, ticker: str, timeframe: str = "1day") -> str:
         """
-        Fallback: Return a static chart image URL when Chart-IMG is unavailable
-        Uses IEX Cloud free tier for basic chart images (50 calls/day limit)
+        Return None instead of SVG fallback to trigger proper error handling
+        SVG fallbacks were causing confusion - better to return None and let calling code handle it
         """
-        try:
-            # Try IEX Cloud free chart API (static PNG images)
-            iex_token = "pk_test_token_here"  # This would need to be configured, but for now use placeholder
-
-            # For now, return a placeholder that indicates the chart service is unavailable
-            # In production, you could integrate with:
-            # - IEX Cloud: https://cloud.iexapis.com/stable/stock/{ticker}/chart/1m?token={token}
-            # - Alpha Vantage static charts
-            # - Yahoo Finance chart images
-            # - Or generate a simple placeholder image
-
-            # Return a data URL for a placeholder image
-            placeholder_svg = f'''<svg width="400" height="250" xmlns="http://www.w3.org/2000/svg">
-                <rect width="100%" height="100%" fill="#1a1a1a"/>
-                <text x="50%" y="40%" text-anchor="middle" fill="#666" font-size="16">Chart Unavailable</text>
-                <text x="50%" y="60%" text-anchor="middle" fill="#999" font-size="12">{ticker.upper()} - {timeframe}</text>
-                <text x="50%" y="80%" text-anchor="middle" fill="#666" font-size="10">Chart-IMG API required</text>
-            </svg>'''
-
-            # Convert SVG to data URL
-            import base64
-            svg_b64 = base64.b64encode(placeholder_svg.encode('utf-8')).decode('utf-8')
-            fallback_url = f"data:image/svg+xml;base64,{svg_b64}"
-
-            logger.warning(f"📊 Using placeholder chart for {ticker} ({timeframe}) - Chart-IMG API not configured")
-            return fallback_url
-
-        except Exception as e:
-            logger.error(f"Failed to generate fallback chart for {ticker}: {e}")
-            # Ultimate fallback - return empty data URL
-            return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWExYTFhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiPkNoYXJ0IFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=="
+        logger.warning(f"📊 Returning None for {ticker} ({timeframe}) - Chart-IMG unavailable")
+        return None
 
     def _build_chart_payload(
         self,
