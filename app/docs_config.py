@@ -65,6 +65,14 @@ tags_metadata = [
         "name": "advanced_analysis",
         "description": "🧪 **Advanced Analysis** - Multi-timeframe and advanced technical analysis",
     },
+    {
+        "name": "ML Training",
+        "description": "🧠 **ML Model Training Platform** - Train, evaluate, and deploy custom machine learning models with hyperparameter tuning, real-time monitoring, and A/B testing",
+        "externalDocs": {
+            "description": "ML Training Platform Guide",
+            "url": "https://github.com/Stockmasterflex/legend-ai-python/blob/main/docs/ML_TRAINING_PLATFORM.md"
+        }
+    },
 ]
 
 # Custom OpenAPI schema
