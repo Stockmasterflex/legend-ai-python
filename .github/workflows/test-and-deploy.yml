@@ -1,0 +1,487 @@
+name: Test & Deploy
+
+on:
+  push:
+    branches: [ main, develop, claude/** ]
+  pull_request:
+    branches: [ main, develop, claude ]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ==================== Unit Tests ====================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Run unit tests
+        run: |
+          pytest tests/test_all_detectors_unit.py \
+            tests/test_vcp_detector.py \
+            tests/test_pattern_detectors.py \
+            -v \
+            --cov=app.core.detectors \
+            --cov-report=json:coverage-unit.json \
+            --cov-report=term
+
+      - name: Upload unit test coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage-unit.json
+
+  # ==================== Integration Tests ====================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Run integration tests
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: |
+          pytest tests/test_api_integration.py \
+            tests/test_scan_endpoints.py \
+            tests/test_universe_api.py \
+            tests/test_watchlist_api.py \
+            -v \
+            --cov=app.api \
+            --cov-report=json:coverage-integration.json \
+            --cov-report=term
+
+      - name: Upload integration test coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage-integration.json
+
+  # ==================== Performance Benchmarks ====================
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Run performance benchmarks
+        run: |
+          pytest tests/test_performance_benchmarks.py \
+            -v \
+            -m benchmark \
+            --durations=20
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: .pytest_tmp/
+
+  # ==================== Full Test Suite ====================
+  full-test-suite:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, performance-benchmarks]
+    timeout-minutes: 30
+
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Verify telemetry env
+        run: |
+          if [ -f ops/bin/check_env.py ]; then
+            python ops/bin/check_env.py
+          fi
+
+      - name: Run full test suite with coverage
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: |
+          mkdir -p artifacts
+          export START_TIME=$(date +%s)
+          set +e
+          pytest tests/ \
+            -v \
+            --durations=25 \
+            --cov=app \
+            --cov-report=html:htmlcov \
+            --cov-report=json:coverage.json \
+            --cov-report=term-missing \
+            2>&1 | tee artifacts/pytest.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          export END_TIME=$(date +%s)
+          export TEST_DURATION=$((END_TIME-START_TIME))
+          echo "TEST_STATUS=$STATUS" >> $GITHUB_ENV
+          echo "TEST_DURATION=$TEST_DURATION" >> $GITHUB_ENV
+          exit $STATUS
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          summary = {
+              "start_epoch": int(os.environ.get("START_TIME", 0)),
+              "end_epoch": int(os.environ.get("END_TIME", 0)),
+              "duration_seconds": int(os.environ.get("TEST_DURATION", 0)),
+              "status": int(os.environ.get("TEST_STATUS", 1)),
+          }
+          Path("artifacts/test-summary.json").write_text(json.dumps(summary, indent=2))
+          PY
+
+      - name: Generate Prometheus metrics
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          try:
+              from prometheus_client import generate_latest
+              import app.telemetry.metrics
+              Path("artifacts/metrics.prom").write_bytes(generate_latest())
+          except Exception as e:
+              print(f"Could not generate metrics: {e}")
+          PY
+
+      - name: Print SLO summary
+        if: always()
+        run: |
+          if [ -f slo_report.py ]; then
+            python slo_report.py --metrics-file artifacts/metrics.prom || true
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            htmlcov/
+            coverage.json
+            artifacts/
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const coverage = JSON.parse(fs.readFileSync('coverage.json', 'utf8'));
+              const totalCoverage = coverage.totals.percent_covered.toFixed(2);
+
+              const comment = `## Test Coverage Report
+
+              📊 **Total Coverage: ${totalCoverage}%**
+
+              | Metric | Value |
+              |--------|-------|
+              | Lines Covered | ${coverage.totals.covered_lines} / ${coverage.totals.num_statements} |
+              | Branches | ${coverage.totals.covered_branches} / ${coverage.totals.num_branches} |
+              | Missing Lines | ${coverage.totals.missing_lines} |
+
+              Full HTML report available in artifacts.
+              `;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Could not post coverage comment:', error);
+            }
+
+  # ==================== Security Scan ====================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit
+
+      - name: Run safety check
+        continue-on-error: true
+        run: |
+          safety check --json --output safety-report.json || true
+
+      - name: Run bandit security scan
+        continue-on-error: true
+        run: |
+          bandit -r app -f json -o bandit-report.json || true
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            safety-report.json
+            bandit-report.json
+
+  # ==================== Deploy to Railway ====================
+  deploy-railway:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: [full-test-suite]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "⚠️  RAILWAY_TOKEN not set, skipping deployment"
+            echo "To enable Railway deployment, add RAILWAY_TOKEN to your repository secrets"
+            exit 0
+          fi
+
+          # Deploy based on branch
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "🚀 Deploying to Railway production environment..."
+            railway up --service legend-ai-production || echo "Railway deployment skipped (set up RAILWAY_TOKEN secret)"
+          else
+            echo "🚀 Deploying to Railway staging environment..."
+            railway up --service legend-ai-staging || echo "Railway deployment skipped (set up RAILWAY_TOKEN secret)"
+          fi
+
+      - name: Get deployment URL
+        if: env.RAILWAY_TOKEN != ''
+        run: |
+          DEPLOY_URL=$(railway status --json | jq -r '.url' || echo "URL not available")
+          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          echo "✅ Deployed to: $DEPLOY_URL"
+
+  # ==================== Notifications ====================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [full-test-suite, deploy-railway]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine job status
+        id: status
+        run: |
+          if [ "${{ needs.full-test-suite.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "⚠️  SLACK_WEBHOOK_URL not set, skipping Slack notification"
+            echo "To enable Slack notifications, add SLACK_WEBHOOK_URL to your repository secrets"
+            exit 0
+          fi
+
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d @- <<EOF
+          {
+            "attachments": [{
+              "color": "${{ steps.status.outputs.color }}",
+              "title": "${{ steps.status.outputs.emoji }} Legend AI Test & Deploy",
+              "fields": [
+                {
+                  "title": "Status",
+                  "value": "${{ steps.status.outputs.status }}",
+                  "short": true
+                },
+                {
+                  "title": "Branch",
+                  "value": "${{ github.ref_name }}",
+                  "short": true
+                },
+                {
+                  "title": "Commit",
+                  "value": "<${{ github.event.head_commit.url }}|${{ github.event.head_commit.message }}>",
+                  "short": false
+                },
+                {
+                  "title": "Author",
+                  "value": "${{ github.actor }}",
+                  "short": true
+                },
+                {
+                  "title": "Duration",
+                  "value": "${{ env.TEST_DURATION }}s",
+                  "short": true
+                }
+              ],
+              "footer": "GitHub Actions",
+              "ts": $(date +%s)
+            }]
+          }
+          EOF
+
+      - name: Send Telegram notification
+        if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "⚠️  TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set, skipping Telegram notification"
+            echo "To enable Telegram notifications, add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to your repository secrets"
+            exit 0
+          fi
+
+          MESSAGE="${{ steps.status.outputs.emoji }} *Legend AI Test & Deploy*
+
+          *Status:* ${{ steps.status.outputs.status }}
+          *Branch:* ${{ github.ref_name }}
+          *Commit:* ${{ github.event.head_commit.message }}
+          *Author:* ${{ github.actor }}
+          *Duration:* ${{ env.TEST_DURATION }}s
+
+          [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
+          curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            -H 'Content-Type: application/json' \
+            -d @- <<EOF
+          {
+            "chat_id": "$TELEGRAM_CHAT_ID",
+            "text": "$MESSAGE",
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": true
+          }
+          EOF
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🎯 Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance Benchmarks: ${{ needs.performance-benchmarks.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Full Test Suite: ${{ needs.full-test-suite.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployment: ${{ needs.deploy-railway.result }}" >> $GITHUB_STEP_SUMMARY
