@@ -66,7 +66,7 @@ class CupHandleDetector(Detector):
                     results.append(cup_handle)
 
         except Exception as e:
-            print(f"Error in Cup & Handle detection: {e}")
+            logger.exception(f"Error in Cup & Handle detection: {e}")
 
         return results
 

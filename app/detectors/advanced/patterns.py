@@ -949,7 +949,9 @@ class AdvancedPatternDetector:
                     description=f"Rounding Top forming. Bearish reversal pattern, target ${target:.2f}"
                 )
                 patterns.append(pattern)
-        except:
+        except (KeyError, ValueError, IndexError) as e:
+            # Insufficient data or invalid values for rounding top pattern
+            logger.debug(f"Rounding top detection skipped: {e}")
             pass
 
         return patterns

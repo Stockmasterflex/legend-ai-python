@@ -68,7 +68,7 @@ class ChannelDetector(Detector):
                     results.append(channel)
 
         except Exception as e:
-            print(f"Error in Channel detection: {e}")
+            logger.exception(f"Error in Channel detection: {e}")
 
         return results
 

@@ -72,7 +72,7 @@ class VCPDetector(Detector):
                     results.append(vcp)
 
         except Exception as e:
-            print(f"Error in VCP detection: {e}")
+            logger.exception(f"Error in VCP detection: {e}")
 
         return results
 
