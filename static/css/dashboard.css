@@ -130,7 +130,7 @@
 
 .analyze-panels {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(min(320px, 100%), 1.2fr);
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: var(--spacing-2xl);
     margin-top: var(--spacing-xl);
     align-items: start;
@@ -258,7 +258,7 @@
 /* Widgets Grid */
 .tv-demo-widgets-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
     max-width: 100%;
@@ -853,6 +853,57 @@ body.tv-symbol-lab {
     display: none !important;
 }
 
+.analyze-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.chart-container.card {
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-shell {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-placeholder {
+    color: var(--color-text-secondary);
+}
+
+.card {
+    background-color: var(--color-background-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.card-header h3 {
+    margin: 0;
+}
+
+.analyze-form-container.card {
+    margin-top: 24px;
+}
+
+.results-grid .placeholder-text {
+    color: var(--color-text-secondary);
+    text-align: center;
+    padding: 48px 0;
+}
+
 /* Results Grid */
 .results-grid {
     display: grid;
@@ -1176,6 +1227,11 @@ body.tv-symbol-lab {
     align-items: center;
     justify-content: center;
     background: rgba(239, 68, 68, 0.08);
+    color: var(--color-error); /* Ensure text is readable */
+}
+
+.chart-error p {
+    margin: 0;
 }
 
 .chart-error .btn {

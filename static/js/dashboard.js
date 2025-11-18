@@ -642,19 +642,30 @@
       link.appendChild(img);
       els.patternChart.appendChild(link);
     } else {
-      const msg = document.createElement('p');
-      msg.className = 'chart-empty';
-      msg.textContent = options.placeholder || 'Chart snapshot unavailable';
-      els.patternChart.appendChild(msg);
+        const placeholder = document.createElement('div');
+        placeholder.className = 'chart-placeholder';
+        const msg = document.createElement('p');
+        msg.textContent = options.placeholder || 'Chart snapshot unavailable';
+        placeholder.appendChild(msg);
+        els.patternChart.appendChild(placeholder);
     }
   }
 
   function renderAnalyzeChartError(message) {
     if (!els.patternChart) return;
     setChartShellLoading(false);
+    const isApiKeyError = (message || '').toLowerCase().includes('api key');
+    const errorMessage = isApiKeyError
+      ? 'Chart-IMG API key is missing or invalid.'
+      : message || 'Chart unavailable';
+    const helpMarkup = isApiKeyError
+      ? '<p class="chart-hint">Please check your environment variables and <a href="https://github.com/Cyber-Buddy/legend-ai-python/blob/main/docs/CHART_IMG_API.md" target="_blank">refer to the documentation</a> for instructions on how to obtain and set the API key.</p>'
+      : '';
+
     els.patternChart.innerHTML = `
       <div class="chart-error">
-        <p>${message || 'Chart unavailable'}</p>
+        <p>${errorMessage}</p>
+        ${helpMarkup}
         <button class="btn btn-secondary btn-compact" type="button" data-chart-retry="1">Retry chart</button>
       </div>`;
   }
@@ -676,6 +687,17 @@
   function setChartShellLoading(isLoading) {
     if (!els.patternChart) return;
     els.patternChart.classList.toggle('loading', Boolean(isLoading));
+    if (isLoading) {
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-overlay active';
+        spinner.innerHTML = '<span class="spinner"></span>';
+        els.patternChart.appendChild(spinner);
+    } else {
+        const spinner = els.patternChart.querySelector('.loading-overlay');
+        if (spinner) {
+            spinner.remove();
+        }
+    }
   }
 
   function handleChartShellClick(event) {
@@ -735,6 +757,7 @@
     if (!res.ok) {
       const errorMsg = payload.error || payload.detail || `HTTP ${res.status}`;
       console.error(`[Chart Preview] Request failed: ${errorMsg}`);
+      console.error('[Chart Preview] Full error payload:', payload);
 
       // Check if it's a Chart-IMG API key issue
       if (res.status === 422 || res.status === 401 || errorMsg.toLowerCase().includes('api key') || errorMsg.toLowerCase().includes('unauthorized')) {
