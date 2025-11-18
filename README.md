@@ -152,6 +152,7 @@ legend-ai/
 - **OpenRouter** - AI models (GPT-4o-mini)
 - **Chart-IMG** - TradingView charts (unlimited)
 - **Telegram** - Bot interface (free)
+- **Google Sheets** - Bidirectional data sync (see [GOOGLE_SHEETS_INTEGRATION.md](GOOGLE_SHEETS_INTEGRATION.md))
 
 ### Deployment
 - **Railway** - One-click deploy with PostgreSQL + Redis
@@ -161,6 +162,7 @@ legend-ai/
 ## 📚 Additional Guides
 
 - [`docs/TRADINGVIEW_WIDGETS.md`](docs/TRADINGVIEW_WIDGETS.md) – embed TradingView widgets (ticker tapes, advanced charts, heatmaps, etc.) inside Python dashboards using reusable HTML + tv.js.
+- [`GOOGLE_SHEETS_INTEGRATION.md`](GOOGLE_SHEETS_INTEGRATION.md) – comprehensive guide for Google Sheets integration with bidirectional sync for watchlist, patterns, trades, portfolio, and dashboards.
 
 ## 📊 Performance Goals
 

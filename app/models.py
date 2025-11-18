@@ -102,3 +102,68 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class Trade(Base):
+    """Trade entries and exits for P&L tracking"""
+    __tablename__ = "trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trade_id = Column(String(50), unique=True, index=True, nullable=False)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    user_id = Column(String(100), index=True, default="default")
+    entry_date = Column(DateTime(timezone=True), nullable=False)
+    entry_price = Column(Float, nullable=False)
+    stop_loss = Column(Float, nullable=False)
+    target_price = Column(Float, nullable=False)
+    position_size = Column(Integer, nullable=False)
+    risk_amount = Column(Float, nullable=False)
+    reward_amount = Column(Float, nullable=False)
+    status = Column(String(20), default="open", index=True)  # "open", "closed"
+    exit_date = Column(DateTime(timezone=True), nullable=True)
+    exit_price = Column(Float, nullable=True)
+    profit_loss = Column(Float, nullable=True)
+    profit_loss_pct = Column(Float, nullable=True)
+    r_multiple = Column(Float, nullable=True)  # Profit/Risk ratio
+    win = Column(Boolean, nullable=True)  # True if profitable
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class Portfolio(Base):
+    """Portfolio holdings and positions"""
+    __tablename__ = "portfolios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    shares = Column(Integer, nullable=False)
+    avg_cost = Column(Float, nullable=False)
+    current_price = Column(Float, nullable=True)
+    market_value = Column(Float, nullable=True)
+    cost_basis = Column(Float, nullable=False)
+    unrealized_pnl = Column(Float, nullable=True)
+    unrealized_pnl_pct = Column(Float, nullable=True)
+    position_size_pct = Column(Float, nullable=True)  # % of portfolio
+    risk_amount = Column(Float, nullable=True)
+    stop_loss = Column(Float, nullable=True)
+    target_price = Column(Float, nullable=True)
+    notes = Column(Text, nullable=True)
+    acquired_date = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class SheetSync(Base):
+    """Google Sheets sync tracking"""
+    __tablename__ = "sheet_syncs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sheet_type = Column(String(50), index=True)  # "watchlist", "patterns", "trades", "portfolio", "dashboard"
+    sheet_id = Column(String(255), nullable=False)
+    sheet_name = Column(String(100), nullable=True)  # Tab name within the sheet
+    last_sync_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    last_sync_direction = Column(String(20), nullable=True)  # "to_sheet", "from_sheet", "bidirectional"
+    records_synced = Column(Integer, default=0)
+    sync_status = Column(String(20), default="pending")  # "pending", "syncing", "success", "error"
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

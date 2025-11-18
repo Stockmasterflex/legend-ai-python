@@ -65,6 +65,10 @@ tags_metadata = [
         "name": "advanced_analysis",
         "description": "🧪 **Advanced Analysis** - Multi-timeframe and advanced technical analysis",
     },
+    {
+        "name": "Google Sheets",
+        "description": "📊 **Google Sheets Integration** - Bidirectional sync with Google Sheets for watchlist, patterns, trades, portfolio, and dashboards",
+    },
 ]
 
 # Custom OpenAPI schema

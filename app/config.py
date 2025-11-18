@@ -90,8 +90,16 @@ class Settings(BaseSettings):
     # Database (optional for Phase 1)
     database_url: Optional[str] = None
 
-    # Google Sheets
-    google_sheets_id: Optional[str] = None
+    # Google Sheets Integration
+    google_sheets_credentials_json: Optional[str] = None  # JSON string or file path
+    google_sheets_enabled: bool = False
+    google_sheets_watchlist_id: Optional[str] = None  # Sheet ID for watchlist
+    google_sheets_patterns_id: Optional[str] = None  # Sheet ID for pattern results
+    google_sheets_trades_id: Optional[str] = None  # Sheet ID for trade journal
+    google_sheets_portfolio_id: Optional[str] = None  # Sheet ID for portfolio
+    google_sheets_dashboard_id: Optional[str] = None  # Sheet ID for dashboard
+    google_sheets_sync_interval: int = 300  # Sync every 5 minutes (seconds)
+    google_sheets_batch_size: int = 100  # Batch size for updates
 
     # N8N Integration
     n8n_api_key: Optional[str] = None
