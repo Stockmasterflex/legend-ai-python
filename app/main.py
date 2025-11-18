@@ -19,6 +19,8 @@ from app.api.market import router as market_router
 from app.api.analyze import router as analyze_router
 from app.api.dashboard import router as dashboard_router
 from app.api.alerts import router as alerts_router
+from app.api.alert_management import router as alert_management_router
+from app.api.smart_alerts import router as smart_alerts_router
 from app.api.multitimeframe import router as multitf_router
 from app.api.risk import router as risk_router
 from app.api.trades import router as trades_router
@@ -102,6 +104,8 @@ app.include_router(trade_router)
 app.include_router(analytics_router)
 app.include_router(market_router)
 app.include_router(alerts_router)
+app.include_router(alert_management_router)
+app.include_router(smart_alerts_router)
 app.include_router(multitf_router)
 app.include_router(risk_router)
 app.include_router(trades_router)

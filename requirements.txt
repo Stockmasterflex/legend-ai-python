@@ -11,6 +11,7 @@ python-multipart==0.0.18
 aiofiles==23.2.1
 python-dotenv==1.0.0
 prometheus-client>=0.20.0
+apscheduler==3.10.4
 
 # Database
 sqlalchemy==2.0.36
