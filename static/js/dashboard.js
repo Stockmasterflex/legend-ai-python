@@ -99,7 +99,7 @@
       initTagControls();
       initWatchlistDensity();
       hydrateAnalyzeFromTv();
-      window.Dashboard = { 
+      window.Dashboard = {
         focusTab: (tab) => switchTab(tab),
         initialized: true
       };
@@ -107,7 +107,8 @@
       fetchMarketInternals();
       loadWatchlist();
       loadTopSetups();
-      handleUniverseScan();
+      // Removed auto-scan on page load - user must click "RUN SCAN" button
+      // handleUniverseScan();
       updateScanTimes();
       setInterval(fetchMarketInternals, 300000);
     } catch (error) {

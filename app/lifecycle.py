@@ -1,6 +1,7 @@
 """
 Application lifecycle management - startup and shutdown events
 """
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -77,11 +78,34 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     os.environ["GIT_COMMIT"] = sha
 
     # Seed universe store
+    logger.info("=" * 80)
+    logger.info("UNIVERSE SEEDING DIAGNOSTICS")
+    logger.info(f"DATA_PATH: {universe_store.DATA_PATH.absolute()}")
+    logger.info(f"DATA_PATH exists: {universe_store.DATA_PATH.exists()}")
+
     try:
-        await universe_store.seed()
-        logger.info("✅ Universe store seeded successfully")
+        if universe_store.DATA_PATH.exists():
+            logger.info(f"File size: {universe_store.DATA_PATH.stat().st_size} bytes")
+
+        result = await universe_store.seed()
+        logger.info(f"✅ Universe seeded successfully: {len(result)} symbols")
+
+        if result:
+            sample_symbols = list(result.keys())[:5]
+            logger.info(f"Sample symbols: {sample_symbols}")
+        else:
+            logger.error("❌ Universe seed returned empty dict - FILE MIGHT BE EMPTY OR INVALID JSON")
+
+    except FileNotFoundError as exc:
+        logger.error(f"❌ Universe seed file not found: {exc}")
+        logger.error("   Expected location: data/universe_seed.json")
+    except json.JSONDecodeError as exc:
+        logger.error(f"❌ Universe seed file has invalid JSON: {exc}")
     except Exception as exc:
-        logger.warning("⚠️ Universe seed skipped (non-critical): %s", exc)
+        logger.error(f"❌ Universe seed FAILED with exception: {exc}", exc_info=True)
+        logger.error(f"   Exception type: {type(exc).__name__}")
+
+    logger.info("=" * 80)
 
     # Set webhook automatically (non-critical, won't block startup)
     try:
