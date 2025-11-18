@@ -14,32 +14,187 @@ router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
 
 class PatternRequest(BaseModel):
-    ticker: str
-    interval: str = "1day"
-    use_yahoo_fallback: bool = True  # For migration compatibility
+    """Request model for pattern detection"""
+    ticker: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, SPY)", example="AAPL")
+    interval: str = Field("1day", description="Time interval: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week", example="1day")
+    use_yahoo_fallback: bool = Field(True, description="Use Yahoo Finance as fallback data source")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "ticker": "AAPL",
+                "interval": "1day",
+                "use_yahoo_fallback": True
+            }
+        }
 
 
 class PatternResponse(BaseModel):
-    success: bool
-    data: Optional[PatternResult]
-    error: Optional[str]
-    cached: bool = False
-    api_used: str = "unknown"
-    processing_time: Optional[float] = None
+    """Response model for pattern detection"""
+    success: bool = Field(..., description="Whether the request was successful")
+    data: Optional[PatternResult] = Field(None, description="Pattern analysis result")
+    error: Optional[str] = Field(None, description="Error message if request failed")
+    cached: bool = Field(False, description="Whether result was served from cache")
+    api_used: str = Field("unknown", description="Data source used (cache, twelvedata, finnhub, alphavantage, yahoo)")
+    processing_time: Optional[float] = Field(None, description="Processing time in seconds")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "data": {
+                    "ticker": "AAPL",
+                    "pattern": "Cup and Handle",
+                    "score": 8.5,
+                    "entry": 175.50,
+                    "stop": 168.00,
+                    "target": 190.25,
+                    "support_start": 170.00,
+                    "support_end": 172.00,
+                    "risk_reward_ratio": 2.1,
+                    "chart_url": "https://chart-img.com/AAPL",
+                    "timestamp": "2024-01-15T10:30:00"
+                },
+                "error": None,
+                "cached": False,
+                "api_used": "twelvedata",
+                "processing_time": 1.23
+            }
+        }
 
 
-@router.post("/detect", response_model=PatternResponse)
+@router.post("/detect",
+             response_model=PatternResponse,
+             summary="Detect Chart Pattern",
+             responses={
+                 200: {
+                     "description": "Successful pattern detection",
+                     "content": {
+                         "application/json": {
+                             "example": {
+                                 "success": True,
+                                 "data": {
+                                     "ticker": "AAPL",
+                                     "pattern": "Cup and Handle",
+                                     "score": 8.5,
+                                     "entry": 175.50,
+                                     "stop": 168.00,
+                                     "target": 190.25,
+                                     "support_start": 170.00,
+                                     "support_end": 172.00,
+                                     "risk_reward_ratio": 2.1,
+                                     "chart_url": "https://chart-img.com/chart.png",
+                                     "timestamp": "2024-01-15T10:30:00"
+                                 },
+                                 "error": None,
+                                 "cached": False,
+                                 "api_used": "twelvedata",
+                                 "processing_time": 1.23
+                             }
+                         }
+                     }
+                 },
+                 400: {
+                     "description": "Bad Request - Invalid ticker format",
+                     "content": {
+                         "application/json": {
+                             "example": {
+                                 "detail": "Invalid ticker symbol format"
+                             }
+                         }
+                     }
+                 },
+                 404: {
+                     "description": "Not Found - No price data available",
+                     "content": {
+                         "application/json": {
+                             "example": {
+                                 "detail": "No price data available for INVALID"
+                             }
+                         }
+                     }
+                 }
+             })
 async def detect_pattern(request: PatternRequest):
     """
-    Detect pattern setup for a ticker with caching
+    🎯 **Detect Chart Pattern for Any Stock**
 
-    Replaces n8n webhook: POST /webhook/pattern-signal
+    Analyzes price action and detects bullish chart patterns with AI-powered scoring.
 
-    Args:
-        request: Pattern detection request
+    ## Features
 
-    Returns:
-        Pattern analysis result
+    - ✅ Multi-source data (TwelveData → Finnhub → AlphaVantage → Yahoo)
+    - ✅ Smart caching (1-hour TTL)
+    - ✅ Automatic chart generation with indicators
+    - ✅ Entry, stop, and target levels
+    - ✅ Risk/reward ratio calculation
+
+    ## Supported Patterns
+
+    - Cup and Handle
+    - Bullish Flag
+    - Ascending Triangle
+    - Double Bottom
+    - And more...
+
+    ## Example Usage
+
+    **Python:**
+    ```python
+    import requests
+
+    response = requests.post(
+        'https://your-api.com/api/patterns/detect',
+        json={'ticker': 'AAPL', 'interval': '1day'}
+    )
+
+    result = response.json()
+    if result['success']:
+        print(f"Pattern: {result['data']['pattern']}")
+        print(f"Score: {result['data']['score']}/10")
+        print(f"Entry: ${result['data']['entry']}")
+    ```
+
+    **cURL:**
+    ```bash
+    curl -X POST "https://your-api.com/api/patterns/detect" \\
+      -H "Content-Type: application/json" \\
+      -d '{"ticker": "AAPL", "interval": "1day"}'
+    ```
+
+    **JavaScript:**
+    ```javascript
+    const response = await fetch('/api/patterns/detect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ticker: 'AAPL', interval: '1day'})
+    });
+    const result = await response.json();
+    ```
+
+    ## Response Fields
+
+    | Field | Type | Description |
+    |-------|------|-------------|
+    | `success` | boolean | Request success status |
+    | `data.pattern` | string | Detected pattern name |
+    | `data.score` | float | Confidence score (0-10) |
+    | `data.entry` | float | Suggested entry price |
+    | `data.stop` | float | Stop loss price |
+    | `data.target` | float | Target price |
+    | `data.chart_url` | string | Generated chart URL |
+    | `cached` | boolean | Served from cache? |
+    | `processing_time` | float | Processing time (seconds) |
+
+    ## Notes
+
+    - Cached results are refreshed hourly
+    - Chart URLs include support/resistance levels
+    - Processing time typically < 2 seconds
+
+    ---
+
+    **Replaces legacy endpoint:** `POST /webhook/pattern-signal`
     """
     import time
     start_time = time.time()
