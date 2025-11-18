@@ -102,3 +102,51 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class SavedScreen(Base):
+    """User-defined custom stock screens"""
+    __tablename__ = "saved_screens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    filter_criteria = Column(Text, nullable=False)  # JSON string of filter criteria
+    is_template = Column(Boolean, default=False, index=True)  # Pre-built templates vs user-created
+    template_type = Column(String(50), nullable=True, index=True)  # "MINERVINI_SEPA", "CANSLIM", etc.
+    is_scheduled = Column(Boolean, default=False, index=True)
+    schedule_frequency = Column(String(20), nullable=True)  # "daily", "weekly", "hourly"
+    schedule_time = Column(String(10), nullable=True)  # "09:30", "15:00", etc.
+    email_results = Column(Boolean, default=False)
+    alert_on_match = Column(Boolean, default=False)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class ScreenResult(Base):
+    """Results from screen executions"""
+    __tablename__ = "screen_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    screen_id = Column(Integer, ForeignKey("saved_screens.id"), index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    score = Column(Float, nullable=False)
+    match_data = Column(Text)  # JSON string of matching criteria and values
+    price = Column(Float, nullable=True)
+    volume = Column(Float, nullable=True)
+    rs_rating = Column(Float, nullable=True)
+    executed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class ScheduledScan(Base):
+    """Scheduled screen execution log"""
+    __tablename__ = "scheduled_scans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    screen_id = Column(Integer, ForeignKey("saved_screens.id"), index=True)
+    scheduled_time = Column(DateTime(timezone=True), index=True)
+    executed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), index=True)  # "pending", "running", "completed", "failed"
+    results_count = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    email_sent = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
