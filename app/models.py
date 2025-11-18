@@ -3,7 +3,7 @@ Database models for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -102,3 +102,52 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class ChartRecording(Base):
+    """Chart recording and analysis videos"""
+    __tablename__ = "chart_recordings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    user_id = Column(String(100), index=True, default="default")  # User who created recording
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    ticker_symbol = Column(String(10), index=True)  # Denormalized for quick access
+
+    # Video metadata
+    video_url = Column(Text, nullable=False)  # URL to video file
+    thumbnail_url = Column(Text)  # URL to thumbnail image
+    duration_seconds = Column(Integer)  # Video duration
+    file_size_bytes = Column(Integer)  # File size
+    video_format = Column(String(20), default="webm")  # webm, mp4, etc.
+    resolution = Column(String(20))  # 1920x1080, etc.
+
+    # Recording features
+    has_annotations = Column(Boolean, default=False)
+    has_audio = Column(Boolean, default=False)
+    is_timelapse = Column(Boolean, default=False)
+    playback_speed = Column(Float, default=1.0)
+
+    # Annotations and bookmarks
+    annotations = Column(JSON, nullable=True)  # [{timestamp, type, data, ...}]
+    bookmarks = Column(JSON, nullable=True)  # [{timestamp, label, description}]
+    drawing_data = Column(JSON, nullable=True)  # Drawing tools replay data
+
+    # Sharing metadata
+    share_token = Column(String(100), unique=True, index=True)  # Unique share link token
+    is_public = Column(Boolean, default=False)
+    view_count = Column(Integer, default=0)
+    embed_enabled = Column(Boolean, default=True)
+
+    # Social sharing
+    youtube_url = Column(Text, nullable=True)
+    twitter_url = Column(Text, nullable=True)
+
+    # Status
+    status = Column(String(20), default="processing")  # processing, ready, failed
+    error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_viewed_at = Column(DateTime(timezone=True), nullable=True)

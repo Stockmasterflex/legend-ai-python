@@ -31,6 +31,7 @@ from app.api.errors import router as errors_router
 from app.api.cache_mgmt import router as cache_mgmt_router
 from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
+from app.api.recordings import router as recordings_router, ui_router as recordings_ui_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
@@ -115,6 +116,8 @@ app.include_router(errors_router)
 app.include_router(cache_mgmt_router)
 app.include_router(api_usage_router)
 app.include_router(docs_router)
+app.include_router(recordings_router)
+app.include_router(recordings_ui_router)
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
 
@@ -123,6 +126,12 @@ static_path = Path(__file__).parent.parent / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
     logger.info(f"📁 Static files mounted from {static_path}")
+
+# Mount recordings directory for video files
+recordings_path = Path("/app/data/recordings")
+recordings_path.mkdir(parents=True, exist_ok=True)
+app.mount("/recordings", StaticFiles(directory=str(recordings_path)), name="recordings")
+logger.info(f"🎥 Recordings directory mounted from {recordings_path}")
 
 @app.get("/")
 async def root(request: Request):
