@@ -33,8 +33,11 @@ from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
+from app.api.security import router as security_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.ddos_protection import DDOSProtectionMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware, SecureCookieMiddleware
 from app.utils.build_info import resolve_build_sha
 
 # Setup logging
@@ -73,10 +76,17 @@ logger.info("📊 Metrics middleware enabled")
 # Structured logging sits at the top of the stack to capture everything
 app.add_middleware(StructuredLoggingMiddleware)
 
-# Add rate limiting middleware to protect against abuse
-# 60 requests per minute per IP for public endpoints
-app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
-logger.info("🛡️ Rate limiting enabled: 60 requests/minute per IP")
+# Security headers middleware for OWASP compliance
+# Adds CSP, XSS protection, clickjacking prevention, etc.
+environment = "production" if not settings.debug else "development"
+app.add_middleware(SecurityHeadersMiddleware, environment=environment)
+app.add_middleware(SecureCookieMiddleware, environment=environment)
+logger.info("🔒 Security headers enabled (OWASP compliant)")
+
+# Advanced DDoS protection and rate limiting
+# Multi-tier rate limiting with automatic IP blocking
+app.add_middleware(DDOSProtectionMiddleware)
+logger.info("🛡️ Advanced DDoS protection enabled (multi-tier rate limiting + auto-blocking)")
 
 # Add CORS middleware with environment-aware origin restrictions
 # In production (Railway): only allows requests from the app's own domain
@@ -117,6 +127,7 @@ app.include_router(api_usage_router)
 app.include_router(docs_router)
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
+app.include_router(security_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"
@@ -159,7 +170,10 @@ async def root(request: Request):
             "📊 Professional Chart Generation",
             "🔍 Market Scanner",
             "📈 Real-time Market Data",
-            "⚡ Smart Caching (Redis)"
+            "⚡ Smart Caching (Redis)",
+            "🔒 Production-Grade Security (OWASP)",
+            "🛡️ Advanced DDoS Protection",
+            "📊 Real-time Security Monitoring"
         ]
     }
 
