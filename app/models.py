@@ -102,3 +102,41 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class SearchHistory(Base):
+    """NLP search query history and analytics"""
+    __tablename__ = "search_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")  # Telegram user ID or "default"
+    query = Column(Text, nullable=False)  # Original natural language query
+    query_type = Column(String(50), index=True)  # "pattern", "ticker", "comparison", "market"
+    extracted_tickers = Column(Text, nullable=True)  # JSON array of extracted tickers
+    extracted_patterns = Column(Text, nullable=True)  # JSON array of extracted patterns
+    extracted_filters = Column(Text, nullable=True)  # JSON object of filters (price, sector, etc.)
+    intent = Column(String(100), index=True)  # "scan", "analyze", "compare", "chart", "watchlist"
+    confidence = Column(Float, default=0.0)  # Intent classification confidence
+    results_count = Column(Integer, default=0)  # Number of results returned
+    execution_time = Column(Float, nullable=True)  # Query execution time in seconds
+    is_template = Column(Boolean, default=False)  # Is this a saved template?
+    template_name = Column(String(200), nullable=True)  # Name for saved search template
+    shared_with = Column(Text, nullable=True)  # JSON array of user IDs with access
+    tags = Column(Text, nullable=True)  # JSON array of user-defined tags
+    voice_query = Column(Boolean, default=False)  # Was this from voice input?
+    language = Column(String(10), default="en")  # Query language
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    last_used_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class QuerySuggestion(Base):
+    """Contextual query suggestions based on search patterns"""
+    __tablename__ = "query_suggestions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    suggestion_text = Column(String(500), nullable=False, index=True)
+    category = Column(String(50), index=True)  # "pattern", "ticker", "comparison", "trend"
+    popularity_score = Column(Float, default=1.0)  # How often this is used
+    context_patterns = Column(Text, nullable=True)  # JSON array of related patterns
+    context_sectors = Column(Text, nullable=True)  # JSON array of related sectors
+    example_queries = Column(Text, nullable=True)  # JSON array of example natural language queries
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

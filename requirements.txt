@@ -24,6 +24,12 @@ scipy==1.14.1
 
 # AI/ML
 openai==1.59.7
+spacy==3.7.2
+sentence-transformers==2.2.2
+fuzzywuzzy[speedup]==0.18.0
+python-Levenshtein==0.25.0
+SpeechRecognition==3.10.0
+pydub==0.25.1
 
 # Phase 2: Gradio Dashboard
 gradio==5.9.1
