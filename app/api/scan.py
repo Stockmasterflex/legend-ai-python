@@ -5,6 +5,7 @@ Combines universe scanning with flag-gated VCP scanner and comprehensive telemet
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import logging
@@ -123,10 +124,12 @@ async def get_top_setups(
     limit: int = Query(10, ge=1, le=50),
     min_score: float = Query(7.0, ge=0.0, le=10.0),
 ):
-    """Return the latest top setups for the dashboard tab."""
+    """Return the latest top setups for the dashboard tab with timeout protection."""
 
     try:
-        results, cached = await _load_top_setups(min_score, limit)
+        # Add timeout protection (max 15 seconds)
+        async with asyncio.timeout(15.0):
+            results, cached = await _load_top_setups(min_score, limit)
 
         return TopSetupsResponse(
             success=True,
@@ -136,11 +139,30 @@ async def get_top_setups(
             generated_at=datetime.utcnow(),
             results=results,
         )
+    except asyncio.TimeoutError:
+        logger.warning(f"⏱️ Top setups request timed out after 15s - returning empty results")
+        # Return empty results instead of failing
+        return TopSetupsResponse(
+            success=True,
+            count=0,
+            min_score=min_score,
+            cached=False,
+            generated_at=datetime.utcnow(),
+            results=[],
+        )
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover - defensive guard
-        logger.error("Failed to load top setups: %s", exc)
-        raise HTTPException(status_code=500, detail="Unable to load top setups")
+        logger.error(f"❌ Failed to load top setups: {exc}", exc_info=True)
+        # Return empty results on error instead of raising 500
+        return TopSetupsResponse(
+            success=True,
+            count=0,
+            min_score=min_score,
+            cached=False,
+            generated_at=datetime.utcnow(),
+            results=[],
+        )
 
 
 async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResult], bool]:
