@@ -1,0 +1,994 @@
+openapi: 3.0.3
+info:
+  title: Legend AI - Trading Pattern Scanner API
+  version: 1.0.0
+  description: |
+    # 🚀 Legend AI Trading API
+
+    **Professional-grade trading pattern detection and market analysis platform**
+
+    ## 🎯 Key Features
+
+    - **AI-Powered Pattern Detection**: Automatically detect 15+ chart patterns with confidence scores
+    - **Real-Time Market Data**: Multi-source data aggregation (TwelveData, Finnhub, Alpha Vantage)
+    - **Interactive Charts**: Professional TradingView-style charts with indicators
+    - **AI Trading Assistant**: Chat with AI for stock analysis and trading insights
+    - **Smart Caching**: Redis-backed caching for lightning-fast responses
+    - **Rate Limiting**: Built-in protection (60 requests/minute)
+
+    ## 📚 Authentication
+
+    Currently open for testing. Production deployments should use API keys.
+
+    ## ⚡ Rate Limits
+
+    - **60 requests per minute** per IP address
+    - Rate limit headers included in responses
+
+    ## 🐛 Error Codes
+
+    | Code | Description |
+    |------|-------------|
+    | 200 | Success |
+    | 400 | Bad Request - Invalid parameters |
+    | 404 | Not Found - Resource doesn't exist |
+    | 429 | Too Many Requests - Rate limit exceeded |
+    | 500 | Internal Server Error |
+    | 503 | Service Unavailable |
+
+  contact:
+    name: Legend AI Support
+    url: https://github.com/Stockmasterflex/legend-ai-python
+    email: support@legend-ai.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://legend-ai-python-production.up.railway.app
+    description: Production Server
+  - url: http://localhost:8000
+    description: Local Development
+
+tags:
+  - name: Health & Status
+    description: Service health checks and version information
+  - name: Pattern Detection
+    description: AI-powered chart pattern detection (VCP, Cup & Handle, etc.)
+  - name: Charts
+    description: Professional TradingView-style chart generation
+  - name: Universe Scanning
+    description: Scan thousands of stocks across S&P 500, NASDAQ, and custom universes
+  - name: AI Assistant
+    description: AI-powered trading assistant for analysis and insights
+  - name: Market Data
+    description: Real-time and historical market data
+  - name: Watchlist
+    description: Track and manage your favorite stocks
+  - name: Risk Management
+    description: Position sizing and risk calculations
+  - name: Trade Management
+    description: Track and analyze your trades
+  - name: Alerts
+    description: Price alerts and notifications
+  - name: Advanced Analysis
+    description: Multi-timeframe analysis and advanced patterns
+  - name: Telegram
+    description: Telegram bot integration
+  - name: Monitoring
+    description: API metrics and monitoring
+
+paths:
+  /:
+    get:
+      tags:
+        - Health & Status
+      summary: API Root
+      description: Welcome endpoint with service information
+      operationId: getRoot
+      responses:
+        '200':
+          description: Service information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: running
+                  service:
+                    type: string
+                    example: Legend AI - Trading Pattern Scanner
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  documentation:
+                    type: object
+                  endpoints:
+                    type: object
+                  features:
+                    type: array
+                    items:
+                      type: string
+
+  /health:
+    get:
+      tags:
+        - Health & Status
+      summary: Detailed Health Check
+      description: Get detailed health status of all services
+      operationId: getHealth
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /healthz:
+    get:
+      tags:
+        - Health & Status
+      summary: Simple Health Check
+      description: K8s-compatible simple health check
+      operationId: getHealthz
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/version:
+    get:
+      tags:
+        - Health & Status
+      summary: Get API Version
+      description: Get detailed version information including build SHA
+      operationId: getVersion
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+
+  /api/patterns/detect:
+    post:
+      tags:
+        - Pattern Detection
+      summary: Detect Chart Patterns
+      description: |
+        Detect chart patterns for a given ticker using AI-powered analysis.
+
+        **Supported Patterns:**
+        - VCP (Volatility Contraction Pattern)
+        - Cup and Handle
+        - Ascending Triangle
+        - Descending Triangle
+        - Head and Shoulders
+        - Double Top/Bottom
+        - Flat Base
+        - And 8+ more...
+
+        **Returns:**
+        - Pattern type and confidence score
+        - Entry, stop, and target prices
+        - Risk/reward ratio
+        - Chart URL
+        - RS Rating
+      operationId: detectPattern
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternDetectRequest'
+            examples:
+              basic:
+                summary: Basic pattern detection
+                value:
+                  ticker: AAPL
+                  interval: "1day"
+              with_fallback:
+                summary: With Yahoo fallback
+                value:
+                  ticker: TSLA
+                  interval: "1day"
+                  use_yahoo_fallback: true
+      responses:
+        '200':
+          description: Pattern detected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatternDetectResponse'
+              examples:
+                vcp_pattern:
+                  summary: VCP Pattern detected
+                  value:
+                    success: true
+                    data:
+                      pattern: "VCP (Volatility Contraction Pattern)"
+                      score: 8.5
+                      entry: 175.50
+                      stop: 170.25
+                      target: 185.00
+                      risk_reward_ratio: 2.5
+                      chart_url: "https://example.com/chart.png"
+                      rs_rating: 85
+                    cached: false
+                    processing_time: 1.23
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/charts/generate:
+    post:
+      tags:
+        - Charts
+      summary: Generate Chart
+      description: Generate professional TradingView-style charts with indicators
+      operationId: generateChart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChartGenerateRequest'
+      responses:
+        '200':
+          description: Chart generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChartGenerateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/universe/scan:
+    post:
+      tags:
+        - Universe Scanning
+      summary: Scan Universe for Patterns
+      description: |
+        Scan entire market universes (S&P 500, NASDAQ 100) for trading setups.
+
+        **Features:**
+        - Scan 500+ stocks in parallel
+        - Filter by pattern type
+        - Sort by confidence score
+        - Cached results for performance
+      operationId: scanUniverse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UniverseScanRequest'
+      responses:
+        '200':
+          description: Scan completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniverseScanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/ai/chat:
+    post:
+      tags:
+        - AI Assistant
+      summary: Chat with AI Assistant
+      description: |
+        Chat with AI trading assistant for market insights and stock analysis.
+
+        **Capabilities:**
+        - Stock analysis
+        - Pattern explanations
+        - Market insights
+        - Trading education
+        - Multi-turn conversations
+      operationId: aiChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIChatRequest'
+      responses:
+        '200':
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIChatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/ai/analyze:
+    post:
+      tags:
+        - AI Assistant
+      summary: AI Stock Analysis
+      description: Get comprehensive AI-powered stock analysis
+      operationId: aiAnalyze
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIAnalyzeRequest'
+      responses:
+        '200':
+          description: Analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIAnalyzeResponse'
+
+  /api/watchlist:
+    get:
+      tags:
+        - Watchlist
+      summary: Get Watchlist
+      description: Get all items in your watchlist
+      operationId: getWatchlist
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            default: "default"
+      responses:
+        '200':
+          description: Watchlist items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WatchlistItem'
+
+  /api/watchlist/add:
+    post:
+      tags:
+        - Watchlist
+      summary: Add to Watchlist
+      description: Add a ticker to your watchlist
+      operationId: addToWatchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchlistAddRequest'
+      responses:
+        '200':
+          description: Added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /api/risk/calculate-position:
+    post:
+      tags:
+        - Risk Management
+      summary: Calculate Position Size
+      description: |
+        Calculate position size using the 2% risk rule and Kelly Criterion.
+
+        **Features:**
+        - 2% risk rule
+        - Kelly Criterion
+        - R-multiple calculations
+        - Breakeven analysis
+      operationId: calculatePosition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PositionSizeRequest'
+      responses:
+        '200':
+          description: Position calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionSizeResponse'
+
+  /api/trades/create:
+    post:
+      tags:
+        - Trade Management
+      summary: Create Trade Entry
+      description: Create a new trade entry in your journal
+      operationId: createTrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTradeRequest'
+      responses:
+        '200':
+          description: Trade created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  trade_id:
+                    type: integer
+
+  /api/market/internals:
+    get:
+      tags:
+        - Market Data
+      summary: Get Market Internals
+      description: Get market breadth, advance/decline, and regime
+      operationId: getMarketInternals
+      responses:
+        '200':
+          description: Market internals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketInternalsResponse'
+
+  /api/advanced/patterns/detect:
+    post:
+      tags:
+        - Advanced Analysis
+      summary: Advanced Pattern Detection
+      description: |
+        Detect 50+ advanced patterns using ML-enhanced detection.
+
+        **Includes:**
+        - All basic patterns
+        - Complex harmonic patterns
+        - Volume patterns
+        - Momentum patterns
+        - Mean reversion patterns
+      operationId: detectAdvancedPatterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvancedPatternRequest'
+      responses:
+        '200':
+          description: Patterns detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvancedPatternResponse'
+
+  /metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Prometheus Metrics
+      description: Get Prometheus-compatible metrics
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    PatternDetectRequest:
+      type: object
+      required:
+        - ticker
+      properties:
+        ticker:
+          type: string
+          description: Stock ticker symbol
+          example: AAPL
+        interval:
+          type: string
+          description: Time interval for analysis
+          enum: ["1day", "1week", "1hour", "4hour"]
+          default: "1day"
+        use_yahoo_fallback:
+          type: boolean
+          description: Use Yahoo Finance as fallback
+          default: false
+
+    PatternDetectResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/PatternResult'
+        error:
+          type: string
+          nullable: true
+        cached:
+          type: boolean
+        api_used:
+          type: string
+          example: twelvedata
+        processing_time:
+          type: number
+          format: float
+
+    PatternResult:
+      type: object
+      properties:
+        pattern:
+          type: string
+          example: "VCP (Volatility Contraction Pattern)"
+        score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 10
+          example: 8.5
+        entry:
+          type: number
+          format: float
+          description: Suggested entry price
+          example: 175.50
+        stop:
+          type: number
+          format: float
+          description: Stop loss price
+          example: 170.25
+        target:
+          type: number
+          format: float
+          description: Target price
+          example: 185.00
+        risk_reward_ratio:
+          type: number
+          format: float
+          example: 2.5
+        chart_url:
+          type: string
+          format: uri
+          example: "https://example.com/chart.png"
+        rs_rating:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Relative Strength rating
+          example: 85
+        criteria_met:
+          type: object
+          additionalProperties: true
+
+    ChartGenerateRequest:
+      type: object
+      required:
+        - ticker
+      properties:
+        ticker:
+          type: string
+          example: AAPL
+        interval:
+          type: string
+          default: "1day"
+        entry:
+          type: number
+          format: float
+          nullable: true
+        stop:
+          type: number
+          format: float
+          nullable: true
+        target:
+          type: number
+          format: float
+          nullable: true
+        indicators:
+          type: array
+          items:
+            type: string
+          example: ["SMA50", "SMA200", "EMA21"]
+
+    ChartGenerateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        chart_url:
+          type: string
+          format: uri
+        error:
+          type: string
+          nullable: true
+        cached:
+          type: boolean
+        processing_time:
+          type: number
+
+    UniverseScanRequest:
+      type: object
+      properties:
+        universe:
+          type: string
+          enum: ["SP500", "NASDAQ100", "CUSTOM"]
+          default: "SP500"
+        min_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 10
+          default: 7.0
+        max_results:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        pattern_types:
+          type: array
+          items:
+            type: string
+          example: ["VCP", "Cup and Handle"]
+
+    UniverseScanResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanResult'
+        total_scanned:
+          type: integer
+        total_found:
+          type: integer
+        cached:
+          type: boolean
+
+    ScanResult:
+      type: object
+      properties:
+        ticker:
+          type: string
+        pattern:
+          type: string
+        score:
+          type: number
+        entry:
+          type: number
+        stop:
+          type: number
+        target:
+          type: number
+        chart_url:
+          type: string
+
+    AIChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "What are the best tech stocks right now?"
+        symbol:
+          type: string
+          nullable: true
+          example: AAPL
+        include_market_data:
+          type: boolean
+          default: false
+        conversation_id:
+          type: string
+          nullable: true
+
+    AIChatResponse:
+      type: object
+      properties:
+        response:
+          type: string
+        conversation_id:
+          type: string
+        processing_time:
+          type: number
+
+    AIAnalyzeRequest:
+      type: object
+      required:
+        - symbol
+      properties:
+        symbol:
+          type: string
+          example: TSLA
+
+    AIAnalyzeResponse:
+      type: object
+      properties:
+        analysis:
+          type: string
+        metrics:
+          type: object
+        patterns:
+          type: array
+          items:
+            type: string
+
+    WatchlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticker:
+          type: string
+        status:
+          type: string
+          enum: ["Watching", "Breaking Out", "Triggered", "Completed", "Skipped"]
+        target_entry:
+          type: number
+          nullable: true
+        target_stop:
+          type: number
+          nullable: true
+        reason:
+          type: string
+        added_at:
+          type: string
+          format: date-time
+
+    WatchlistAddRequest:
+      type: object
+      required:
+        - ticker
+      properties:
+        ticker:
+          type: string
+          example: AAPL
+        user_id:
+          type: string
+          default: "default"
+        reason:
+          type: string
+          example: "VCP setup forming"
+        target_entry:
+          type: number
+          nullable: true
+        target_stop:
+          type: number
+          nullable: true
+
+    PositionSizeRequest:
+      type: object
+      required:
+        - account_size
+        - entry_price
+        - stop_loss_price
+      properties:
+        account_size:
+          type: number
+          format: float
+          example: 10000
+        entry_price:
+          type: number
+          format: float
+          example: 175.50
+        stop_loss_price:
+          type: number
+          format: float
+          example: 170.25
+        target_price:
+          type: number
+          format: float
+          nullable: true
+          example: 185.00
+        risk_percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          default: 2.0
+
+    PositionSizeResponse:
+      type: object
+      properties:
+        position_size:
+          type: integer
+          description: Number of shares to buy
+        risk_amount:
+          type: number
+          description: Dollar amount at risk
+        kelly_criterion:
+          type: number
+          nullable: true
+        breakeven:
+          type: number
+          nullable: true
+
+    CreateTradeRequest:
+      type: object
+      required:
+        - ticker
+        - entry_price
+        - stop_loss
+      properties:
+        ticker:
+          type: string
+        entry_price:
+          type: number
+        stop_loss:
+          type: number
+        target_price:
+          type: number
+          nullable: true
+        position_size:
+          type: integer
+        risk_amount:
+          type: number
+
+    MarketInternalsResponse:
+      type: object
+      properties:
+        breadth:
+          type: object
+        regime:
+          type: string
+          enum: ["bull", "bear", "neutral"]
+        advance_decline:
+          type: object
+
+    AdvancedPatternRequest:
+      type: object
+      required:
+        - ticker
+      properties:
+        ticker:
+          type: string
+        interval:
+          type: string
+          default: "1day"
+        detect_harmonics:
+          type: boolean
+          default: true
+        detect_volume_patterns:
+          type: boolean
+          default: true
+
+    AdvancedPatternResponse:
+      type: object
+      properties:
+        patterns:
+          type: array
+          items:
+            type: object
+        confidence_scores:
+          type: object
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["healthy", "degraded", "unhealthy"]
+        telegram:
+          type: string
+        redis:
+          type: string
+        version:
+          type: string
+        universe:
+          type: object
+        keys:
+          type: object
+        issues:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    VersionResponse:
+      type: object
+      properties:
+        version:
+          type: string
+        build_sha:
+          type: string
+        build_time:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        detail:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Invalid ticker symbol"
+            detail: "Ticker must be alphanumeric"
+
+    RateLimited:
+      description: Too Many Requests - Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Rate limit exceeded"
+            detail: "Maximum 60 requests per minute. Try again in 30 seconds."
+
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "Internal processing error"
+            detail: "Please try again later"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (future implementation)
+
+# No security required for now (open testing)
+# security:
+#   - ApiKeyAuth: []

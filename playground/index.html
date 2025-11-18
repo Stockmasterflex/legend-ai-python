@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legend AI API Playground</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <style>
+        .endpoint-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .endpoint-card {
+            transition: all 0.2s ease;
+        }
+        pre {
+            border-radius: 8px;
+            max-height: 500px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 shadow-lg">
+        <div class="container mx-auto">
+            <h1 class="text-4xl font-bold mb-2">🚀 Legend AI API Playground</h1>
+            <p class="text-blue-100">Interactive API testing and exploration tool</p>
+        </div>
+    </header>
+
+    <div class="container mx-auto p-6 max-w-7xl">
+        <!-- API Configuration -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4">⚙️ Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Base URL</label>
+                    <input
+                        type="text"
+                        id="baseUrl"
+                        value="https://legend-ai-python-production.up.railway.app"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">API Key (optional)</label>
+                    <input
+                        type="password"
+                        id="apiKey"
+                        placeholder="Leave empty for testing"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Pattern Detection -->
+            <div class="endpoint-card bg-white rounded-lg shadow-md p-6 cursor-pointer" onclick="selectEndpoint('patterns')">
+                <div class="text-3xl mb-2">🎯</div>
+                <h3 class="text-lg font-bold mb-1">Pattern Detection</h3>
+                <p class="text-gray-600 text-sm">Detect chart patterns</p>
+            </div>
+
+            <!-- Universe Scan -->
+            <div class="endpoint-card bg-white rounded-lg shadow-md p-6 cursor-pointer" onclick="selectEndpoint('scan')">
+                <div class="text-3xl mb-2">🌌</div>
+                <h3 class="text-lg font-bold mb-1">Universe Scan</h3>
+                <p class="text-gray-600 text-sm">Scan S&P 500 / NASDAQ</p>
+            </div>
+
+            <!-- AI Chat -->
+            <div class="endpoint-card bg-white rounded-lg shadow-md p-6 cursor-pointer" onclick="selectEndpoint('ai')">
+                <div class="text-3xl mb-2">🤖</div>
+                <h3 class="text-lg font-bold mb-1">AI Assistant</h3>
+                <p class="text-gray-600 text-sm">Chat with AI</p>
+            </div>
+
+            <!-- Charts -->
+            <div class="endpoint-card bg-white rounded-lg shadow-md p-6 cursor-pointer" onclick="selectEndpoint('charts')">
+                <div class="text-3xl mb-2">📊</div>
+                <h3 class="text-lg font-bold mb-1">Chart Generation</h3>
+                <p class="text-gray-600 text-sm">Generate charts</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Request Panel -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-4">📤 Request</h2>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Endpoint</label>
+                    <select id="endpoint" class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="updateRequestBody()">
+                        <option value="patterns">POST /api/patterns/detect</option>
+                        <option value="scan">POST /api/universe/scan</option>
+                        <option value="ai">POST /api/ai/chat</option>
+                        <option value="charts">POST /api/charts/generate</option>
+                        <option value="watchlist">GET /api/watchlist</option>
+                        <option value="health">GET /health</option>
+                        <option value="risk">POST /api/risk/calculate-position</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Request Body (JSON)</label>
+                    <textarea
+                        id="requestBody"
+                        rows="10"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    ></textarea>
+                </div>
+
+                <button
+                    onclick="executeRequest()"
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all"
+                >
+                    🚀 Execute Request
+                </button>
+
+                <!-- Code Examples -->
+                <div class="mt-6">
+                    <h3 class="text-lg font-bold mb-3">💻 Code Examples</h3>
+                    <div class="space-y-2">
+                        <button onclick="showCodeExample('python')" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all">Python</button>
+                        <button onclick="showCodeExample('javascript')" class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-all">JavaScript</button>
+                        <button onclick="showCodeExample('curl')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all">cURL</button>
+                    </div>
+                    <div id="codeExample" class="mt-4 hidden"></div>
+                </div>
+            </div>
+
+            <!-- Response Panel -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-4">📥 Response</h2>
+
+                <div id="responseStatus" class="mb-4 hidden">
+                    <div class="flex items-center justify-between p-3 rounded-lg">
+                        <span class="font-semibold">Status:</span>
+                        <span id="statusCode" class="px-3 py-1 rounded-full text-white"></span>
+                    </div>
+                </div>
+
+                <div id="responseTime" class="mb-4 hidden text-sm text-gray-600"></div>
+
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Response Body</label>
+                    <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto"><code id="responseBody" class="language-json">No response yet. Execute a request to see results.</code></pre>
+                </div>
+
+                <!-- Chart Preview -->
+                <div id="chartPreview" class="mt-4 hidden">
+                    <h3 class="text-lg font-bold mb-2">📊 Chart Preview</h3>
+                    <img id="chartImage" class="w-full rounded-lg shadow-md" alt="Chart" />
+                </div>
+
+                <!-- Pattern Details -->
+                <div id="patternDetails" class="mt-4 hidden">
+                    <h3 class="text-lg font-bold mb-2">🎯 Pattern Details</h3>
+                    <div id="patternInfo" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documentation Link -->
+        <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <p class="text-blue-700">
+                <strong>📚 Need help?</strong> Check out the
+                <a href="/docs" class="underline font-semibold">interactive API documentation</a> or
+                <a href="https://github.com/Stockmasterflex/legend-ai-python" class="underline font-semibold">GitHub repository</a>.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const requestTemplates = {
+            patterns: {
+                method: 'POST',
+                path: '/api/patterns/detect',
+                body: {
+                    ticker: 'AAPL',
+                    interval: '1day'
+                }
+            },
+            scan: {
+                method: 'POST',
+                path: '/api/universe/scan',
+                body: {
+                    universe: 'SP500',
+                    min_score: 7.5,
+                    max_results: 20
+                }
+            },
+            ai: {
+                method: 'POST',
+                path: '/api/ai/chat',
+                body: {
+                    message: 'What are the best tech stocks right now?',
+                    include_market_data: true
+                }
+            },
+            charts: {
+                method: 'POST',
+                path: '/api/charts/generate',
+                body: {
+                    ticker: 'AAPL',
+                    interval: '1day',
+                    entry: 175.50,
+                    stop: 170.25,
+                    target: 185.00,
+                    indicators: ['SMA50', 'SMA200', 'EMA21']
+                }
+            },
+            watchlist: {
+                method: 'GET',
+                path: '/api/watchlist',
+                body: null
+            },
+            health: {
+                method: 'GET',
+                path: '/health',
+                body: null
+            },
+            risk: {
+                method: 'POST',
+                path: '/api/risk/calculate-position',
+                body: {
+                    account_size: 10000,
+                    entry_price: 175.50,
+                    stop_loss_price: 170.25,
+                    target_price: 185.00,
+                    risk_percentage: 2.0
+                }
+            }
+        };
+
+        function updateRequestBody() {
+            const endpoint = document.getElementById('endpoint').value;
+            const template = requestTemplates[endpoint];
+            const bodyTextarea = document.getElementById('requestBody');
+
+            if (template.body) {
+                bodyTextarea.value = JSON.stringify(template.body, null, 2);
+            } else {
+                bodyTextarea.value = '// No request body needed for GET requests';
+            }
+        }
+
+        function selectEndpoint(name) {
+            document.getElementById('endpoint').value = name;
+            updateRequestBody();
+        }
+
+        async function executeRequest() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const endpoint = document.getElementById('endpoint').value;
+            const template = requestTemplates[endpoint];
+
+            let body = null;
+            if (template.method === 'POST') {
+                try {
+                    body = JSON.parse(document.getElementById('requestBody').value);
+                } catch (e) {
+                    alert('Invalid JSON in request body');
+                    return;
+                }
+            }
+
+            const startTime = performance.now();
+
+            try {
+                const config = {
+                    method: template.method,
+                    url: baseUrl + template.path,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey && { 'X-API-Key': apiKey })
+                    },
+                    ...(body && { data: body })
+                };
+
+                const response = await axios(config);
+                const endTime = performance.now();
+
+                displayResponse(response, endTime - startTime);
+            } catch (error) {
+                const endTime = performance.now();
+                displayError(error, endTime - startTime);
+            }
+        }
+
+        function displayResponse(response, duration) {
+            // Status
+            document.getElementById('responseStatus').classList.remove('hidden');
+            const statusCode = document.getElementById('statusCode');
+            statusCode.textContent = response.status;
+            statusCode.className = 'px-3 py-1 rounded-full text-white bg-green-500';
+
+            // Time
+            document.getElementById('responseTime').classList.remove('hidden');
+            document.getElementById('responseTime').textContent = `⏱️ Response time: ${duration.toFixed(0)}ms`;
+
+            // Body
+            const formatted = JSON.stringify(response.data, null, 2);
+            document.getElementById('responseBody').textContent = formatted;
+            hljs.highlightElement(document.getElementById('responseBody'));
+
+            // Chart preview
+            if (response.data.chart_url) {
+                document.getElementById('chartPreview').classList.remove('hidden');
+                document.getElementById('chartImage').src = response.data.chart_url;
+            } else {
+                document.getElementById('chartPreview').classList.add('hidden');
+            }
+
+            // Pattern details
+            if (response.data.data && response.data.data.pattern) {
+                const pattern = response.data.data;
+                document.getElementById('patternDetails').classList.remove('hidden');
+                document.getElementById('patternInfo').innerHTML = `
+                    <div class="bg-gray-50 p-3 rounded"><strong>Pattern:</strong> ${pattern.pattern}</div>
+                    <div class="bg-gray-50 p-3 rounded"><strong>Score:</strong> ${pattern.score}/10</div>
+                    <div class="bg-gray-50 p-3 rounded"><strong>Entry:</strong> $${pattern.entry.toFixed(2)}</div>
+                    <div class="bg-gray-50 p-3 rounded"><strong>Stop:</strong> $${pattern.stop.toFixed(2)}</div>
+                    <div class="bg-gray-50 p-3 rounded"><strong>Target:</strong> $${pattern.target.toFixed(2)}</div>
+                    <div class="bg-gray-50 p-3 rounded"><strong>R:R:</strong> ${pattern.risk_reward_ratio.toFixed(2)}R</div>
+                `;
+            } else {
+                document.getElementById('patternDetails').classList.add('hidden');
+            }
+        }
+
+        function displayError(error, duration) {
+            document.getElementById('responseStatus').classList.remove('hidden');
+            const statusCode = document.getElementById('statusCode');
+            statusCode.textContent = error.response?.status || 'Error';
+            statusCode.className = 'px-3 py-1 rounded-full text-white bg-red-500';
+
+            document.getElementById('responseTime').classList.remove('hidden');
+            document.getElementById('responseTime').textContent = `⏱️ Response time: ${duration.toFixed(0)}ms`;
+
+            const errorData = error.response?.data || { error: error.message };
+            document.getElementById('responseBody').textContent = JSON.stringify(errorData, null, 2);
+            hljs.highlightElement(document.getElementById('responseBody'));
+
+            document.getElementById('chartPreview').classList.add('hidden');
+            document.getElementById('patternDetails').classList.add('hidden');
+        }
+
+        function showCodeExample(lang) {
+            const endpoint = document.getElementById('endpoint').value;
+            const template = requestTemplates[endpoint];
+            const baseUrl = document.getElementById('baseUrl').value;
+            const body = template.body ? JSON.stringify(template.body, null, 2) : null;
+
+            const examples = {
+                python: `from legend_ai import LegendAI
+
+client = LegendAI()
+
+# ${endpoint}
+${template.method === 'GET' ?
+`result = client.${endpoint}()` :
+`result = client.${endpoint}.method(${body ? '\n    ' + body.split('\n').join('\n    ') + '\n' : ''})`}
+
+print(result)`,
+                javascript: `import { LegendAI } from '@legend-ai/sdk';
+
+const client = new LegendAI();
+
+// ${endpoint}
+${template.method === 'GET' ?
+`const result = await client.${endpoint}();` :
+`const result = await client.${endpoint}.method(${body ? '\n    ' + body.split('\n').join('\n    ') + '\n' : ''});`}
+
+console.log(result);`,
+                curl: `curl -X ${template.method} "${baseUrl}${template.path}" \\
+  -H "Content-Type: application/json"${body ? ` \\\n  -d '${body}'` : ''}`
+            };
+
+            document.getElementById('codeExample').classList.remove('hidden');
+            document.getElementById('codeExample').innerHTML = `
+                <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto"><code class="language-${lang}">${examples[lang]}</code></pre>
+            `;
+            hljs.highlightAll();
+        }
+
+        // Initialize
+        updateRequestBody();
+    </script>
+</body>
+</html>

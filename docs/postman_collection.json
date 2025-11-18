@@ -1,0 +1,417 @@
+{
+  "info": {
+    "name": "Legend AI - Trading Pattern Scanner API",
+    "description": "Complete collection for Legend AI Trading Pattern Scanner API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://legend-ai-python-production.up.railway.app",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "API root endpoint with service information"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Detailed health check"
+          }
+        },
+        {
+          "name": "Version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/version",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "version"]
+            },
+            "description": "Get API version information"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pattern Detection",
+      "item": [
+        {
+          "name": "Detect Pattern",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticker\": \"AAPL\",\n  \"interval\": \"1day\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patterns/detect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "patterns", "detect"]
+            },
+            "description": "Detect chart patterns for a ticker"
+          }
+        },
+        {
+          "name": "Pattern Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/patterns/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "patterns", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Charts",
+      "item": [
+        {
+          "name": "Generate Chart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticker\": \"AAPL\",\n  \"interval\": \"1day\",\n  \"entry\": 175.50,\n  \"stop\": 170.25,\n  \"target\": 185.00,\n  \"indicators\": [\"SMA50\", \"SMA200\", \"EMA21\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/charts/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "charts", "generate"]
+            },
+            "description": "Generate professional TradingView-style chart"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Universe Scanning",
+      "item": [
+        {
+          "name": "Scan Universe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"universe\": \"SP500\",\n  \"min_score\": 7.5,\n  \"max_results\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/universe/scan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "universe", "scan"]
+            },
+            "description": "Scan S&P 500 or NASDAQ for patterns"
+          }
+        },
+        {
+          "name": "Get Universe Tickers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/universe/tickers?universe=SP500",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "universe", "tickers"],
+              "query": [
+                {
+                  "key": "universe",
+                  "value": "SP500"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Assistant",
+      "item": [
+        {
+          "name": "Chat with AI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What are the best tech stocks right now?\",\n  \"include_market_data\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "chat"]
+            },
+            "description": "Chat with AI trading assistant"
+          }
+        },
+        {
+          "name": "AI Stock Analysis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symbol\": \"TSLA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "analyze"]
+            },
+            "description": "Get AI-powered stock analysis"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Watchlist",
+      "item": [
+        {
+          "name": "Get Watchlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist"]
+            }
+          }
+        },
+        {
+          "name": "Add to Watchlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticker\": \"NVDA\",\n  \"reason\": \"VCP setup forming\",\n  \"target_entry\": 450.0,\n  \"target_stop\": 440.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "add"]
+            }
+          }
+        },
+        {
+          "name": "Remove from Watchlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/watchlist/remove/NVDA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "watchlist", "remove", "NVDA"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Risk Management",
+      "item": [
+        {
+          "name": "Calculate Position Size",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_size\": 10000,\n  \"entry_price\": 175.50,\n  \"stop_loss_price\": 170.25,\n  \"target_price\": 185.00,\n  \"risk_percentage\": 2.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/risk/calculate-position",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "risk", "calculate-position"]
+            },
+            "description": "Calculate position size using 2% risk rule"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trade Management",
+      "item": [
+        {
+          "name": "Create Trade",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticker\": \"AAPL\",\n  \"entry_price\": 175.50,\n  \"stop_loss\": 170.25,\n  \"target_price\": 185.00,\n  \"position_size\": 50,\n  \"risk_amount\": 200.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/trades/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "trades", "create"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Market Data",
+      "item": [
+        {
+          "name": "Market Internals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/market/internals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "market", "internals"]
+            }
+          }
+        },
+        {
+          "name": "Market Breadth",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/market/breadth",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "market", "breadth"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Advanced Analysis",
+      "item": [
+        {
+          "name": "Advanced Pattern Detection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticker\": \"AAPL\",\n  \"interval\": \"1day\",\n  \"detect_harmonics\": true,\n  \"detect_volume_patterns\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/advanced/patterns/detect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "advanced", "patterns", "detect"]
+            },
+            "description": "Detect 50+ advanced patterns"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitoring",
+      "item": [
+        {
+          "name": "Prometheus Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["metrics"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      }
+    ]
+  }
+}

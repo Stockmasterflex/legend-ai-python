@@ -1,0 +1,54 @@
+{
+  "name": "@legend-ai/sdk",
+  "version": "1.0.0",
+  "description": "Professional JavaScript/TypeScript SDK for Legend AI Trading Pattern Scanner API",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "trading",
+    "stocks",
+    "patterns",
+    "technical-analysis",
+    "finance",
+    "api-client",
+    "typescript"
+  ],
+  "author": "Legend AI <support@legend-ai.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Stockmasterflex/legend-ai-python.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Stockmasterflex/legend-ai-python/issues"
+  },
+  "homepage": "https://github.com/Stockmasterflex/legend-ai-python#readme",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "prettier": "^3.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

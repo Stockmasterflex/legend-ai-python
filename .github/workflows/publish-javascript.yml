@@ -1,0 +1,39 @@
+name: Publish JavaScript SDK to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., latest, beta)'
+        required: false
+        default: 'latest'
+
+jobs:
+  publish-javascript:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sdk/javascript
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish --access public --tag ${{ github.event.inputs.tag || 'latest' }}
