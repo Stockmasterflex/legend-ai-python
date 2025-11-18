@@ -2,10 +2,24 @@ from redis.asyncio import Redis
 from typing import Optional, Any, Dict
 import json
 import logging
+from datetime import datetime, time
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def is_market_hours() -> bool:
+    """Check if currently in US market hours (9:30 AM - 4:00 PM ET, Mon-Fri)"""
+    now = datetime.now()
+    # Weekend check
+    if now.weekday() >= 5:  # Saturday = 5, Sunday = 6
+        return False
+    # Time check (simplified - assumes ET timezone, can be enhanced)
+    market_open = time(9, 30)
+    market_close = time(16, 0)
+    current_time = now.time()
+    return market_open <= current_time <= market_close
 
 
 class CacheService:
@@ -100,15 +114,25 @@ class CacheService:
         ticker: str,
         interval: str,
         data: Dict[str, Any],
-        ttl: int = 3600  # 1 hour default (matching n8n)
+        ttl: Optional[int] = None
     ) -> bool:
         """
-        Cache pattern result
+        Cache pattern result with smart TTL based on market hours
 
         Key format: pattern:ticker={ticker}:interval={interval}
         """
         redis = await self._get_redis()
         key = self._generate_cache_key("pattern", ticker=ticker, interval=interval)
+
+        # Use config TTL or smart default
+        if ttl is None:
+            settings = get_settings()
+            ttl = settings.cache_ttl_patterns
+            # During market hours, use shorter TTL for real-time accuracy
+            if is_market_hours():
+                ttl = min(ttl, 1800)  # Max 30 min during market hours
+            else:
+                ttl = max(ttl, 7200)  # Min 2 hours outside market hours
 
         try:
             json_data = json.dumps(data)
@@ -145,20 +169,37 @@ class CacheService:
         self,
         ticker: str,
         data: Dict[str, Any],
-        ttl: int = 900  # 15 minutes (matching n8n)
+        ttl: Optional[int] = None,
+        is_historical: bool = False
     ) -> bool:
         """
-        Cache price data
+        Cache price data with smart TTL based on data age and market hours
 
         Key format: ohlcv:{ticker}:1d:5y (matching n8n exactly)
+
+        Args:
+            is_historical: If True, uses much longer TTL (historical data doesn't change)
         """
         redis = await self._get_redis()
         key = f"ohlcv:{ticker}:1d:5y"
 
+        # Smart TTL based on data type and market hours
+        if ttl is None:
+            settings = get_settings()
+            if is_historical:
+                # Historical data (>30 days old) rarely changes - cache for 7 days
+                ttl = 604800  # 7 days
+            elif is_market_hours():
+                # During market hours, cache for shorter time for real-time data
+                ttl = 900  # 15 minutes
+            else:
+                # After market close, cache longer (data won't change until next day)
+                ttl = settings.cache_ttl_market_data * 4  # 1 hour default
+
         try:
             json_data = json.dumps(data)
             await redis.setex(key, ttl, json_data)
-            logger.debug(f"Cached price data: {key} (TTL: {ttl}s)")
+            logger.debug(f"Cached price data: {key} (TTL: {ttl}s, historical: {is_historical})")
             return True
         except Exception as e:
             logger.error(f"Cache set error for {key}: {e}")
@@ -188,15 +229,23 @@ class CacheService:
         ticker: str,
         interval: str,
         url: str,
-        ttl: int = 900  # 15 minutes
+        ttl: Optional[int] = None
     ) -> bool:
         """
-        Cache chart URL
+        Cache chart URL with smart TTL from config
 
         Key format: chart:ticker={ticker}:interval={interval}
         """
         redis = await self._get_redis()
         key = self._generate_cache_key("chart", ticker=ticker, interval=interval)
+
+        # Use config TTL with market hours awareness
+        if ttl is None:
+            settings = get_settings()
+            ttl = settings.cache_ttl_charts  # 7200s (2 hours) from config
+            # Charts change less frequently, but during market hours use shorter TTL
+            if is_market_hours():
+                ttl = min(ttl, 3600)  # Max 1 hour during market hours
 
         try:
             await redis.setex(key, ttl, url)
