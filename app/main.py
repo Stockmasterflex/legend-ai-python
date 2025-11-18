@@ -31,6 +31,7 @@ from app.api.errors import router as errors_router
 from app.api.cache_mgmt import router as cache_mgmt_router
 from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
+from app.api.earnings import router as earnings_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
@@ -102,6 +103,7 @@ app.include_router(trade_router)
 app.include_router(analytics_router)
 app.include_router(market_router)
 app.include_router(alerts_router)
+app.include_router(earnings_router)
 app.include_router(multitf_router)
 app.include_router(risk_router)
 app.include_router(trades_router)

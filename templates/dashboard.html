@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/earnings.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
     <main class="container" data-dashboard-shell>
@@ -52,6 +53,7 @@
                 <button class="tab-button" type="button" data-tab-target="top" aria-controls="tab-top" aria-selected="false" role="tab">Top Setups</button>
                 <button class="tab-button" type="button" data-tab-target="internals" aria-controls="tab-internals" aria-selected="false" role="tab">Market Internals</button>
                 <button class="tab-button" type="button" data-tab-target="watchlist" aria-controls="tab-watchlist" aria-selected="false" role="tab">Watchlist</button>
+                <button class="tab-button" type="button" data-tab-target="earnings" aria-controls="tab-earnings" aria-selected="false" role="tab">Earnings Calendar</button>
             </nav>
             <div class="tabs-content">
                 <section id="tab-analyze" class="tab-pane" data-tab-panel="analyze">
@@ -602,7 +604,76 @@
                         <div class="tv-card tv-card--screener" data-testid="tv-screener" data-tv-widget-target="tv-template-screener"></div>
                     </section>
                 </section>
-                
+
+                <section id="tab-earnings" class="tab-pane" data-tab-panel="earnings" hidden>
+                    <div class="earnings-header">
+                        <h2 class="eyebrow">Earnings Calendar & Analysis</h2>
+                        <p>Track upcoming earnings, analyze historical beat/miss patterns, and monitor price reactions</p>
+                    </div>
+
+                    <div class="earnings-controls">
+                        <div class="earnings-filters">
+                            <div class="form-group">
+                                <label for="earnings-days-ahead">Days Ahead</label>
+                                <select id="earnings-days-ahead" class="select">
+                                    <option value="7">Next 7 Days</option>
+                                    <option value="14">Next 2 Weeks</option>
+                                    <option value="30" selected>Next Month</option>
+                                    <option value="60">Next 2 Months</option>
+                                    <option value="90">Next Quarter</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="earnings-sector-filter">Filter by Sector</label>
+                                <select id="earnings-sector-filter" class="select">
+                                    <option value="">All Sectors</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Financial">Financial</option>
+                                    <option value="Consumer">Consumer</option>
+                                    <option value="Industrial">Industrial</option>
+                                    <option value="Energy">Energy</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <button id="earnings-refresh" class="btn btn-primary">Refresh Calendar</button>
+                                <button id="earnings-export" class="btn btn-secondary">Export</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="earnings-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="earnings-total-count">-</div>
+                            <div class="stat-label">Total Earnings</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="earnings-this-week">-</div>
+                            <div class="stat-label">This Week</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="earnings-watchlist-count">-</div>
+                            <div class="stat-label">Watchlist Earnings</div>
+                        </div>
+                    </div>
+
+                    <div class="earnings-calendar-container">
+                        <div id="earnings-loading" class="loading-overlay" style="display: none;">
+                            <span class="spinner"></span>
+                            <span>Loading earnings calendar...</span>
+                        </div>
+                        <div id="earnings-calendar-grid" class="earnings-grid"></div>
+                    </div>
+
+                    <div class="earnings-analysis-panel" id="earnings-analysis-panel" style="display: none;">
+                        <div class="panel-header">
+                            <h3>Earnings Analysis: <span id="earnings-analysis-ticker"></span></h3>
+                            <button id="earnings-analysis-close" class="btn btn-ghost">×</button>
+                        </div>
+                        <div id="earnings-analysis-content" class="earnings-analysis-content"></div>
+                    </div>
+                </section>
+
             </div>
         </section>
     </main>
@@ -615,5 +686,6 @@
     <!-- Load scripts at end of body for proper initialization -->
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/earnings.js?v={{ build_sha }}"></script>
 </body>
 </html>

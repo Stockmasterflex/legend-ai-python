@@ -102,3 +102,100 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class EarningsCalendar(Base):
+    """Earnings calendar and historical data"""
+    __tablename__ = "earnings_calendar"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=False)
+    earnings_date = Column(DateTime(timezone=True), index=True, nullable=False)
+    fiscal_quarter = Column(String(10))  # "Q1", "Q2", "Q3", "Q4"
+    fiscal_year = Column(Integer)
+    report_time = Column(String(10))  # "BMO" (before market open), "AMC" (after market close), "TNS" (time not supplied)
+
+    # Consensus estimates
+    eps_estimate = Column(Float, nullable=True)
+    revenue_estimate = Column(Float, nullable=True)  # In millions
+
+    # Actual results (filled after earnings release)
+    eps_actual = Column(Float, nullable=True)
+    revenue_actual = Column(Float, nullable=True)  # In millions
+
+    # Beat/miss metrics
+    eps_surprise = Column(Float, nullable=True)  # Difference: actual - estimate
+    eps_surprise_pct = Column(Float, nullable=True)  # Percentage: (actual - estimate) / estimate * 100
+    revenue_surprise = Column(Float, nullable=True)
+    revenue_surprise_pct = Column(Float, nullable=True)
+
+    # Status
+    is_confirmed = Column(Boolean, default=False)  # Whether date is confirmed
+    has_reported = Column(Boolean, default=False, index=True)  # Whether earnings have been reported
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class EarningsReaction(Base):
+    """Pre/Post earnings price reaction analysis"""
+    __tablename__ = "earnings_reactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    earnings_id = Column(Integer, ForeignKey("earnings_calendar.id"), index=True, nullable=False)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=False)
+
+    # Pre-earnings data (day before earnings)
+    pre_close_price = Column(Float, nullable=True)
+    pre_volume = Column(Float, nullable=True)
+    pre_iv = Column(Float, nullable=True)  # Implied volatility before earnings
+
+    # Post-earnings data (gap on earnings day)
+    post_open_price = Column(Float, nullable=True)
+    post_close_price = Column(Float, nullable=True)
+    post_volume = Column(Float, nullable=True)
+    post_iv = Column(Float, nullable=True)  # Implied volatility after earnings
+
+    # Gap and move analysis
+    gap_percent = Column(Float, nullable=True)  # (post_open - pre_close) / pre_close * 100
+    day_move_percent = Column(Float, nullable=True)  # (post_close - pre_close) / pre_close * 100
+    intraday_move_percent = Column(Float, nullable=True)  # Max intraday move
+
+    # Volume analysis
+    volume_ratio = Column(Float, nullable=True)  # post_volume / avg_volume
+    relative_volume = Column(Float, nullable=True)  # vs 20-day average
+
+    # Volatility metrics
+    iv_change = Column(Float, nullable=True)  # Change in implied volatility
+    realized_vs_expected = Column(Float, nullable=True)  # Actual move vs expected (from IV)
+
+    # Multi-day reaction
+    week_move_percent = Column(Float, nullable=True)  # Move 1 week after earnings
+    month_move_percent = Column(Float, nullable=True)  # Move 1 month after earnings
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class EarningsAlert(Base):
+    """Earnings-related alerts configuration and history"""
+    __tablename__ = "earnings_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=False)
+    user_id = Column(String(100), index=True, default="default")
+
+    # Alert triggers
+    alert_before_earnings = Column(Boolean, default=True)  # Alert N days before earnings
+    days_before = Column(Integer, default=7)  # Alert 7 days before
+    alert_on_surprise = Column(Boolean, default=True)  # Alert on significant beat/miss
+    surprise_threshold = Column(Float, default=5.0)  # Alert if surprise > 5%
+    alert_on_gap = Column(Boolean, default=True)  # Alert on significant gap
+    gap_threshold = Column(Float, default=3.0)  # Alert if gap > 3%
+    alert_on_volume = Column(Boolean, default=True)  # Alert on unusual volume
+    volume_threshold = Column(Float, default=2.0)  # Alert if volume > 2x average
+    alert_on_pattern = Column(Boolean, default=True)  # Alert on post-earnings pattern
+
+    # Last alert tracking
+    last_alert_type = Column(String(50), nullable=True)
+    last_alert_sent = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
