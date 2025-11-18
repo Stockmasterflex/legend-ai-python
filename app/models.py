@@ -102,3 +102,114 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class UserProgress(Base):
+    """User progress and gamification tracking"""
+    __tablename__ = "user_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), unique=True, index=True, nullable=False)
+    level = Column(Integer, default=1)
+    xp = Column(Integer, default=0)
+    total_scans = Column(Integer, default=0)
+    patterns_detected = Column(Integer, default=0)
+    stocks_analyzed = Column(Integer, default=0)
+    watchlist_items = Column(Integer, default=0)
+    profitable_ideas = Column(Integer, default=0)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_active_date = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class Achievement(Base):
+    """Available achievements"""
+    __tablename__ = "achievements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    achievement_key = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    category = Column(String(50))  # "patterns", "analysis", "watchlist", "streak"
+    icon = Column(String(50))  # emoji or icon name
+    required_count = Column(Integer, default=1)
+    xp_reward = Column(Integer, default=100)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserAchievement(Base):
+    """User unlocked achievements"""
+    __tablename__ = "user_achievements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, nullable=False)
+    achievement_id = Column(Integer, ForeignKey("achievements.id"), index=True)
+    unlocked_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    notified = Column(Boolean, default=False)
+
+class TutorialProgress(Base):
+    """User tutorial progress"""
+    __tablename__ = "tutorial_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, nullable=False)
+    tutorial_key = Column(String(100), index=True)  # "onboarding", "vcp_pattern", etc.
+    step_number = Column(Integer, default=0)
+    completed = Column(Boolean, default=False)
+    skipped = Column(Boolean, default=False)
+    last_viewed_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+class ActivityLog(Base):
+    """User activity log for XP tracking"""
+    __tablename__ = "activity_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, nullable=False)
+    activity_type = Column(String(50), index=True)  # "scan", "analyze", "watchlist_add", etc.
+    xp_earned = Column(Integer, default=0)
+    metadata = Column(Text)  # JSON with activity details
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class LearningContent(Base):
+    """Educational content for learning center"""
+    __tablename__ = "learning_content"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content_key = Column(String(100), unique=True, index=True, nullable=False)
+    title = Column(String(255), nullable=False)
+    category = Column(String(50), index=True)  # "pattern", "strategy", "glossary", "tutorial"
+    content_type = Column(String(50))  # "article", "video", "interactive"
+    content = Column(Text)  # Markdown or HTML content
+    video_url = Column(String(500), nullable=True)
+    difficulty = Column(String(20))  # "beginner", "intermediate", "advanced"
+    estimated_time = Column(Integer)  # minutes
+    order_index = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class UserLearningProgress(Base):
+    """Track user progress through learning content"""
+    __tablename__ = "user_learning_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, nullable=False)
+    content_id = Column(Integer, ForeignKey("learning_content.id"), index=True)
+    progress = Column(Integer, default=0)  # percentage 0-100
+    completed = Column(Boolean, default=False)
+    bookmarked = Column(Boolean, default=False)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    last_viewed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CommunityStats(Base):
+    """Aggregate community statistics"""
+    __tablename__ = "community_stats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    stat_date = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    total_scans = Column(Integer, default=0)
+    total_patterns = Column(Integer, default=0)
+    top_pattern_type = Column(String(50))
+    top_ticker = Column(String(10))
+    active_users = Column(Integer, default=0)
+    patterns_by_type = Column(Text)  # JSON with pattern type counts

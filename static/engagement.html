@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legend AI - Engagement Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .progress-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .xp-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .xp-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .achievements-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .achievement-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .achievement-card.unlocked {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .achievement-card.locked {
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+
+        .achievement-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .achievement-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .achievement-desc {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .streak-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .community-stats {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .community-stat {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .community-stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .community-stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .new-achievement-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Legend AI - Your Trading Journey</h1>
+            <p>Level up your pattern detection skills</p>
+        </div>
+
+        <div id="loading" class="loading">Loading your stats...</div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- User Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value" id="total-scans">0</div>
+                    <div class="stat-label">Total Scans</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-value" id="patterns-detected">0</div>
+                    <div class="stat-label">Patterns Detected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value" id="stocks-analyzed">0</div>
+                    <div class="stat-label">Stocks Analyzed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-value" id="current-streak">0</div>
+                    <div class="stat-label">Day Streak</div>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="progress-section">
+                <div class="progress-header">
+                    <h2>Your Progress</h2>
+                    <div class="level-badge">Level <span id="user-level">1</span></div>
+                </div>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%">
+                        <span id="xp-text">0 XP</span>
+                    </div>
+                </div>
+                <p style="margin-top: 10px; color: #666;">
+                    <span id="current-xp">0</span> / <span id="next-level-xp">100</span> XP to next level
+                </p>
+            </div>
+
+            <!-- Achievements Section -->
+            <div class="achievements-section">
+                <h2>Achievements</h2>
+                <div class="achievements-grid" id="achievements-grid">
+                    <!-- Achievements will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Community Stats -->
+            <div class="community-stats">
+                <h2>Community Stats</h2>
+                <div class="community-grid">
+                    <div class="community-stat">
+                        <div class="community-stat-value" id="community-patterns">0</div>
+                        <div class="community-stat-label">Patterns Today</div>
+                    </div>
+                    <div class="community-stat">
+                        <div class="community-stat-value" id="community-top-pattern">VCP</div>
+                        <div class="community-stat-label">Top Pattern</div>
+                    </div>
+                    <div class="community-stat">
+                        <div class="community-stat-value" id="community-top-ticker">NVDA</div>
+                        <div class="community-stat-label">Most Watched</div>
+                    </div>
+                    <div class="community-stat">
+                        <div class="community-stat-value" id="community-users">0</div>
+                        <div class="community-stat-label">Active Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        const USER_ID = 'demo-user'; // In production, get from auth
+
+        // All available achievements
+        const ALL_ACHIEVEMENTS = [
+            { key: 'first_pattern', name: 'First Pattern', icon: '🎯', desc: 'Detected first pattern' },
+            { key: '10_stocks', name: '10 Stocks', icon: '📊', desc: 'Analyzed 10 stocks' },
+            { key: 'first_profitable', name: 'First Profit', icon: '💰', desc: 'First profitable idea' },
+            { key: 'watchlist_master', name: 'Watchlist Master', icon: '📋', desc: '50+ watchlist items' },
+            { key: 'pattern_expert', name: 'Pattern Expert', icon: '🔍', desc: '100 scans completed' },
+            { key: 'week_warrior', name: 'Week Warrior', icon: '🔥', desc: '7-day streak' },
+            { key: 'month_master', name: 'Month Master', icon: '⭐', desc: '30-day streak' },
+        ];
+
+        async function loadUserStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/engagement/stats/${USER_ID}`);
+                const data = await response.json();
+
+                // Update stats
+                document.getElementById('total-scans').textContent = data.stats.total_scans;
+                document.getElementById('patterns-detected').textContent = data.stats.patterns_detected;
+                document.getElementById('stocks-analyzed').textContent = data.stats.stocks_analyzed;
+                document.getElementById('current-streak').textContent = data.streak.current;
+
+                // Update progress
+                document.getElementById('user-level').textContent = data.level;
+                document.getElementById('current-xp').textContent = data.xp;
+                document.getElementById('next-level-xp').textContent = data.next_level_xp;
+                document.getElementById('xp-text').textContent = `${data.xp} XP`;
+                document.getElementById('xp-fill').style.width = `${data.level_progress}%`;
+
+                // Render achievements
+                renderAchievements(data.achievements);
+
+                // Load community stats
+                await loadCommunityStats();
+
+                // Show dashboard
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('loading').textContent = 'Error loading stats. Make sure the API is running.';
+            }
+        }
+
+        function renderAchievements(unlocked) {
+            const grid = document.getElementById('achievements-grid');
+            grid.innerHTML = '';
+
+            const unlockedKeys = new Set(unlocked.map(a => a.name));
+
+            ALL_ACHIEVEMENTS.forEach(ach => {
+                const isUnlocked = unlocked.some(u => u.name === ach.name);
+                const card = document.createElement('div');
+                card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+                card.innerHTML = `
+                    <div class="achievement-icon">${ach.icon}</div>
+                    <div class="achievement-name">${ach.name}</div>
+                    <div class="achievement-desc">${ach.desc}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function loadCommunityStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/engagement/community/stats`);
+                const data = await response.json();
+
+                document.getElementById('community-patterns').textContent = data.patterns_detected_today;
+                document.getElementById('community-top-pattern').textContent = data.top_pattern_week;
+                document.getElementById('community-top-ticker').textContent = data.most_watched_ticker;
+                document.getElementById('community-users').textContent = data.active_users_today;
+            } catch (error) {
+                console.error('Error loading community stats:', error);
+            }
+        }
+
+        // Simulate activity tracking (for demo)
+        async function trackActivity(activityType) {
+            try {
+                const response = await fetch(`${API_BASE}/api/engagement/track/${USER_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activity_type: activityType })
+                });
+                const data = await response.json();
+
+                if (data.level_up) {
+                    alert(`Level Up! You're now level ${data.level}!`);
+                }
+
+                if (data.new_achievements && data.new_achievements.length > 0) {
+                    data.new_achievements.forEach(ach => {
+                        showAchievementToast(ach);
+                    });
+                }
+
+                // Reload stats
+                await loadUserStats();
+            } catch (error) {
+                console.error('Error tracking activity:', error);
+            }
+        }
+
+        function showAchievementToast(achievement) {
+            const toast = document.createElement('div');
+            toast.className = 'new-achievement-toast';
+            toast.innerHTML = `
+                <div style="font-size: 2em; margin-bottom: 10px;">${achievement.icon}</div>
+                <div style="font-weight: bold; margin-bottom: 5px;">Achievement Unlocked!</div>
+                <div>${achievement.name}</div>
+                <div style="color: #667eea; margin-top: 5px;">+${achievement.xp_reward} XP</div>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        // Load on page load
+        loadUserStats();
+
+        // Demo: Add buttons to simulate activities (for testing)
+        const demoControls = document.createElement('div');
+        demoControls.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+        demoControls.innerHTML = `
+            <h3 style="margin-bottom: 10px;">Demo Controls</h3>
+            <button onclick="trackActivity('scan')" style="display: block; width: 100%; margin-bottom: 5px; padding: 8px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer;">Run Scan (+10 XP)</button>
+            <button onclick="trackActivity('analyze')" style="display: block; width: 100%; margin-bottom: 5px; padding: 8px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer;">Analyze Stock (+20 XP)</button>
+            <button onclick="trackActivity('pattern_detect')" style="display: block; width: 100%; margin-bottom: 5px; padding: 8px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer;">Detect Pattern (+25 XP)</button>
+        `;
+        document.body.appendChild(demoControls);
+    </script>
+</body>
+</html>
