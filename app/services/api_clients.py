@@ -36,7 +36,7 @@ class TwelveDataClient:
 
         # Check if we've hit the limit
         if self.calls_today >= self.daily_limit:
-            print(f"⚠️ TwelveData daily limit reached ({self.daily_limit} calls)")
+            logger.warning(f"⚠️ TwelveData daily limit reached ({self.daily_limit} calls)")
             return False
 
         return True
@@ -52,7 +52,7 @@ class TwelveDataClient:
                 params["apikey"] = self.settings.twelvedata_api_key
 
             url = f"{self.base_url}/{endpoint}"
-            print(f"📡 TwelveData API call: {endpoint} for {params.get('symbol', 'unknown')}")
+            logger.info(f"📡 TwelveData API call: {endpoint} for {params.get('symbol', 'unknown')}")
 
             response = await self.client.get(url, params=params)
             self.calls_today += 1
@@ -62,16 +62,16 @@ class TwelveDataClient:
 
                 # Check for API errors
                 if "status" in data and data["status"] == "error":
-                    print(f"🚫 TwelveData API error: {data.get('message', 'Unknown error')}")
+                    logger.error(f"🚫 TwelveData API error: {data.get('message', 'Unknown error')}")
                     return None
 
                 return data
             else:
-                print(f"🚫 TwelveData HTTP error: {response.status_code} - {response.text}")
+                logger.error(f"🚫 TwelveData HTTP error: {response.status_code} - {response.text}")
                 return None
 
         except Exception as e:
-            print(f"💥 TwelveData request failed: {e}")
+            logger.exception(f"💥 TwelveData request failed: {e}")
             return None
 
     async def get_time_series(
@@ -136,7 +136,7 @@ class TwelveDataClient:
 
         # Validate we got data
         if len(result["c"]) < 50:
-            print(f"⚠️ Insufficient data for {ticker}: {len(result['c'])} points")
+            logger.warning(f"⚠️ Insufficient data for {ticker}: {len(result['c'])} points")
             return None
 
         return result
@@ -226,12 +226,12 @@ class YahooFinanceClient:
                 "range": range_param
             }
 
-            print(f"📡 Yahoo Finance API call: {ticker}")
+            logger.info(f"📡 Yahoo Finance API call: {ticker}")
 
             response = await self.client.get(url, params=params)
 
             if response.status_code != 200:
-                print(f"🚫 Yahoo Finance HTTP error: {response.status_code}")
+                logger.error(f"🚫 Yahoo Finance HTTP error: {response.status_code}")
                 return None
 
             data = response.json()
@@ -239,7 +239,7 @@ class YahooFinanceClient:
             # Check for Yahoo Finance errors
             result = data.get("chart", {}).get("result", [{}])[0]
             if result.get("error"):
-                print(f"🚫 Yahoo Finance error: {result['error']['description']}")
+                logger.error(f"🚫 Yahoo Finance error: {result['error']['description']}")
                 return None
 
             # Extract quote data
@@ -247,7 +247,7 @@ class YahooFinanceClient:
             timestamps = result.get("timestamp", [])
 
             if not quote or not timestamps:
-                print("⚠️ No quote data in Yahoo Finance response")
+                logger.warning("⚠️ No quote data in Yahoo Finance response")
                 return None
 
             # Extract OHLCV (filter out nulls)
@@ -263,7 +263,7 @@ class YahooFinanceClient:
             # Validate data length
             min_length = min(len(closes), len(opens), len(highs), len(lows), len(volumes))
             if min_length < 50:
-                print(f"⚠️ Insufficient Yahoo Finance data for {ticker}: {min_length} points")
+                logger.warning(f"⚠️ Insufficient Yahoo Finance data for {ticker}: {min_length} points")
                 return None
 
             return {
@@ -276,7 +276,7 @@ class YahooFinanceClient:
             }
 
         except Exception as e:
-            print(f"💥 Yahoo Finance request failed: {e}")
+            logger.exception(f"💥 Yahoo Finance request failed: {e}")
             return None
 
     async def close(self):

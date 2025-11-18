@@ -80,7 +80,7 @@ class WedgeDetector(Detector):
                     results.append(falling)
 
         except Exception as e:
-            print(f"Error in Wedge detection: {e}")
+            logger.exception(f"Error in Wedge detection: {e}")
 
         return results
 

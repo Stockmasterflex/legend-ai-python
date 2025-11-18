@@ -82,7 +82,7 @@ class TriangleDetector(Detector):
                         results.append(pattern)
 
         except Exception as e:
-            print(f"Error in Triangle detection: {e}")
+            logger.exception(f"Error in Triangle detection: {e}")
 
         return results
 

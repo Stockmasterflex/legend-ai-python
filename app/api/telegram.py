@@ -306,7 +306,8 @@ I understand both!"""
                         msg += f"   Entry: ${r['entry']:.2f} | Stop: ${r['stop']:.2f}\n\n"
                     return msg
             return "🔍 *Scanning Universe*\n\nUse /scan for quick results from cached data!"
-        except:
+        except Exception as e:
+            logger.warning(f"Error generating scan summary: {e}")
             return "🔍 Scanner ready! Checking top stocks..."
 
     async def handle_ai_intent(self, chat_id: str, original_text: str) -> str:

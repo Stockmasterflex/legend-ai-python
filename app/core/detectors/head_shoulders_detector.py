@@ -63,7 +63,7 @@ class HeadShouldersDetector(Detector):
                 results.append(inverse)
 
         except Exception as e:
-            print(f"Error in Head & Shoulders detection: {e}")
+            logger.exception(f"Error in Head & Shoulders detection: {e}")
 
         return results
 
