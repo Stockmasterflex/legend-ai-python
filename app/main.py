@@ -21,6 +21,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.alerts import router as alerts_router
 from app.api.multitimeframe import router as multitf_router
 from app.api.risk import router as risk_router
+from app.api.advanced_risk import router as advanced_risk_router
 from app.api.trades import router as trades_router
 from app.api import analyze as analyze_pkg, watchlist as watchlist_pkg
 from app.api.version import router as version_router
@@ -104,6 +105,7 @@ app.include_router(market_router)
 app.include_router(alerts_router)
 app.include_router(multitf_router)
 app.include_router(risk_router)
+app.include_router(advanced_risk_router)
 app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
