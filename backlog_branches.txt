@@ -1,0 +1,99 @@
+# Legend AI - Feature Branch Backlog
+# Generated: 2025-11-18
+# Total: 64 feature branches (NOT merged to production)
+#
+# These branches contain "Nice to Have" features that are kept out of
+# production for now to maintain stability. Review and merge selectively.
+
+## AI & Machine Learning Features (9 branches)
+claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+claude/ai-market-analysis-01KPvsaMrcbS3tN47o2jEHZx
+claude/ai-price-forecasting-01P8xR79YqUYxvXypoKKe7mQ
+claude/ai-trade-plan-generator-0146DaREUJurXtrNZbZD3Umz
+claude/ai-trading-assistant-01JxTg8zsqhWua9eBNqkpic2
+claude/ml-model-training-platform-01CwEWVmjENV1keisL5Fb62F
+claude/ml-pattern-detector-019xwyZuySBzH9HBHz8vXhD4
+claude/market-patterns-seasonality-01DeNtmL6rQYXmX4wzNsqprm
+claude/smart-money-tracking-01BZL3Cd65h3zFZA8SgahEEu
+
+## Trading & Portfolio Management (11 branches)
+claude/add-options-analysis-01B6SSDb2bT9K5w13viNX7r7
+claude/backtesting-system-01AUXD4TAeSohWuYPD1cPP7t
+claude/broker-connections-live-trading-01Ch9r1KEMrjnKwFQQT39kKw
+claude/enterprise-backtesting-platform-01VtGNTbrk9Q6d4Bnac5zJRu
+claude/mtf-trading-system-017CvkN1xBRU1Pf1ETsFptXL
+claude/paper-trading-automation-019GLZZ2eUBMB2UUEmhmcQhh
+claude/portfolio-management-system-013yhXcLXwCKxQPevLtrwDF3
+claude/portfolio-risk-measurement-019RaobNvPBqXhAvuWZJ5epC
+claude/risk-management-system-01RyFfKNnpKExG9DJoAzHtRk
+claude/trade-execution-system-01GacjU5sQwTgNLehfvCN45m
+claude/tax-optimization-system-01KfuGGBVPPG3x1pYHaeVcUz
+
+## Charting & Visualization (8 branches)
+claude/chart-recording-sharing-01MrGckDjXrX1KJYPGFyWYDq
+claude/custom-charting-components-01WjUbtFhfPAFomqqSBtDUiM
+claude/implement-chart-patterns-01DFk6pd2zvYSEtgUA5basTC
+claude/interactive-charts-system-01HznfXjCmALPGQaMoHusdCn
+claude/market-structure-analysis-01XN9xoLqf3JYAXuJkfudcqA
+claude/market-visualization-dashboard-01AF3dN3TqjCHap5fCWgWBSo
+claude/tradingview-integration-01Lv36gjcBmj54feNmHGJcwd
+claude/ui-charts-upgrade
+
+## Data & Analysis Tools (10 branches)
+claude/earnings-tracking-alerts-01MQfi9mxJcFqMa5t3L8Gn7R
+claude/historical-playback-simulation-01BmwS2NNgSF2kKgZjTArHKC
+claude/macro-events-tracking-01AnUSvBY2Zf3wV6Z5AEFySC
+claude/multi-ticker-comparison-01FBW6CW6EtMxWDmtkKPqXiN
+claude/news-sentiment-integration-011Dc6bSnbGVu427AcAAWnEp
+claude/nlp-stock-search-01C3rFeRbgsUZ4pH5EEqzWmj
+claude/options-analytics-dashboard-01JjCGCboR4Dyoyi1CruwdqG
+claude/stock-screener-filters-01PjKSqUo11kBW84Hp46mdth
+claude/ticker-correlation-analysis-01Qtox7J8Gb3sGQxh2QoBCWR
+claude/watchlist-management-features-016AHFfKbzBgRhMHEi9eiTST
+
+## Infrastructure & DevOps (9 branches)
+claude/add-automated-testing-pipeline-01Fhsogv4zLEtuYiRuTw3bZL
+claude/add-graphql-api-01NwuFYv51jkGe9cswdZ5rUY
+claude/alerting-infrastructure-01N1WtF9cRz9kxjXuV8F53X3
+claude/multi-tier-caching-01SWzMFnyoNQDHTGit2DvNVa
+claude/optimize-api-costs-01NYRrANW1MRKySQLWYE1Pia
+claude/optimize-database-queries-011PjF9doVpT6cxFTk2n2pG5
+claude/security-hardening-sprint-01ABt6ELG7CjEaXR4mk43Bhc
+claude/setup-monitoring-alerts-01EsWo6Rbz8MtHsZfSZXwKfr
+claude/websocket-realtime-streaming-01Q45vPXE1ijBwUeRTMhvaBh
+
+## UI/UX & Documentation (9 branches)
+claude/api-docs-and-sdks-01CYkPojsoP7dS7h65a529j9
+claude/auto-generate-api-docs-01E2yw91E6WGe7RnNeiuhPwt
+claude/build-cli-interface-01R3v2dV5K1PDgesguFC9kvL
+claude/fix-dashboard-ux-issues-01TiviWQoN5DsJYzLmxAT6qe
+claude/fix-trading-dashboard-01SgGaaGzGy7SDXiWdupdDDR
+claude/implement-theming-system-01HLDfxjnv8oAxMtzbQaTpQn
+claude/mobile-dashboard-optimization-01PbjSgkPUV8zqzCeJ1voxGM
+claude/pdf-report-generation-01LAgAicf8UnCowEwWMXPLfn
+claude/review-site-improvements-01DzheATRVqpbGLRjdcnj6mS
+
+## Social & Community (4 branches)
+claude/add-onboarding-engagement-01BaRLfTMDZaa5W8mUZMG9ns
+claude/auto-post-trading-analysis-018xbcnAQbZg4cupqWQCLyrt
+claude/discord-stock-bot-016G9XUqU4NQeGUHNVckEHn5
+claude/social-trading-community-01PvYD7Z1L6ZzQ2T71gcZozy
+
+## Integrations (3 branches)
+claude/google-sheets-integration-019ee4BL7bdrgp9N11H7FmiL
+claude/trade-journaling-app-01QTtTxBiwMKYnYKu1PeUFB5
+claude/competitor-tracking-features-01EbPDVeH5FUq3ai4L2WaBsM
+
+## Research & Analysis (2 branches)
+claude/trading-platform-analysis-01Ur5MBEEUAk3JaPc7nEYhFj
+claude/trading-strategies-research-019JwLTWzesxkSyVUUh3MWnV
+
+## Quality & Maintenance (1 branch)
+claude/improve-error-handling-0138eaSzrbDuZVhTxw8P4iNh
+
+---
+## CRITICAL FIXES ALREADY MERGED (NOT in backlog):
+✅ claude/verify-deploy-production-01GdXGry3S1JFREiEXAbQjit - Import error fixes
+✅ fix-chart-loading-and-ui - Chart-IMG API key loading fix
+✅ codex/ui-fixes-and-charts - Universe scanner stats + API hardening
+✅ codex/review-deployment-setup-and-fix-issues - Deployment fixes
