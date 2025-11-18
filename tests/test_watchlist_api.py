@@ -28,7 +28,7 @@ def _build_test_client(tmp_path, monkeypatch) -> TestClient:
 def test_watchlist_file_fallback_flow(tmp_path, monkeypatch):
     client = _build_test_client(tmp_path, monkeypatch)
 
-    payload = {"ticker": "nvda", "reason": "Breakout", "status": "Watching"}
+    payload = {"ticker": "nvda", "reason": "Breakout", "status": "Watching", "tags": ["VCP", "Momentum"]}
     res = client.post("/api/watchlist/add", json=payload)
     assert res.status_code == 200
     assert res.json()["ticker"] == "NVDA"
@@ -38,6 +38,16 @@ def test_watchlist_file_fallback_flow(tmp_path, monkeypatch):
     assert body["total"] == 1
     assert body["items"][0]["ticker"] == "NVDA"
     assert body["items"][0]["status"] == "Watching"
+    assert set(body["items"][0]["tags"]) == {"VCP", "Momentum"}
+
+    update_payload = {"reason": "Updated thesis", "status": "Setup", "tags": ["Swing"]}
+    res = client.put("/api/watchlist/NVDA", json=update_payload)
+    assert res.status_code == 200
+    res = client.get("/api/watchlist")
+    updated = res.json()["items"][0]
+    assert updated["reason"] == "Updated thesis"
+    assert updated["status"] == "Setup"
+    assert updated["tags"] == ["Swing"]
 
     res = client.delete("/api/watchlist/remove/NVDA")
     assert res.status_code == 200
