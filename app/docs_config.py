@@ -65,6 +65,10 @@ tags_metadata = [
         "name": "advanced_analysis",
         "description": "🧪 **Advanced Analysis** - Multi-timeframe and advanced technical analysis",
     },
+    {
+        "name": "correlation",
+        "description": "🔗 **Correlation Analysis** - Ticker correlation heatmaps, pair trading, portfolio diversification, and market leadership analysis",
+    },
 ]
 
 # Custom OpenAPI schema
