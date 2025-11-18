@@ -141,12 +141,36 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.warning("⚠️ Failed to start monitoring services (non-critical): %s", exc)
 
+    # Start AI market analysis scheduler
+    try:
+        from app.services.scheduler import get_scheduler_service
+        from app.api.telegram import telegram_service
+
+        scheduler = get_scheduler_service()
+        scheduler.set_telegram_service(telegram_service)
+        await scheduler.start()
+        logger.info("🤖 AI market analysis scheduler started")
+        logger.info(f"   Daily brief scheduled at {settings.daily_brief_time} ET")
+        logger.info(f"   News scraping every {settings.news_scrape_interval_minutes} minutes")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to start AI scheduler (non-critical): %s", exc)
+
     logger.info("✅ Bot started successfully!")
 
     yield
 
     # === SHUTDOWN ===
     logger.info("Shutting down...")
+
+    # Stop AI market analysis scheduler
+    try:
+        from app.services.scheduler import get_scheduler_service
+
+        scheduler = get_scheduler_service()
+        await scheduler.stop()
+        logger.info("✅ AI scheduler stopped")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to stop AI scheduler: %s", exc)
 
     # Stop monitoring and alerting services
     try:

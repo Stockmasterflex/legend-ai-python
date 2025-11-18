@@ -28,7 +28,8 @@ target_metadata = Base.metadata
 
 # Get database URL from settings
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+database_url = settings.database_url or "sqlite:///./legend_ai.db"  # Default to SQLite
+config.set_main_option("sqlalchemy.url", database_url)
 
 
 def run_migrations_offline() -> None:

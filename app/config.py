@@ -58,6 +58,23 @@ class Settings(BaseSettings):
     ai_model: str = "anthropic/claude-3.5-sonnet"  # Default to Claude (best value)
     ai_temperature: float = 0.7
 
+    # Multi-Model AI Configuration
+    ai_model_claude: str = "anthropic/claude-sonnet-4"  # Claude Sonnet 4
+    ai_model_gpt4: str = "openai/gpt-4"  # GPT-4 for alternative perspective
+    ai_model_gpt4_vision: str = "openai/gpt-4-vision-preview"  # GPT-4 Vision for charts
+    ai_model_gemini: str = "google/gemini-pro"  # Gemini Pro for multi-modal
+
+    # Market Analysis Settings
+    enable_chart_analysis: bool = True
+    enable_news_sentiment: bool = True
+    enable_daily_brief: bool = True
+    daily_brief_time: str = "09:30"  # ET time for daily brief
+
+    # News Scraping Configuration
+    news_sources: str = "yahoo,marketwatch,benzinga"  # Comma-separated list
+    news_max_age_hours: int = 24  # Only scrape news from last 24 hours
+    news_scrape_interval_minutes: int = 30  # How often to scrape news
+
     # Chart-IMG
     chartimg_api_key: Optional[str] = None
 

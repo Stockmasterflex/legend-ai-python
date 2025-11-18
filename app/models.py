@@ -102,3 +102,88 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class MarketAnalysis(Base):
+    """AI-powered market analysis results"""
+    __tablename__ = "market_analysis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=True)
+    analysis_type = Column(String(50), index=True)  # "chart", "news", "sentiment", "technical", "brief"
+    ai_model = Column(String(100))  # Model used: "claude-sonnet-4", "gpt-4", "gemini-pro"
+    analysis_text = Column(Text)  # Full AI analysis
+    support_levels = Column(Text, nullable=True)  # JSON array of support prices
+    resistance_levels = Column(Text, nullable=True)  # JSON array of resistance prices
+    trend_direction = Column(String(20), nullable=True)  # "bullish", "bearish", "neutral", "mixed"
+    sentiment_score = Column(Float, nullable=True)  # -1.0 to 1.0
+    risk_assessment = Column(Text, nullable=True)  # AI risk analysis
+    trade_ideas = Column(Text, nullable=True)  # JSON array of trade ideas
+    confidence_score = Column(Float, nullable=True)  # 0-100
+    chart_url = Column(Text, nullable=True)  # Chart analyzed
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class NewsArticle(Base):
+    """Scraped news articles for market analysis"""
+    __tablename__ = "news_articles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=True)
+    title = Column(String(500), nullable=False)
+    source = Column(String(100))  # "bloomberg", "reuters", "yahoo", etc.
+    url = Column(Text, unique=True)
+    content = Column(Text, nullable=True)  # Article text
+    author = Column(String(200), nullable=True)
+    published_at = Column(DateTime(timezone=True), index=True, nullable=True)
+    scraped_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    category = Column(String(50), nullable=True)  # "earnings", "macro", "sector", etc.
+
+class NewsSentiment(Base):
+    """AI sentiment analysis of news articles"""
+    __tablename__ = "news_sentiment"
+
+    id = Column(Integer, primary_key=True, index=True)
+    article_id = Column(Integer, ForeignKey("news_articles.id"), index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=True)
+    ai_model = Column(String(100))  # Model used for sentiment analysis
+    sentiment = Column(String(20), index=True)  # "bullish", "bearish", "neutral"
+    sentiment_score = Column(Float)  # -1.0 (very bearish) to 1.0 (very bullish)
+    key_points = Column(Text, nullable=True)  # JSON array of key takeaways
+    impact_assessment = Column(Text, nullable=True)  # How news affects stock
+    relevance_score = Column(Float, nullable=True)  # How relevant to ticker (0-1)
+    analyzed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class MarketBrief(Base):
+    """Daily AI-generated market briefs"""
+    __tablename__ = "market_briefs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    brief_date = Column(DateTime(timezone=True), index=True, nullable=False)
+    market_summary = Column(Text)  # Overall market analysis
+    top_movers = Column(Text)  # JSON array of top gaining/losing stocks with AI analysis
+    sector_performance = Column(Text)  # JSON object of sector analysis
+    pattern_highlights = Column(Text)  # JSON array of notable pattern detections
+    risk_factors = Column(Text, nullable=True)  # AI-identified risks
+    trade_ideas = Column(Text, nullable=True)  # JSON array of AI trade ideas
+    market_sentiment = Column(String(20))  # "bullish", "bearish", "neutral", "mixed"
+    sentiment_score = Column(Float, nullable=True)  # Overall market sentiment -1 to 1
+    ai_model = Column(String(100))  # Primary model used
+    generated_at = Column(DateTime(timezone=True), server_default=func.now())
+    sent_to_telegram = Column(Boolean, default=False)
+    telegram_sent_at = Column(DateTime(timezone=True), nullable=True)
+
+class AIQuery(Base):
+    """Natural language query history and responses"""
+    __tablename__ = "ai_queries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True)  # Telegram user ID or "api"
+    query_text = Column(Text, nullable=False)  # User's natural language query
+    query_type = Column(String(50), nullable=True)  # "search", "analysis", "education", "alert"
+    ai_model = Column(String(100))  # Model that processed query
+    response_text = Column(Text)  # AI response
+    tickers_mentioned = Column(Text, nullable=True)  # JSON array of ticker symbols
+    actions_taken = Column(Text, nullable=True)  # JSON array of actions (scans run, etc.)
+    results_found = Column(Integer, nullable=True)  # Number of results
+    execution_time_ms = Column(Float, nullable=True)  # How long to process
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    response_rating = Column(Integer, nullable=True)  # User feedback 1-5
