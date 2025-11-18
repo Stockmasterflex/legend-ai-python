@@ -102,3 +102,94 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class Backtest(Base):
+    """Backtest configuration and results"""
+    __tablename__ = "backtests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    strategy_type = Column(String(100), index=True)  # "pattern_based", "indicator_based", "custom"
+    strategy_config = Column(Text)  # JSON configuration of strategy
+    ticker = Column(String(10), nullable=True)  # Null means multiple tickers
+    universe = Column(String(50), nullable=True)  # "SP500", "NASDAQ100", etc.
+    start_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    end_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    initial_capital = Column(Float, nullable=False)
+    position_sizing_method = Column(String(50))  # "fixed", "percent", "kelly", "risk_based"
+    risk_per_trade = Column(Float)  # Risk percentage per trade
+    commission_per_trade = Column(Float, default=0.0)
+    slippage_percent = Column(Float, default=0.0)
+
+    # Performance metrics
+    final_capital = Column(Float)
+    total_return = Column(Float)
+    total_return_pct = Column(Float)
+    sharpe_ratio = Column(Float)
+    sortino_ratio = Column(Float)
+    max_drawdown = Column(Float)
+    max_drawdown_pct = Column(Float)
+    calmar_ratio = Column(Float)
+    win_rate = Column(Float)
+    loss_rate = Column(Float)
+    total_trades = Column(Integer)
+    winning_trades = Column(Integer)
+    losing_trades = Column(Integer)
+    avg_win = Column(Float)
+    avg_loss = Column(Float)
+    largest_win = Column(Float)
+    largest_loss = Column(Float)
+    profit_factor = Column(Float)
+    expectancy = Column(Float)
+    avg_trade_duration_days = Column(Float)
+
+    # Monte Carlo results
+    monte_carlo_runs = Column(Integer, nullable=True)
+    monte_carlo_mean_return = Column(Float, nullable=True)
+    monte_carlo_std_return = Column(Float, nullable=True)
+    monte_carlo_var_95 = Column(Float, nullable=True)  # Value at Risk 95%
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), default="pending")  # "pending", "running", "completed", "failed"
+    error_message = Column(Text, nullable=True)
+
+class BacktestTrade(Base):
+    """Individual trade from a backtest"""
+    __tablename__ = "backtest_trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    backtest_id = Column(Integer, ForeignKey("backtests.id"), index=True, nullable=False)
+    ticker = Column(String(10), nullable=False, index=True)
+    signal_type = Column(String(50))  # Pattern or indicator that triggered entry
+
+    # Entry details
+    entry_date = Column(DateTime(timezone=True), nullable=False, index=True)
+    entry_price = Column(Float, nullable=False)
+    entry_reason = Column(Text)
+
+    # Position details
+    position_size = Column(Integer, nullable=False)  # Number of shares
+    position_value = Column(Float, nullable=False)  # Total position value
+    stop_loss = Column(Float)
+    target_price = Column(Float)
+
+    # Exit details
+    exit_date = Column(DateTime(timezone=True), nullable=True, index=True)
+    exit_price = Column(Float, nullable=True)
+    exit_reason = Column(String(100))  # "target", "stop_loss", "signal", "end_of_period"
+
+    # Performance
+    profit_loss = Column(Float)
+    profit_loss_pct = Column(Float)
+    r_multiple = Column(Float)  # Profit/loss relative to risk
+    commission_paid = Column(Float, default=0.0)
+    duration_days = Column(Integer)
+    mae = Column(Float)  # Maximum Adverse Excursion
+    mfe = Column(Float)  # Maximum Favorable Excursion
+
+    # Status
+    status = Column(String(20))  # "open", "closed", "stopped"
+    is_win = Column(Boolean)
