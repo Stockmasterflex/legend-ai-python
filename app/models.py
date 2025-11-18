@@ -3,7 +3,7 @@ Database models for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -102,3 +102,118 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class PricePrediction(Base):
+    """AI price predictions and forecasts"""
+    __tablename__ = "price_predictions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    model_type = Column(String(50), index=True)  # "LSTM", "RandomForest", "GradientBoosting", "Ensemble"
+    prediction_date = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    target_date = Column(DateTime(timezone=True), index=True)  # Future date being predicted
+    timeframe = Column(String(20), index=True)  # "1D", "1W", "1M", "3M"
+
+    # Predictions
+    predicted_price = Column(Float, nullable=False)
+    predicted_high = Column(Float, nullable=True)  # Upper bound
+    predicted_low = Column(Float, nullable=True)  # Lower bound
+    confidence_score = Column(Float, nullable=True)  # 0-1 confidence
+
+    # Probability bands
+    prob_upper_90 = Column(Float, nullable=True)  # 90% confidence upper
+    prob_lower_90 = Column(Float, nullable=True)  # 90% confidence lower
+    prob_upper_70 = Column(Float, nullable=True)  # 70% confidence upper
+    prob_lower_70 = Column(Float, nullable=True)  # 70% confidence lower
+    prob_upper_50 = Column(Float, nullable=True)  # 50% confidence upper
+    prob_lower_50 = Column(Float, nullable=True)  # 50% confidence lower
+
+    # Support/Resistance
+    support_levels = Column(JSON, nullable=True)  # Array of support prices
+    resistance_levels = Column(JSON, nullable=True)  # Array of resistance prices
+
+    # Feature importance
+    feature_importance = Column(JSON, nullable=True)  # Top features used
+
+    # Actual results (filled in later for backtesting)
+    actual_price = Column(Float, nullable=True)
+    accuracy_score = Column(Float, nullable=True)  # How accurate was prediction
+
+    # Market regime at prediction time
+    market_regime = Column(String(50), nullable=True)  # "bullish", "bearish", "ranging", "volatile"
+
+    # Metadata
+    model_version = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class ModelPerformance(Base):
+    """Model performance metrics and backtesting results"""
+    __tablename__ = "model_performance"
+
+    id = Column(Integer, primary_key=True, index=True)
+    model_type = Column(String(50), index=True)  # "LSTM", "RandomForest", etc.
+    model_version = Column(String(50), nullable=True)
+
+    # Time period for metrics
+    evaluation_period = Column(String(50), index=True)  # "daily", "weekly", "monthly"
+    start_date = Column(DateTime(timezone=True), index=True)
+    end_date = Column(DateTime(timezone=True), index=True)
+
+    # Accuracy metrics
+    mae = Column(Float, nullable=True)  # Mean Absolute Error
+    rmse = Column(Float, nullable=True)  # Root Mean Square Error
+    mape = Column(Float, nullable=True)  # Mean Absolute Percentage Error
+    r2_score = Column(Float, nullable=True)  # R-squared
+    directional_accuracy = Column(Float, nullable=True)  # % correct direction predictions
+
+    # Trading metrics (if predictions used for trading)
+    win_rate = Column(Float, nullable=True)
+    avg_return = Column(Float, nullable=True)
+    sharpe_ratio = Column(Float, nullable=True)
+    max_drawdown = Column(Float, nullable=True)
+
+    # Sample size
+    total_predictions = Column(Integer)
+    total_tickers = Column(Integer, nullable=True)
+
+    # Detailed results
+    performance_by_ticker = Column(JSON, nullable=True)  # Breakdown by ticker
+    performance_by_timeframe = Column(JSON, nullable=True)  # Breakdown by timeframe
+
+    # Training info
+    training_samples = Column(Integer, nullable=True)
+    training_duration_seconds = Column(Float, nullable=True)
+
+    # Metadata
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class ForecastJob(Base):
+    """Batch forecasting job tracking"""
+    __tablename__ = "forecast_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_type = Column(String(50), index=True)  # "single_ticker", "universe", "watchlist"
+    status = Column(String(20), index=True)  # "pending", "running", "completed", "failed"
+
+    # Job parameters
+    ticker_symbols = Column(JSON, nullable=True)  # List of tickers to forecast
+    model_types = Column(JSON, nullable=True)  # List of models to use
+    timeframes = Column(JSON, nullable=True)  # List of timeframes
+
+    # Progress tracking
+    total_tasks = Column(Integer, nullable=True)
+    completed_tasks = Column(Integer, default=0)
+    failed_tasks = Column(Integer, default=0)
+
+    # Timing
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Results
+    predictions_generated = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_by = Column(String(100), nullable=True)  # User ID

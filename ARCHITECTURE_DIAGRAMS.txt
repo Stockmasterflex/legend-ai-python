@@ -1,0 +1,181 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    LEGEND AI TRADING PLATFORM ARCHITECTURE                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           CLIENT LAYER                                       │
+│  ┌─────────────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
+│  │  Gradio Dashboard   │  │   HTML/HTMX      │  │   Telegram Bot       │  │
+│  │  (Web Interface)    │  │   (Templates)    │  │   (Notifications)    │  │
+│  └─────────────────────┘  └──────────────────┘  └──────────────────────┘  │
+└──────────────┬───────────────────────────┬───────────────────────┬──────────┘
+               │                           │                       │
+               └───────────────────────────┼───────────────────────┘
+                                           ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      FASTAPI APPLICATION LAYER                               │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ MIDDLEWARE STACK (Top Priority)                                        │ │
+│  ├─ MetricsMiddleware (Prometheus telemetry)                             │ │
+│  ├─ StructuredLoggingMiddleware (Request tracing)                        │ │
+│  ├─ RateLimitMiddleware (60 req/min per IP)                              │ │
+│  └─ CORSMiddleware (Environment-aware origins)                           │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ 23 API ROUTER MODULES (60+ ENDPOINTS)                                  │ │
+│  ├─────────────────────┬──────────────────┬─────────────────────────────┤ │
+│  │ /api/patterns       │ /api/scan        │ /api/charts               │ │
+│  │ /api/watchlist      │ /api/market      │ /api/alerts               │ │
+│  │ /api/universe       │ /api/telegram    │ /api/trades               │ │
+│  │ /api/advanced       │ /api/ai          │ /api/multitimeframe       │ │
+│  │ /api/risk           │ /api/cache-mgmt  │ /api/api-usage            │ │
+│  │ /api/docs           │ /health          │ /metrics                  │ │
+│  └─────────────────────┴──────────────────┴─────────────────────────────┘ │
+└──────────────┬──────────────────────────────────────────────────┬──────────┘
+               │                                                  │
+        ┌──────▼────────────────────────────────────────────────┬┴─────────┐
+        │                                                       │          │
+        ▼                                                       ▼          ▼
+┌──────────────────────────┐                        ┌──────────────────────────┐
+│    SERVICE LAYER         │                        │    CORE LOGIC LAYER      │
+│                          │                        │                          │
+│  MarketDataService       │                        │  PatternDetector         │
+│  ├─ TwelveData (800/d)   │                        │  ├─ 8 Detectors          │
+│  ├─ Finnhub (60/d)       │                        │  └─ 50+ Advanced         │
+│  ├─ Alpha Vantage (500/d)│                        │                          │
+│  └─ Yahoo Finance (free) │                        │  TechnicalAnalysis       │
+│                          │                        │  ├─ Fibonacci            │
+│  PatternScannerService   │                        │  ├─ Trendlines           │
+│  ├─ Parallel detection   │                        │  └─ S/R Levels           │
+│  ├─ Risk calculations    │                        │                          │
+│  └─ Risk/reward metrics  │                        │  ChartingService         │
+│                          │                        │  └─ Chart-IMG API        │
+│  AIAssistant             │                        │                          │
+│  ├─ Claude/GPT-4         │                        │  RiskCalculator          │
+│  ├─ OpenRouter (cheaper) │                        │  └─ Position sizing      │
+│  └─ Financial RAG        │                        │                          │
+│                          │                        │  UniverseScanner         │
+│  AlertsService           │                        │  └─ S&P500/NASDAQ100     │
+│  ├─ Multi-channel        │                        │                          │
+│  └─ Smart triggers       │                        │  UniverseData            │
+│                          │                        │  └─ Symbol management    │
+└──────────────┬───────────┘                        └──────────┬───────────────┘
+               │                                               │
+               └─────────────────────┬──────────────────────────┘
+                                     │
+        ┌────────────────────────────┼────────────────────────────┐
+        │                            │                            │
+        ▼                            ▼                            ▼
+┌───────────────────┐    ┌──────────────────────┐   ┌──────────────────────┐
+│  CACHING LAYER    │    │  DATABASE LAYER      │   │  EXTERNAL SERVICES   │
+│  (Multi-Tier)     │    │  (PostgreSQL)        │   │                      │
+├───────────────────┤    ├──────────────────────┤   ├──────────────────────┤
+│ Redis HOT Cache   │    │ Tickers              │   │ TwelveData API       │
+│ (5-15 min TTL)    │    │ PatternScans         │   │ Finnhub API          │
+│                   │    │ Watchlists           │   │ Alpha Vantage API    │
+│ Database WARM     │    │ ScanLogs             │   │ Yahoo Finance        │
+│ Cache (1hr TTL)   │    │ UniverseScans        │   │ Chart-IMG API        │
+│                   │    │ AlertLogs            │   │ Telegram API         │
+│ CDN Static Cache  │    │ CacheEntries         │   │ OpenRouter/OpenAI    │
+│ (24hr TTL)        │    │                      │   │                      │
+└────────┬──────────┘    └──────────┬───────────┘   └──────────────────────┘
+         │                          │
+         │  Cache Keys:             │  Indices:
+         │  - pattern:*             │  - tickers(symbol)
+         │  - timeseries:*          │  - pattern_scans(ticker_id)
+         │  - chart:*               │  - watchlists(user_id, status)
+         │  - api_usage:*           │  - scan_logs(start_time)
+         │  - chartimg:*            │  - universe_scans(scan_date)
+         │                          │  - alert_logs(alert_type)
+         └──────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         DATA FLOW: Pattern Detection                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  1. REQUEST                2. CACHE CHECK           3. FETCH DATA
+  ┌──────────────┐        ┌─────────────────┐      ┌──────────────┐
+  │POST /patterns│        │Redis Cache Hit? │      │Get OHLCV     │
+  │detect AAPL   │───────▶│pattern:AAPL:1d  │─────▶│timeseries    │
+  │              │        │TTL: 3600s       │      │              │
+  └──────────────┘        └────────┬────────┘      └──────┬───────┘
+                                   │                      │
+                            ┌──────▼──────┐         ┌─────▼────────┐
+                            │ MISS: Continue       │ Check Redis  │
+                            │ to next step         │ timeseries:* │
+                            └──────────────┘       └─────┬────────┘
+                                                         │
+  4. PATTERN DETECTION        5. RISK METRICS      6. CHART GENERATION
+  ┌───────────────────────┐   ┌──────────────────┐  ┌─────────────────┐
+  │ Run 8+ Detectors      │   │ Calculate:       │  │ Generate Chart  │
+  │ (in parallel)         │   │ ├─ Entry price   │  │ ├─ Chart-IMG    │
+  │ ├─ VCP Detector       │   │ ├─ Stop price    │  │ ├─ Overlays     │
+  │ ├─ Cup & Handle       │   │ ├─ Target price  │  │ ├─ Indicators   │
+  │ ├─ Triangle Detector  │   │ └─ Risk/Reward   │  │ └─ Fallback SVG │
+  │ └─ 5+ More Detectors  │   └──────────────────┘  └─────────────────┘
+  │                       │
+  │ Best Result: Pattern  │
+  │ + Score + Confidence  │
+  └───────────────────────┘
+
+  7. CACHE & RETURN
+  ┌────────────────────────────────┐
+  │ Store in Redis (1hr)           │
+  │ Store in DB (long-term)        │
+  │ Return to Client with metadata │
+  └────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    TECHNICAL INDICATORS & FEATURES                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+MOVING AVERAGES          VOLATILITY               MOMENTUM               VOLUME
+├─ SMA (20/50/200)      ├─ Bollinger Bands       ├─ RSI (14)            ├─ Volume SMA
+├─ EMA (21/50)          ├─ ATR                   ├─ MACD                ├─ Volume
+├─ Weighted MA          └─ Std Deviation         └─ Stochastic          └─ OBV
+
+PATTERN FEATURES        SUPPORT & RESISTANCE    TREND ANALYSIS        OSCILLATORS
+├─ Consolidation Days   ├─ Fibonacci Levels     ├─ Trendlines         ├─ RSI
+├─ Volume Dry-Up        ├─ Pivot Points         ├─ Market Structure    ├─ CCI
+├─ Cup Depth            ├─ S/R Clusters         ├─ Trend Direction     └─ Williams %R
+└─ Handle Pullback      └─ Resistance Ratio     └─ Higher Highs/Lows
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                      DEPLOYMENT & SCALABILITY                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+LOCAL DEVELOPMENT              RAILWAY DEPLOYMENT          PRODUCTION
+┌─────────────────────┐      ┌──────────────────────┐    ┌──────────────────┐
+│ Python 3.11         │      │ FastAPI + Uvicorn    │    │ Kubernetes       │
+│ SQLite (optional)   │      │ PostgreSQL (managed) │    │ Docker Registry  │
+│ Redis (local)       │      │ Redis (managed)      │    │ Auto-scaling     │
+│ pytest              │      │ GitHub Actions CI/CD │    │ Load Balancer    │
+└─────────────────────┘      │ Auto-deploy on push  │    └──────────────────┘
+                             └──────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                       INTEGRATION FOR AI FORECASTING                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+EXISTING INFRASTRUCTURE        ADD FOR FORECASTING         INTEGRATION
+┌──────────────────────────┐  ┌──────────────────────┐    ┌──────────────────┐
+│ MarketDataService        │  │ app/ml/              │    │ /api/forecast/   │
+│ (OHLCV data pipeline)    │  │ ├─ price_forecaster  │    │ ├─ predict       │
+│                          │  │ ├─ models/           │    │ ├─ backtest      │
+│ TechnicalAnalysis        │  │ │ ├─ lstm_model      │    │ ├─ accuracy      │
+│ (Indicators computed)    │  │ │ └─ ensemble        │    │ └─ confidence    │
+│                          │  │ └─ features/         │    │                  │
+│ PatternDetector          │  │    └─ engineering    │    │ Database:        │
+│ (ML framework ready)     │  │                      │    │ └─ PricePrediction│
+│                          │  │ Training Pipeline:   │    │    (results)     │
+│ Caching Service          │  │ ├─ Data prep        │    │                  │
+│ (Model caching)          │  │ ├─ Feature calc     │    │ Monitoring:      │
+│                          │  │ ├─ Model training   │    │ └─ Prediction    │
+│ Database                 │  │ └─ Backtesting      │    │    accuracy      │
+│ (Store predictions)      │  └──────────────────────┘    └──────────────────┘
+└──────────────────────────┘
