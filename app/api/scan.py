@@ -24,6 +24,7 @@ from app.api.universe import (
 from app.services.universe import universe_service
 from app.core.flags import get_legend_flags
 from app.services.scanner import scan_service
+from app.services.pattern_scanner import pattern_scanner_service
 from app.telemetry.metrics import (
     SCAN_ERRORS_TOTAL,
     SCAN_REQUEST_DURATION_SECONDS,
@@ -226,3 +227,75 @@ def _to_float(value) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+@router.get("/scan/patterns")
+async def scan_patterns(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    min_score: float = Query(7.0, ge=0.0, le=10.0),
+    patterns: Optional[str] = Query(None, description="Comma-separated pattern names to filter by"),
+) -> Dict[str, Any]:
+    """
+    Multi-pattern scanner endpoint - scans universe with all available detectors
+
+    This endpoint uses the new modular detector system to find patterns across
+    all 17+ available pattern types (VCP, Cup & Handle, Triangles, Wedges, etc.)
+
+    Query Parameters:
+        limit: Maximum number of results to return (1-200)
+        min_score: Minimum pattern score to include (0-10 scale)
+        patterns: Optional comma-separated list of specific patterns to scan for
+                 Example: "VCP,Cup & Handle,Ascending Triangle"
+
+    Returns:
+        Scan results with detected patterns sorted by score
+    """
+    started = time.perf_counter()
+
+    telemetry: Dict[str, Any] = {
+        "event": "scan_patterns",
+        "status": "pending",
+        "limit": limit,
+        "min_score": min_score,
+    }
+    request.state.telemetry = telemetry
+
+    try:
+        # Parse pattern filter if provided
+        pattern_filter = None
+        if patterns:
+            pattern_filter = [p.strip() for p in patterns.split(",") if p.strip()]
+            telemetry["pattern_filter"] = pattern_filter
+
+        telemetry["status"] = "running"
+
+        # Run multi-pattern scan
+        payload = await pattern_scanner_service.scan_universe(
+            universe=None,  # Use default universe
+            limit=limit,
+            pattern_filter=pattern_filter,
+            min_score=min_score
+        )
+
+        telemetry.update({
+            "status": "ok",
+            "scan_universe": payload.get("universe_size"),
+            "scan_results": len(payload.get("results", [])),
+            "total_hits": payload.get("meta", {}).get("total_hits", 0),
+        })
+
+        return payload
+
+    except Exception as exc:
+        telemetry["status"] = "error"
+        SCAN_ERRORS_TOTAL.inc()
+        logger.exception("Multi-pattern scan failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Multi-pattern scan failed") from exc
+    finally:
+        duration = time.perf_counter() - started
+        telemetry["duration_ms"] = round(duration * 1000, 2)
+        SCAN_REQUEST_DURATION_SECONDS.labels(
+            status=telemetry.get("status", "unknown"),
+            universe_size=str(telemetry.get("scan_universe", 0)),
+        ).observe(duration)
