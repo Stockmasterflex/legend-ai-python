@@ -381,7 +381,11 @@ async def ai_status():
                 "conversational_chat",
                 "stock_analysis",
                 "stock_comparison",
-                "pattern_education"
+                "pattern_education",
+                "natural_language_queries",
+                "smart_suggestions",
+                "learning_mode",
+                "voice_commands"
             ]
         }
     except Exception as e:
@@ -389,3 +393,404 @@ async def ai_status():
             "status": "unavailable",
             "error": str(e)
         }
+
+
+# New Enhanced Endpoints
+
+class SimilarSetupsRequest(BaseModel):
+    """Request for finding similar stock setups"""
+    reference_symbol: str = Field(..., description="Reference stock ticker", example="AAPL")
+    top_n: int = Field(5, description="Number of similar stocks to return", example=5, ge=1, le=20)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "reference_symbol": "AAPL",
+                "top_n": 5
+            }
+        }
+
+
+class EntryTimingRequest(BaseModel):
+    """Request for entry timing suggestions"""
+    symbol: str = Field(..., description="Stock ticker symbol", example="TSLA")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "symbol": "TSLA"
+            }
+        }
+
+
+class PatternQuizRequest(BaseModel):
+    """Request for pattern quiz"""
+    difficulty: str = Field("medium", description="Quiz difficulty", example="medium")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "difficulty": "medium"
+            }
+        }
+
+
+class StrategyTutorialRequest(BaseModel):
+    """Request for strategy tutorial"""
+    strategy: str = Field(..., description="Trading strategy name", example="breakout")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "strategy": "breakout"
+            }
+        }
+
+
+class EntryRulesRequest(BaseModel):
+    """Request for entry rules teaching"""
+    pattern: str = Field(..., description="Chart pattern name", example="Cup and Handle")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "pattern": "Cup and Handle"
+            }
+        }
+
+
+class VoiceCommandRequest(BaseModel):
+    """Request for voice command processing"""
+    command: str = Field(..., description="Voice command text (transcribed)", example="Show me AAPL analysis")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "command": "Show me AAPL analysis"
+            }
+        }
+
+
+@router.post("/similar-setups",
+             summary="Find Similar Stock Setups",
+             responses={
+                 200: {
+                     "description": "List of stocks with similar technical setups",
+                     "content": {
+                         "application/json": {
+                             "example": {
+                                 "reference_symbol": "AAPL",
+                                 "reference_pattern": "Cup and Handle",
+                                 "similar_stocks": [
+                                     {
+                                         "symbol": "MSFT",
+                                         "pattern": "Cup and Handle",
+                                         "confidence": 75.5,
+                                         "similarity_score": 0.755
+                                     }
+                                 ]
+                             }
+                         }
+                     }
+                 }
+             })
+async def find_similar_setups(request: SimilarSetupsRequest):
+    """
+    🔍 **Find Stocks with Similar Technical Setups**
+
+    Get smart suggestions for stocks with similar patterns and setups.
+
+    ## What You Get
+
+    - 📊 Stocks with similar chart patterns
+    - 🎯 Confidence scores for each match
+    - 📈 Pattern descriptions
+    - 💡 Actionable suggestions
+
+    ## Use Cases
+
+    - "Show me setups like AAPL"
+    - "Find similar patterns to NVDA"
+    - "What stocks look like TSLA?"
+
+    **Example:**
+    ```python
+    import requests
+
+    response = requests.post(
+        'https://your-api.com/api/ai/similar-setups',
+        json={'reference_symbol': 'AAPL', 'top_n': 5}
+    )
+    ```
+    """
+    try:
+        assistant = get_ai_assistant()
+        result = await assistant.find_similar_setups(
+            reference_symbol=request.reference_symbol,
+            top_n=request.top_n
+        )
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Similar setups error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/entry-timing",
+             summary="Get Entry Timing Suggestions",
+             responses={
+                 200: {
+                     "description": "Entry timing analysis and suggestions"
+                 }
+             })
+async def get_entry_timing(request: EntryTimingRequest):
+    """
+    ⏰ **Get Smart Entry Timing Suggestions**
+
+    AI-powered analysis of optimal entry points for a stock.
+
+    ## What You Get
+
+    - 🎯 Specific entry price levels
+    - 🛡️ Stop loss recommendations
+    - 📈 Price targets
+    - ⚖️ Risk/reward ratios
+    - 💡 Multiple entry scenarios
+
+    ## Suggestion Types
+
+    - **Pattern-based**: Entries based on chart patterns
+    - **Support bounce**: Entries near support levels
+    - **Breakout setup**: Entries on resistance breakouts
+
+    **Example:**
+    ```python
+    response = requests.post(
+        'https://your-api.com/api/ai/entry-timing',
+        json={'symbol': 'TSLA'}
+    )
+    ```
+    """
+    try:
+        assistant = get_ai_assistant()
+        result = await assistant.suggest_entry_timing(request.symbol)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entry timing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/quiz",
+             summary="Generate Pattern Quiz",
+             responses={
+                 200: {
+                     "description": "Interactive quiz questions"
+                 }
+             })
+async def generate_quiz(request: PatternQuizRequest):
+    """
+    🎓 **Interactive Pattern Recognition Quiz**
+
+    Test and improve your pattern recognition skills.
+
+    ## Difficulty Levels
+
+    - **Easy**: Basic pattern identification
+    - **Medium**: Pattern characteristics and trading rules
+    - **Hard**: Advanced pattern analysis and strategy
+
+    ## Features
+
+    - Multiple choice questions
+    - Detailed explanations
+    - Instant feedback
+    - Track your progress
+
+    **Example:**
+    ```python
+    response = requests.post(
+        'https://your-api.com/api/ai/quiz',
+        json={'difficulty': 'medium'}
+    )
+    ```
+    """
+    try:
+        assistant = get_ai_assistant()
+        result = await assistant.generate_pattern_quiz(request.difficulty)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Quiz generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/tutorial",
+             summary="Get Strategy Tutorial",
+             responses={
+                 200: {
+                     "description": "Comprehensive strategy tutorial"
+                 }
+             })
+async def get_tutorial(request: StrategyTutorialRequest):
+    """
+    📚 **Strategy Tutorials**
+
+    Learn trading strategies with step-by-step guides.
+
+    ## Available Strategies
+
+    - **Breakout**: Trading breakouts from consolidation
+    - **Pullback**: Buying pullbacks in uptrends
+    - **VCP**: Volatility Contraction Pattern
+    - **Reversal**: Trading reversal patterns
+    - And more...
+
+    ## Tutorial Includes
+
+    - Strategy overview
+    - Step-by-step execution
+    - Key rules and guidelines
+    - Real example trades
+    - Common mistakes to avoid
+
+    **Example:**
+    ```python
+    response = requests.post(
+        'https://your-api.com/api/ai/tutorial',
+        json={'strategy': 'breakout'}
+    )
+    ```
+    """
+    try:
+        assistant = get_ai_assistant()
+        result = await assistant.get_strategy_tutorial(request.strategy)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Tutorial error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/entry-rules",
+             summary="Learn Pattern Entry Rules",
+             responses={
+                 200: {
+                     "description": "Detailed entry rules for a pattern"
+                 }
+             })
+async def get_entry_rules(request: EntryRulesRequest):
+    """
+    📋 **Pattern Entry Rules**
+
+    Learn exact entry rules for specific chart patterns.
+
+    ## What You Learn
+
+    - ✅ Exact entry point
+    - 🔔 Confirmation signals
+    - 🛡️ Stop loss placement
+    - 🎯 Price target calculation
+    - 💡 Real-world examples
+
+    ## Covered Patterns
+
+    - Cup and Handle
+    - VCP (Volatility Contraction Pattern)
+    - Ascending/Descending Triangles
+    - Bull/Bear Flags
+    - And more...
+
+    **Example:**
+    ```python
+    response = requests.post(
+        'https://your-api.com/api/ai/entry-rules',
+        json={'pattern': 'Cup and Handle'}
+    )
+    ```
+    """
+    try:
+        assistant = get_ai_assistant()
+        result = await assistant.teach_entry_rules(request.pattern)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entry rules error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/voice-command",
+             summary="Process Voice Command",
+             responses={
+                 200: {
+                     "description": "Voice command response"
+                 }
+             })
+async def process_voice_command(request: VoiceCommandRequest):
+    """
+    🎤 **Voice Command Processing**
+
+    Process transcribed voice commands for hands-free trading analysis.
+
+    ## Supported Commands
+
+    - "Show me AAPL analysis"
+    - "Find VCP patterns"
+    - "Compare NVDA and AMD"
+    - "What's TSLA doing?"
+    - "Explain Cup and Handle pattern"
+    - "Give me entry timing for MSFT"
+
+    ## How It Works
+
+    1. Voice is transcribed to text (client-side)
+    2. Text sent to this endpoint
+    3. Natural language processing detects intent
+    4. Appropriate analysis is performed
+    5. Response returned (can be converted to speech client-side)
+
+    **Example:**
+    ```python
+    # After voice transcription
+    response = requests.post(
+        'https://your-api.com/api/ai/voice-command',
+        json={'command': 'Show me AAPL analysis'}
+    )
+    ```
+    """
+    try:
+        import time
+        start_time = time.time()
+
+        assistant = get_ai_assistant()
+
+        # Process as regular chat (already has NL parsing)
+        result = await assistant.chat(
+            user_message=request.command,
+            include_market_data=True
+        )
+
+        execution_time = (time.time() - start_time) * 1000  # Convert to ms
+
+        # Add voice-specific metadata
+        result['voice_command'] = True
+        result['execution_time_ms'] = execution_time
+        result['original_command'] = request.command
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Voice command error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

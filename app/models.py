@@ -102,3 +102,60 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class ConversationHistory(Base):
+    """AI Conversation history for context and learning"""
+    __tablename__ = "conversation_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(String(100), index=True, nullable=False)
+    user_id = Column(String(100), index=True, default="default")
+    role = Column(String(20), nullable=False)  # "user", "assistant", "system"
+    content = Column(Text, nullable=False)
+    intent_type = Column(String(50), nullable=True, index=True)  # Detected intent
+    entities = Column(Text, nullable=True)  # JSON string of extracted entities
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class LearningProgress(Base):
+    """Track user's learning progress through quizzes and tutorials"""
+    __tablename__ = "learning_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")
+    quiz_type = Column(String(50), index=True)  # "pattern_recognition", "strategy", etc.
+    difficulty = Column(String(20))  # "easy", "medium", "hard"
+    questions_answered = Column(Integer, default=0)
+    correct_answers = Column(Integer, default=0)
+    accuracy = Column(Float, default=0.0)
+    patterns_learned = Column(Text, nullable=True)  # JSON array of patterns
+    strategies_learned = Column(Text, nullable=True)  # JSON array of strategies
+    last_quiz_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class VoiceCommand(Base):
+    """Voice command history for analytics and improvement"""
+    __tablename__ = "voice_commands"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")
+    command_text = Column(Text, nullable=False)  # Transcribed voice command
+    intent_detected = Column(String(50), nullable=True, index=True)
+    entities = Column(Text, nullable=True)  # JSON of extracted entities
+    response = Column(Text, nullable=True)
+    success = Column(Boolean, default=True)
+    execution_time_ms = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class SmartSuggestion(Base):
+    """Track smart suggestions provided to users"""
+    __tablename__ = "smart_suggestions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")
+    suggestion_type = Column(String(50), index=True)  # "similar_setup", "entry_timing", "pattern_match"
+    reference_symbol = Column(String(10), nullable=True)
+    suggested_symbols = Column(Text, nullable=True)  # JSON array
+    suggestion_data = Column(Text, nullable=True)  # JSON with full suggestion details
+    user_action = Column(String(50), nullable=True)  # "accepted", "rejected", "ignored"
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
