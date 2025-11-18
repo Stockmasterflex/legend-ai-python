@@ -49,6 +49,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Metrics middleware sits at the top to capture all HTTP metrics
+from app.middleware.metrics_middleware import MetricsMiddleware
+app.add_middleware(MetricsMiddleware)
+logger.info("📊 Metrics middleware enabled")
+
 # Structured logging sits at the top of the stack to capture everything
 app.add_middleware(StructuredLoggingMiddleware)
 
