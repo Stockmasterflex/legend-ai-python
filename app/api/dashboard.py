@@ -11,6 +11,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # Resolve the dashboard template relative to the repository root so it works
 # locally and inside Railway containers.
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
+MARKET_VIZ_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "market_viz.html"
 TV_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "partials" / "tv_widget_templates.html"
 
 
@@ -122,6 +123,49 @@ async def dashboard_test():
     </body>
     </html>
     """
+
+
+@router.get("/viz", response_class=HTMLResponse)
+async def get_market_viz_dashboard():
+    """
+    Serve the Market Visualization Dashboard
+
+    Interactive visualizations including:
+    - Sector Heatmap (11 sectors with real-time performance)
+    - Stock Screener Heatmap (S&P 500 + NASDAQ 100)
+    - Pattern Distribution Map (detected patterns across universe)
+    - Correlation Matrix (identify leading/lagging stocks)
+    - Market Breadth Dashboard (advance/decline, new highs/lows, sector rotation)
+    """
+    try:
+        html_content = MARKET_VIZ_TEMPLATE_PATH.read_text(encoding="utf-8")
+        # Resolve build SHA for cache-busting
+        build_sha = _resolve_build_sha()
+        html_content = html_content.replace("{{ build_sha }}", build_sha)
+
+        logger.info("📊 Serving market visualization dashboard")
+        return html_content
+
+    except Exception as e:
+        logger.error(f"Error loading market viz dashboard: {e}")
+        return f"""
+        <html>
+        <head>
+            <title>Legend AI - Viz Dashboard Error</title>
+            <style>
+                body {{ background: #0f0f0f; color: #e5e7eb; font-family: sans-serif; padding: 40px; }}
+                .error {{ color: #ef4444; }}
+            </style>
+        </head>
+        <body>
+            <h1>Visualization Dashboard Error</h1>
+            <p class="error">Could not load visualization dashboard: {str(e)}</p>
+            <p><a href="/dashboard" style="color: #3b82f6;">← Back to Dashboard</a></p>
+        </body>
+        </html>
+        """
+
+
 def _resolve_build_sha() -> str:
     """Resolve a short build SHA for cache-busting and display.
 

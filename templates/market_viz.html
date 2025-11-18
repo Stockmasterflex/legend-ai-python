@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Market Visualization Dashboard - Legend AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v={{ build_sha }}" />
+    <link rel="stylesheet" href="/static/css/dashboard.css?v={{ build_sha }}" />
+
+    <!-- Plotly.js for interactive visualizations -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+
+    <style>
+        .viz-container {
+            background: rgba(15, 15, 15, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .viz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+            padding-bottom: 12px;
+        }
+
+        .viz-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin: 0;
+        }
+
+        .viz-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .viz-chart {
+            min-height: 500px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #e5e7eb;
+        }
+
+        .stat-value.positive {
+            color: #22c55e;
+        }
+
+        .stat-value.negative {
+            color: #ef4444;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            font-size: 18px;
+            color: #9ca3af;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #ef4444;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .select {
+            background: rgba(15, 15, 15, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-refresh:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-refresh:active {
+            transform: scale(0.95);
+        }
+
+        .last-updated {
+            font-size: 12px;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="app-shell">
+    <main class="container">
+        <header class="hero">
+            <div class="hero-content">
+                <div>
+                    <p class="eyebrow">Legend AI — Market Visualization Dashboard</p>
+                    <h1>Interactive Market Intelligence</h1>
+                    <p>Real-time sector analysis, stock screening, pattern detection & correlation insights</p>
+                </div>
+                <div class="hero-actions">
+                    <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+                    <button id="refresh-all" class="btn-refresh">🔄 Refresh All</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Market Breadth Dashboard -->
+        <section class="viz-container">
+            <div class="viz-header">
+                <h2 class="viz-title">📊 Market Breadth Dashboard</h2>
+                <div class="viz-controls">
+                    <span class="last-updated" id="breadth-updated">Loading...</span>
+                    <button class="btn-refresh" onclick="loadMarketBreadth()">🔄</button>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="stat-card">
+                    <div class="stat-label">Advance/Decline</div>
+                    <div class="stat-value" id="adv-decline">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">% Above 50 SMA</div>
+                    <div class="stat-value" id="above-50">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">% Above 200 SMA</div>
+                    <div class="stat-value" id="above-200">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New Highs (52W)</div>
+                    <div class="stat-value positive" id="new-highs">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New Lows (52W)</div>
+                    <div class="stat-value negative" id="new-lows">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Market Regime</div>
+                    <div class="stat-value" id="market-regime">--</div>
+                </div>
+            </div>
+
+            <div id="sector-rotation-wheel" class="viz-chart"></div>
+        </section>
+
+        <!-- Sector Heatmap -->
+        <section class="viz-container">
+            <div class="viz-header">
+                <h2 class="viz-title">🗺️ Sector Heatmap</h2>
+                <div class="viz-controls">
+                    <select id="sector-period" class="select" onchange="loadSectorHeatmap()">
+                        <option value="1day">Today</option>
+                        <option value="1week">1 Week</option>
+                        <option value="1month">1 Month</option>
+                    </select>
+                    <span class="last-updated" id="sector-updated">Loading...</span>
+                    <button class="btn-refresh" onclick="loadSectorHeatmap()">🔄</button>
+                </div>
+            </div>
+            <div id="sector-heatmap" class="viz-chart"></div>
+        </section>
+
+        <!-- Stock Screener Heatmap -->
+        <section class="viz-container">
+            <div class="viz-header">
+                <h2 class="viz-title">🔍 Stock Screener Heatmap</h2>
+                <div class="viz-controls">
+                    <select id="screener-universe" class="select" onchange="loadStockScreener()">
+                        <option value="sp500">S&P 500</option>
+                        <option value="nasdaq100">NASDAQ 100</option>
+                        <option value="all">All</option>
+                    </select>
+                    <select id="screener-color" class="select" onchange="loadStockScreener()">
+                        <option value="change">Color: % Change</option>
+                        <option value="rs_rating">Color: RS Rating</option>
+                        <option value="volume">Color: Volume</option>
+                    </select>
+                    <select id="screener-size" class="select" onchange="loadStockScreener()">
+                        <option value="market_cap">Size: Market Cap</option>
+                        <option value="volume">Size: Volume</option>
+                    </select>
+                    <span class="last-updated" id="screener-updated">Loading...</span>
+                    <button class="btn-refresh" onclick="loadStockScreener()">🔄</button>
+                </div>
+            </div>
+            <div id="stock-screener" class="viz-chart"></div>
+        </section>
+
+        <div class="grid-2">
+            <!-- Pattern Distribution Map -->
+            <section class="viz-container">
+                <div class="viz-header">
+                    <h2 class="viz-title">📈 Pattern Distribution</h2>
+                    <div class="viz-controls">
+                        <select id="pattern-universe" class="select" onchange="loadPatternDistribution()">
+                            <option value="sp500">S&P 500</option>
+                            <option value="nasdaq100">NASDAQ 100</option>
+                        </select>
+                        <button class="btn-refresh" onclick="loadPatternDistribution()">🔄</button>
+                    </div>
+                </div>
+                <div id="pattern-distribution" class="viz-chart"></div>
+            </section>
+
+            <!-- Correlation Matrix -->
+            <section class="viz-container">
+                <div class="viz-header">
+                    <h2 class="viz-title">🔗 Correlation Matrix</h2>
+                    <div class="viz-controls">
+                        <select id="correlation-period" class="select" onchange="loadCorrelationMatrix()">
+                            <option value="30">30 Days</option>
+                            <option value="60" selected>60 Days</option>
+                            <option value="90">90 Days</option>
+                        </select>
+                        <button class="btn-refresh" onclick="loadCorrelationMatrix()">🔄</button>
+                    </div>
+                </div>
+                <div id="correlation-matrix" class="viz-chart"></div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/js/market-viz.js?v={{ build_sha }}"></script>
+</body>
+</html>
