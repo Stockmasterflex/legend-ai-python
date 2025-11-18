@@ -102,3 +102,67 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class Portfolio(Base):
+    """Portfolio tracking for users"""
+    __tablename__ = "portfolios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), index=True, default="default")
+    name = Column(String(255), default="My Portfolio")
+    initial_capital = Column(Float, nullable=False)
+    cash_balance = Column(Float, nullable=False)
+    total_value = Column(Float, nullable=True)  # Cached total portfolio value
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class Position(Base):
+    """Individual position tracking with cost basis"""
+    __tablename__ = "positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    quantity = Column(Float, nullable=False)
+    avg_cost_basis = Column(Float, nullable=False)  # Average entry price
+    current_price = Column(Float, nullable=True)  # Latest market price
+    total_cost = Column(Float, nullable=False)  # Total invested
+    current_value = Column(Float, nullable=True)  # Current market value
+    unrealized_pnl = Column(Float, nullable=True)  # Unrealized profit/loss
+    unrealized_pnl_pct = Column(Float, nullable=True)  # Unrealized P&L percentage
+    stop_loss = Column(Float, nullable=True)
+    target_price = Column(Float, nullable=True)
+    position_size_pct = Column(Float, nullable=True)  # % of portfolio
+    status = Column(String(20), default="open", index=True)  # open, closed, partial
+    opened_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+    notes = Column(Text)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class TradeJournal(Base):
+    """Comprehensive trade journal with lessons learned"""
+    __tablename__ = "trade_journals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), index=True)
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    trade_type = Column(String(20), index=True)  # "entry", "exit", "add", "trim"
+    quantity = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
+    entry_reason = Column(Text)  # Why entered the trade
+    exit_reason = Column(Text, nullable=True)  # Why exited (if applicable)
+    setup_type = Column(String(100), nullable=True)  # Pattern/setup used
+    screenshot_url = Column(Text, nullable=True)  # Chart screenshot URL
+    lessons_learned = Column(Text, nullable=True)  # Post-trade reflection
+    emotions = Column(String(255), nullable=True)  # Emotional state during trade
+    tags = Column(Text, nullable=True)  # Comma-separated tags (win, loss, breakout, etc.)
+    r_multiple = Column(Float, nullable=True)  # Risk multiple achieved
+    profit_loss = Column(Float, nullable=True)  # Realized P&L for exits
+    profit_loss_pct = Column(Float, nullable=True)  # P&L percentage
+    trade_grade = Column(String(5), nullable=True)  # A+, A, B, C, D, F
+    mistakes_made = Column(Text, nullable=True)  # What went wrong
+    what_went_well = Column(Text, nullable=True)  # What went right
+    traded_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
