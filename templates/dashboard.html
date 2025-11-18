@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/themes.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/theme-toggle.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
@@ -19,6 +21,7 @@
                     <h1>Pattern Intelligence for Traders</h1>
                     <p>Scan patterns, analyze tickers, build plans. Fast.</p>
                 </div>
+                <div style="display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
                 <div class="hero-actions">
                     <label for="quick-symbol-input">Quick symbol</label>
                     <form class="quick-search" id="quick-scan-form">
@@ -41,6 +44,9 @@
                         </select>
                         <button id="quick-snapshot" class="btn btn-secondary">Snapshot</button>
                     </div>
+                </div>
+                <!-- Theme Toggle Component -->
+                <div id="theme-toggle-container"></div>
                 </div>
             </div>
         </header>
@@ -613,6 +619,8 @@
     <!--TV_WIDGET_TEMPLATES-->
 
     <!-- Load scripts at end of body for proper initialization -->
+    <script src="/static/js/theme-engine.js?v={{ build_sha }}"></script>
+    <script src="/static/js/theme-toggle.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
 </body>

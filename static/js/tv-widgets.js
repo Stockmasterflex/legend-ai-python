@@ -42,15 +42,38 @@
     window.history.replaceState({}, '', url.toString());
   }
 
+  function getTradingViewTheme() {
+    // Get theme from theme engine if available
+    if (window.themeEngine && typeof window.themeEngine.getTradingViewTheme === 'function') {
+      return window.themeEngine.getTradingViewTheme();
+    }
+    // Fallback to data attribute or default
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  }
+
   function replacePlaceholders(root, symbol) {
     if (!root) return;
+
+    // Get current theme
+    const tvTheme = getTradingViewTheme();
+
+    // Replace text nodes
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
     while (walker.nextNode()) {
       const node = walker.currentNode;
-      if (node.nodeValue && node.nodeValue.includes('__SYMBOL__')) {
-        node.nodeValue = node.nodeValue.replace(/__SYMBOL__/g, symbol);
+      if (node.nodeValue) {
+        if (node.nodeValue.includes('__SYMBOL__')) {
+          node.nodeValue = node.nodeValue.replace(/__SYMBOL__/g, symbol);
+        }
+        // Replace theme placeholders in JSON configs
+        if (node.nodeValue.includes('"theme":') || node.nodeValue.includes('"colorTheme":')) {
+          node.nodeValue = node.nodeValue.replace(/"theme":\s*"(dark|light)"/g, `"theme": "${tvTheme}"`);
+          node.nodeValue = node.nodeValue.replace(/"colorTheme":\s*"(dark|light)"/g, `"colorTheme": "${tvTheme}"`);
+        }
       }
     }
+
+    // Replace attributes
     root.querySelectorAll('*').forEach((el) => {
       Array.from(el.attributes).forEach((attr) => {
         if (attr.value.includes('__SYMBOL__')) {
@@ -89,6 +112,13 @@
       updateQueryParam(currentSymbol);
     }
     document.dispatchEvent(new CustomEvent('legend-tv:ready', { detail: { symbol: currentSymbol } }));
+
+    // Listen for theme changes to refresh widgets
+    window.addEventListener('themechange', () => {
+      if (initialized) {
+        renderTemplates(currentSymbol);
+      }
+    });
   }
 
   function setSymbol(rawSymbol, options = {}) {

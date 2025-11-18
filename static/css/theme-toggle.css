@@ -1,0 +1,392 @@
+/**
+ * Theme Toggle Component
+ * Accessible theme switcher with dropdown menu
+ */
+
+/* ============================================================================
+   Theme Toggle Button
+   ============================================================================ */
+
+.theme-toggle-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--glow-primary);
+}
+
+.theme-toggle-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(1px);
+}
+
+/* Icon styling */
+.theme-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.theme-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+/* Dropdown arrow */
+.theme-toggle-arrow {
+  width: 12px;
+  height: 12px;
+  transition: transform var(--transition-fast);
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle-btn[aria-expanded="true"] .theme-toggle-arrow {
+  transform: rotate(180deg);
+}
+
+/* ============================================================================
+   Theme Dropdown Menu
+   ============================================================================ */
+
+.theme-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  right: 0;
+  min-width: 220px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all var(--transition-base);
+  z-index: var(--z-dropdown);
+  overflow: hidden;
+}
+
+.theme-dropdown.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Backdrop blur effect for dropdown */
+.theme-dropdown::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: -1;
+}
+
+/* Dropdown header */
+.theme-dropdown-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.theme-dropdown-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.theme-dropdown-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* ============================================================================
+   Theme Options List
+   ============================================================================ */
+
+.theme-options {
+  list-style: none;
+  margin: 0;
+  padding: var(--spacing-xs);
+}
+
+.theme-option {
+  margin: 0;
+}
+
+.theme-option-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.theme-option-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.theme-option-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+.theme-option-btn.active {
+  background: var(--color-bg-hover);
+  border-left: 3px solid var(--color-primary);
+  padding-left: calc(var(--spacing-md) - 3px);
+}
+
+/* Theme option icon */
+.theme-option-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.theme-option-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+/* Color preview for themes */
+.theme-color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+}
+
+.theme-color-preview span {
+  width: 100%;
+  height: 100%;
+}
+
+/* Theme option content */
+.theme-option-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-option-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  margin: 0 0 2px 0;
+}
+
+.theme-option-description {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Active indicator */
+.theme-option-check {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all var(--transition-fast);
+}
+
+.theme-option-btn.active .theme-option-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ============================================================================
+   System Preference Option
+   ============================================================================ */
+
+.theme-system-option {
+  border-top: 1px solid var(--color-border-default);
+  padding-top: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+/* ============================================================================
+   Compact Theme Toggle (Icon Only)
+   ============================================================================ */
+
+.theme-toggle-compact {
+  width: 40px;
+  height: 40px;
+  padding: var(--spacing-sm);
+  justify-content: center;
+}
+
+.theme-toggle-compact .theme-label {
+  display: none;
+}
+
+.theme-toggle-compact .theme-toggle-arrow {
+  display: none;
+}
+
+/* ============================================================================
+   Mobile Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .theme-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    min-width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    transform: translateY(100%);
+  }
+
+  .theme-dropdown.active {
+    transform: translateY(0);
+  }
+
+  /* Mobile backdrop */
+  .theme-dropdown-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-base);
+    z-index: calc(var(--z-dropdown) - 1);
+  }
+
+  .theme-dropdown-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* ============================================================================
+   High Contrast Adjustments
+   ============================================================================ */
+
+[data-theme="high-contrast"] .theme-toggle-btn {
+  border-width: 2px;
+}
+
+[data-theme="high-contrast"] .theme-dropdown {
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 255, 255, 0.2);
+}
+
+[data-theme="high-contrast"] .theme-option-btn:focus-visible {
+  outline-width: 3px;
+}
+
+/* ============================================================================
+   Animation Keyframes
+   ============================================================================ */
+
+@keyframes theme-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.theme-switching .theme-icon {
+  animation: theme-pulse 0.6s ease-in-out;
+}
+
+/* ============================================================================
+   Custom Theme Builder Badge
+   ============================================================================ */
+
+.custom-theme-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: var(--spacing-xs);
+}
+
+/* ============================================================================
+   Loading State
+   ============================================================================ */
+
+.theme-loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.theme-loading .theme-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

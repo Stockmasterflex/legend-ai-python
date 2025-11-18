@@ -1,0 +1,544 @@
+/**
+ * Theme System CSS
+ * Professional theming with smooth transitions
+ * WCAG AA compliant color schemes
+ */
+
+/* ============================================================================
+   Theme Transition Animation
+   ============================================================================ */
+
+:root {
+  /* Default theme transition timing */
+  --theme-transition-duration: 300ms;
+  --theme-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Border widths (can be overridden by high-contrast) */
+  --border-width-default: 1px;
+  --focus-outline-width: 2px;
+}
+
+/* Smooth transitions for theme changes */
+html {
+  transition: background-color var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+body {
+  transition: background var(--theme-transition-duration) var(--theme-transition-timing),
+              color var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+/* Transition all color-based properties */
+* {
+  transition: background-color var(--theme-transition-duration) var(--theme-transition-timing),
+              border-color var(--theme-transition-duration) var(--theme-transition-timing),
+              color var(--theme-transition-duration) var(--theme-transition-timing),
+              box-shadow var(--theme-transition-duration) var(--theme-transition-timing),
+              fill var(--theme-transition-duration) var(--theme-transition-timing),
+              stroke var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+/* Don't transition transforms, opacity, or layout properties */
+*:not(html):not(body) {
+  transition-property: background-color, border-color, color, box-shadow, fill, stroke;
+}
+
+/* ============================================================================
+   Default Theme (Dark Mode - OLED Friendly)
+   Set as defaults in :root for fallback
+   ============================================================================ */
+
+:root,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #1a1a1a;
+  --color-bg-tertiary: #2a2a2a;
+  --color-bg-card: #141414;
+  --color-bg-hover: #252525;
+  --color-bg-elevated: #1a1a1a;
+
+  /* Primary colors */
+  --color-primary: #00ff88;
+  --color-primary-hover: #00dd77;
+  --color-primary-light: #33ff99;
+  --color-primary-dark: #00cc66;
+
+  /* Secondary colors */
+  --color-secondary: #ff0088;
+  --color-secondary-hover: #dd0077;
+  --color-secondary-light: #ff3399;
+  --color-secondary-dark: #cc0066;
+
+  /* Neon Accents */
+  --color-neon-purple: #9b5cff;
+  --color-neon-aqua: #20f0ff;
+  --color-neon-magenta: #ff2ecd;
+  --color-neon-lime: #a6ff00;
+  --color-accent-purple: #9b5cff;
+  --color-accent-aqua: #20f0ff;
+  --color-accent-lime: #a6ff00;
+  --color-accent-magenta: #ff2ecd;
+
+  /* Text colors (WCAG AA compliant) */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #b0b0b0;
+  --color-text-tertiary: #808080;
+  --color-text-muted: #666666;
+  --color-text-inverse: #0a0a0a;
+
+  /* Semantic colors */
+  --color-success: #00ff88;
+  --color-warning: #ffaa00;
+  --color-error: #ff0044;
+  --color-info: #20f0ff;
+
+  /* Border colors */
+  --color-border-subtle: #1a1a1a;
+  --color-border-default: #333333;
+  --color-border-strong: #444444;
+  --color-border-primary: #333333;
+  --color-border-secondary: #444444;
+  --color-border-focus: #00ff88;
+
+  /* Chart colors (optimized for dark backgrounds) */
+  --color-chart-bullish: #00ff88;
+  --color-chart-bearish: #ff0044;
+  --color-chart-grid: #1a1a1a;
+  --color-chart-text: #b0b0b0;
+  --color-chart-axis: #333333;
+
+  /* Overlay colors */
+  --color-overlay: rgba(10, 10, 10, 0.85);
+  --color-overlay-light: rgba(10, 10, 10, 0.5);
+  --color-glass-bg: rgba(20, 20, 20, 0.7);
+
+  /* Glow effects for dark mode */
+  --glow-primary: 0 0 20px rgba(0, 255, 136, 0.3);
+  --glow-secondary: 0 0 20px rgba(255, 0, 136, 0.3);
+  --glow-purple: 0 0 20px rgba(155, 92, 255, 0.4);
+  --glow-aqua: 0 0 20px rgba(32, 240, 255, 0.4);
+}
+
+/* ============================================================================
+   Light Theme
+   Professional and clean for daytime use
+   ============================================================================ */
+
+[data-theme="light"] {
+  /* Backgrounds */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f5f5;
+  --color-bg-tertiary: #e8e8e8;
+  --color-bg-card: #fafafa;
+  --color-bg-hover: #f0f0f0;
+  --color-bg-elevated: #ffffff;
+
+  /* Primary colors */
+  --color-primary: #00a86b;
+  --color-primary-hover: #008855;
+  --color-primary-light: #33bb88;
+  --color-primary-dark: #006644;
+
+  /* Secondary colors */
+  --color-secondary: #c91f5e;
+  --color-secondary-hover: #a81850;
+  --color-secondary-light: #d94178;
+  --color-secondary-dark: #8f1543;
+
+  /* Accent colors (adjusted for light backgrounds) */
+  --color-neon-purple: #7a3dcf;
+  --color-neon-aqua: #0099aa;
+  --color-neon-magenta: #c91f5e;
+  --color-neon-lime: #7cb300;
+  --color-accent-purple: #7a3dcf;
+  --color-accent-aqua: #0099aa;
+  --color-accent-lime: #7cb300;
+  --color-accent-magenta: #c91f5e;
+
+  /* Text colors (WCAG AA compliant) */
+  --color-text-primary: #111111;
+  --color-text-secondary: #444444;
+  --color-text-tertiary: #666666;
+  --color-text-muted: #888888;
+  --color-text-inverse: #ffffff;
+
+  /* Semantic colors */
+  --color-success: #00a86b;
+  --color-warning: #cc8800;
+  --color-error: #cc0033;
+  --color-info: #0099aa;
+
+  /* Border colors */
+  --color-border-subtle: #f0f0f0;
+  --color-border-default: #d0d0d0;
+  --color-border-strong: #b0b0b0;
+  --color-border-primary: #d0d0d0;
+  --color-border-secondary: #b0b0b0;
+  --color-border-focus: #00a86b;
+
+  /* Chart colors (optimized for light backgrounds) */
+  --color-chart-bullish: #00a86b;
+  --color-chart-bearish: #cc0033;
+  --color-chart-grid: #f0f0f0;
+  --color-chart-text: #444444;
+  --color-chart-axis: #d0d0d0;
+
+  /* Overlay colors */
+  --color-overlay: rgba(255, 255, 255, 0.85);
+  --color-overlay-light: rgba(255, 255, 255, 0.5);
+  --color-glass-bg: rgba(250, 250, 250, 0.7);
+
+  /* Glow effects for light mode (more subtle) */
+  --glow-primary: 0 0 10px rgba(0, 168, 107, 0.15);
+  --glow-secondary: 0 0 10px rgba(201, 31, 94, 0.15);
+  --glow-purple: 0 0 10px rgba(122, 61, 207, 0.15);
+  --glow-aqua: 0 0 10px rgba(0, 153, 170, 0.15);
+
+  /* Light theme body gradient */
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+}
+
+/* Update body for light theme */
+[data-theme="light"] body {
+  background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+}
+
+/* ============================================================================
+   High Contrast Theme
+   Maximum accessibility for users with visual impairments
+   ============================================================================ */
+
+[data-theme="high-contrast"] {
+  /* Backgrounds (pure black) */
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #000000;
+  --color-bg-tertiary: #1a1a1a;
+  --color-bg-card: #000000;
+  --color-bg-hover: #1a1a1a;
+  --color-bg-elevated: #000000;
+
+  /* Primary colors (high contrast) */
+  --color-primary: #00ffff;
+  --color-primary-hover: #00dddd;
+  --color-primary-light: #33ffff;
+  --color-primary-dark: #00bbbb;
+
+  /* Secondary colors */
+  --color-secondary: #ffff00;
+  --color-secondary-hover: #dddd00;
+  --color-secondary-light: #ffff33;
+  --color-secondary-dark: #bbbb00;
+
+  /* Accent colors (maximum contrast) */
+  --color-neon-purple: #dd88ff;
+  --color-neon-aqua: #00ffff;
+  --color-neon-magenta: #ff00ff;
+  --color-neon-lime: #ccff00;
+  --color-accent-purple: #dd88ff;
+  --color-accent-aqua: #00ffff;
+  --color-accent-lime: #ccff00;
+  --color-accent-magenta: #ff00ff;
+
+  /* Text colors (maximum contrast) */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #ffffff;
+  --color-text-tertiary: #dddddd;
+  --color-text-muted: #bbbbbb;
+  --color-text-inverse: #000000;
+
+  /* Semantic colors */
+  --color-success: #00ff00;
+  --color-warning: #ffff00;
+  --color-error: #ff0000;
+  --color-info: #00ffff;
+
+  /* Border colors (high contrast) */
+  --color-border-subtle: #666666;
+  --color-border-default: #ffffff;
+  --color-border-strong: #ffffff;
+  --color-border-primary: #ffffff;
+  --color-border-secondary: #cccccc;
+  --color-border-focus: #00ffff;
+
+  /* Chart colors */
+  --color-chart-bullish: #00ff00;
+  --color-chart-bearish: #ff0000;
+  --color-chart-grid: #333333;
+  --color-chart-text: #ffffff;
+  --color-chart-axis: #ffffff;
+
+  /* Overlay colors */
+  --color-overlay: rgba(0, 0, 0, 0.95);
+  --color-overlay-light: rgba(0, 0, 0, 0.7);
+  --color-glass-bg: rgba(0, 0, 0, 0.85);
+
+  /* Increased border widths for better visibility */
+  --border-width-default: 2px;
+  --focus-outline-width: 4px;
+
+  /* Stronger glow effects */
+  --glow-primary: 0 0 30px rgba(0, 255, 255, 0.6);
+  --glow-secondary: 0 0 30px rgba(255, 255, 0, 0.6);
+  --glow-purple: 0 0 30px rgba(221, 136, 255, 0.6);
+  --glow-aqua: 0 0 30px rgba(0, 255, 255, 0.6);
+}
+
+/* Update body for high contrast theme */
+[data-theme="high-contrast"] body {
+  background: #000000;
+}
+
+/* Stronger focus indicators for high contrast */
+[data-theme="high-contrast"] *:focus-visible {
+  outline-width: var(--focus-outline-width);
+  outline-color: var(--color-border-focus);
+  outline-offset: 3px;
+}
+
+/* Stronger borders in high contrast mode */
+[data-theme="high-contrast"] .card,
+[data-theme="high-contrast"] .btn,
+[data-theme="high-contrast"] input,
+[data-theme="high-contrast"] select,
+[data-theme="high-contrast"] textarea {
+  border-width: var(--border-width-default);
+}
+
+/* ============================================================================
+   Theme-Specific Component Adjustments
+   ============================================================================ */
+
+/* Adjust glass effect for light theme */
+[data-theme="light"] .glass-card,
+[data-theme="light"] .glass-panel {
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border-default);
+}
+
+/* Adjust shadows for light theme */
+[data-theme="light"] .card,
+[data-theme="light"] .btn,
+[data-theme="light"] .modal {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Disable glass effects in high contrast mode */
+[data-theme="high-contrast"] .glass-card,
+[data-theme="high-contrast"] .glass-panel {
+  background: var(--color-bg-card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: var(--border-width-default) solid var(--color-border-primary);
+}
+
+/* Remove glow effects in high contrast mode for better clarity */
+[data-theme="high-contrast"] .glow {
+  box-shadow: none;
+}
+
+/* Ensure good contrast for links in all themes */
+[data-theme="light"] a {
+  color: #0066cc;
+  font-weight: 500;
+}
+
+[data-theme="light"] a:hover {
+  color: #004499;
+  text-decoration: underline;
+}
+
+[data-theme="high-contrast"] a {
+  color: #00ffff;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+[data-theme="high-contrast"] a:hover {
+  color: #ffff00;
+}
+
+/* ============================================================================
+   Image and Media Adjustments
+   ============================================================================ */
+
+/* Add dark overlay to images in dark themes */
+[data-theme="dark"] img:not([data-theme-ignore]),
+[data-theme="high-contrast"] img:not([data-theme-ignore]) {
+  filter: brightness(0.9);
+}
+
+/* Light theme images stay bright */
+[data-theme="light"] img:not([data-theme-ignore]) {
+  filter: brightness(1);
+}
+
+/* ============================================================================
+   Chart and Data Visualization Theming
+   ============================================================================ */
+
+/* Chart containers adapt to theme */
+.chart-container {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+}
+
+/* Grid lines use theme colors */
+.chart-grid line {
+  stroke: var(--color-chart-grid);
+}
+
+/* Chart text uses theme colors */
+.chart-label,
+.chart-axis-label {
+  fill: var(--color-chart-text);
+}
+
+/* ============================================================================
+   Code and Syntax Highlighting Theme Support
+   ============================================================================ */
+
+/* Light theme code blocks */
+[data-theme="light"] code,
+[data-theme="light"] pre {
+  background: #f5f5f5;
+  color: #111111;
+  border: 1px solid #d0d0d0;
+}
+
+/* Dark theme code blocks */
+[data-theme="dark"] code,
+[data-theme="dark"] pre {
+  background: #1a1a1a;
+  color: #b0b0b0;
+  border: 1px solid #333333;
+}
+
+/* High contrast code blocks */
+[data-theme="high-contrast"] code,
+[data-theme="high-contrast"] pre {
+  background: #000000;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+}
+
+/* ============================================================================
+   Accessibility Enhancements
+   ============================================================================ */
+
+/* Ensure focus is always visible */
+*:focus-visible {
+  outline: var(--focus-outline-width) solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* High contrast mode gets extra focus visibility */
+[data-theme="high-contrast"] *:focus-visible {
+  outline-width: var(--focus-outline-width);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(0, 255, 255, 0.2);
+}
+
+/* Selection colors adapt to theme */
+[data-theme="light"] ::selection {
+  background-color: #0099aa;
+  color: #ffffff;
+}
+
+[data-theme="high-contrast"] ::selection {
+  background-color: #00ffff;
+  color: #000000;
+}
+
+/* ============================================================================
+   Print Styles (Always use light theme for printing)
+   ============================================================================ */
+
+@media print {
+  :root {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #ffffff;
+    --color-text-primary: #000000;
+    --color-text-secondary: #333333;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   Reduced Motion Support
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html,
+  body {
+    transition: none !important;
+  }
+}
+
+/* ============================================================================
+   Theme-Specific Scrollbar
+   ============================================================================ */
+
+/* Dark theme scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #333333;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* Light theme scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #b0b0b0;
+}
+
+/* High contrast scrollbar */
+[data-theme="high-contrast"] ::-webkit-scrollbar-track {
+  background: #000000;
+  border: 1px solid #ffffff;
+}
+
+[data-theme="high-contrast"] ::-webkit-scrollbar-thumb {
+  background: #ffffff;
+  border: 1px solid #000000;
+}
+
+[data-theme="high-contrast"] ::-webkit-scrollbar-thumb:hover {
+  background: #00ffff;
+}
