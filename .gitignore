@@ -48,7 +48,10 @@ logs/
 # Testing
 .coverage
 .pytest_cache/
+.pytest_tmp/
 htmlcov/
+coverage.json
+coverage-*.json
 
 # Temporary files
 *.tmp
