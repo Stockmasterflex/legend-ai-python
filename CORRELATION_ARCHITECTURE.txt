@@ -1,0 +1,208 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           TICKER CORRELATION ANALYSIS - IMPLEMENTATION ARCHITECTURE          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ CURRENT SYSTEM ARCHITECTURE                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  FastAPI Application (app/main.py)                                 │   │
+│  │  ├─ 15 API Routers                                                 │   │
+│  │  ├─ 60+ Endpoints                                                  │   │
+│  │  └─ 3 Middleware Components                                        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│         │                           │                        │              │
+│         ▼                           ▼                        ▼              │
+│  ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐     │
+│  │  API ROUTERS     │    │   SERVICES      │    │  CORE LOGIC      │     │
+│  ├──────────────────┤    ├─────────────────┤    ├──────────────────┤     │
+│  │ patterns.py      │    │market_data.py   │    │pattern_detector  │     │
+│  │ scan.py          │    │universe.py      │    │detector_base     │     │
+│  │ charts.py        │    │scanner.py       │    │indicators.py     │     │
+│  │ market.py        │    │charting.py      │    │detectors/        │     │
+│  │ universe.py      │    │cache.py         │    │  vcp_detector    │     │
+│  │ analyze.py       │    │risk_calculator  │    │  cup_handle      │     │
+│  │ watchlist.py     │    │alerts.py        │    │  triangle        │     │
+│  │ ... (8 more)     │    │... (9 more)     │    │  ... (50+ pats)  │     │
+│  └──────────────────┘    └─────────────────┘    └──────────────────┘     │
+│                                 │                                           │
+│                                 ▼                                           │
+│                        ┌──────────────────┐                                │
+│                        │  Redis Cache     │                                │
+│                        │  (1-24h TTL)     │                                │
+│                        └──────────────────┘                                │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PROPOSED CORRELATION ANALYSIS ADDITIONS (NEW)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  NEW: app/services/correlation_analysis.py                          │  │
+│  │  ├─ class CorrelationAnalysisService                                │  │
+│  │  ├─ async calculate_pair_correlation(ticker1, ticker2, period)      │  │
+│  │  ├─ async calculate_correlation_matrix(tickers, period)             │  │
+│  │  ├─ async get_sector_correlations(sector)                           │  │
+│  │  └─ async detect_correlation_clusters(tickers)                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  NEW: app/api/correlation.py                                        │  │
+│  │  ├─ POST /api/correlation/pair-analysis                             │  │
+│  │  ├─ POST /api/correlation/matrix                                    │  │
+│  │  ├─ GET  /api/correlation/sector-groups?sector=Technology           │  │
+│  │  ├─ POST /api/correlation/cluster-analysis                          │  │
+│  │  └─ GET  /api/watchlist/{id}/correlations?min_threshold=0.7         │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  NEW: app/core/correlation_stats.py                                 │  │
+│  │  ├─ calculate_pearson_correlation(s1, s2)                           │  │
+│  │  ├─ calculate_spearman_correlation(s1, s2)                          │  │
+│  │  ├─ calculate_rolling_correlation(d1, d2, window=20)                │  │
+│  │  ├─ detect_correlation_breakpoints(s1, s2)                          │  │
+│  │  └─ filter_by_correlation(patterns, threshold)                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ DATA FLOW: CORRELATION ANALYSIS REQUEST                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  1. Client Request                                                          │
+│     POST /api/correlation/pair-analysis                                     │
+│     {ticker1: "AAPL", ticker2: "MSFT", lookback_days: 100}                 │
+│                 │                                                            │
+│                 ▼                                                            │
+│  2. Check Redis Cache                                                       │
+│     Key: correlation:AAPL:MSFT:100:pearson                                 │
+│     TTL: 1 hour                                                             │
+│                 │                                                            │
+│     ┌───────────┴─────────────┐                                             │
+│     │                         │                                             │
+│  HIT│                    MISS │                                             │
+│     │                         │                                             │
+│     ▼                         ▼                                             │
+│  Return cached          3. Fetch Market Data                                │
+│  result                    MarketDataService.get_time_series()              │
+│                            - AAPL (100 days)                                │
+│                            - MSFT (100 days)                                │
+│                                 │                                           │
+│                                 ▼                                           │
+│                         4. Convert to DataFrame & Align                     │
+│                            pd.merge(df1, df2, on='date')                   │
+│                                 │                                           │
+│                                 ▼                                           │
+│                         5. Calculate Correlations                            │
+│                            ├─ Pearson (linear)                              │
+│                            ├─ Spearman (rank)                               │
+│                            ├─ Kendall τ (ordinal)                           │
+│                            ├─ Rolling (dynamic)                             │
+│                            └─ Breakpoint detection                          │
+│                                 │                                           │
+│                                 ▼                                           │
+│                         6. Statistical Tests                                 │
+│                            ├─ P-value (significance)                        │
+│                            ├─ R-squared                                     │
+│                            └─ 95% Confidence intervals                      │
+│                                 │                                           │
+│                                 ▼                                           │
+│                         7. Cache Result (1 hour)                            │
+│                                 │                                           │
+│                                 ▼                                           │
+│  Return Complete Report                                                     │
+│  {                                                                          │
+│    pair: "AAPL:MSFT",                                                      │
+│    correlations: {                                                          │
+│      pearson: 0.78,                                                        │
+│      spearman: 0.81,                                                       │
+│      kendall: 0.71                                                         │
+│    },                                                                       │
+│    p_value: 2.3e-15,                                                       │
+│    r_squared: 0.61,                                                        │
+│    rolling_avg: 0.75,                                                      │
+│    breakpoints: [...]                                                      │
+│  }                                                                          │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ INTEGRATION WITH EXISTING SYSTEMS                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  Integration Point 1: Market Breadth Enhancement                            │
+│  ─────────────────────────────────────────────────────                      │
+│  app/api/market.py                                                          │
+│  ├─ Current: Market breadth (A/D ratio, % above EMA)                       │
+│  └─ Enhanced: Add correlation heatmap for sectors                           │
+│                                                                               │
+│  Integration Point 2: Pattern Filtering                                     │
+│  ──────────────────────────────────────                                     │
+│  app/api/patterns.py                                                        │
+│  ├─ Current: Return all detected patterns                                   │
+│  └─ Enhanced: Filter by correlation (avoid redundant signals)               │
+│      POST /api/patterns/detect?filter_correlation=true&max_corr=0.6        │
+│                                                                               │
+│  Integration Point 3: Watchlist Enhancement                                 │
+│  ────────────────────────────────────────                                   │
+│  app/api/watchlist.py                                                       │
+│  ├─ Current: CRUD operations on watchlists                                  │
+│  └─ Enhanced: Calculate within-list correlations                            │
+│      GET /api/watchlist/{id}/correlations                                   │
+│                                                                               │
+│  Integration Point 4: Advanced Analysis                                     │
+│  ──────────────────────────────────                                         │
+│  app/routers/advanced_analysis.py                                           │
+│  ├─ Current: Patterns, Trendlines, Fibonacci                                │
+│  └─ Enhanced: Add correlation analysis endpoints                            │
+│      /api/advanced/correlation/*                                            │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KEY FEATURES TO IMPLEMENT                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│ Phase 1: Core Pair Analysis (Week 1-2)                                      │
+│ ─────────────────────────────────────                                       │
+│ ✓ Pearson correlation                                                       │
+│ ✓ Spearman correlation                                                      │
+│ ✓ Kendall's τ (leverage existing impl in detector_base.py)                 │
+│ ✓ P-value calculation                                                       │
+│ ✓ Statistical significance tests                                            │
+│ ✓ Redis caching (1 hour TTL)                                               │
+│                                                                               │
+│ Phase 2: Matrix & Groups (Week 2-3)                                         │
+│ ───────────────────────────────                                             │
+│ ✓ Correlation matrices (up to 100 tickers)                                  │
+│ ✓ Sector-based correlation groups                                           │
+│ ✓ Industry correlation tracking                                             │
+│ ✓ Heatmap data format                                                       │
+│                                                                               │
+│ Phase 3: Advanced Analysis (Week 3-4)                                       │
+│ ───────────────────────────────────                                         │
+│ ✓ Rolling correlation (dynamic, window-based)                               │
+│ ✓ Correlation breakpoints (regime changes)                                  │
+│ ✓ Clustering (K-means based on correlation distance)                        │
+│ ✓ Pattern filtering (remove highly correlated signals)                      │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ DEPENDENCIES & IMPORTS NEEDED                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│ ALREADY AVAILABLE:                                                          │
+│ ✓ pandas (2.2.3) → DataFrame.corr(), rolling()                              │
+│ ✓ numpy (1.26.4) → vectorized operations                                    │
+│ ✓ scipy (1.14.1) → pearsonr, spearmanr, kendalltau, zscore                 │
+│ ✓ redis (5.2.1) → caching                                                  │
+│ ✓ fastapi (0.115.6) → API endpoints                                         │
+│                                                                               │
+│ NO ADDITIONAL PACKAGES NEEDED!                                              │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
