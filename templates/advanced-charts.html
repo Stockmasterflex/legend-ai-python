@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Trading Charts - Legend AI</title>
+    <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f0f1e;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: #1a1a2e;
+            padding: 15px 30px;
+            border-bottom: 3px solid #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #00ff41;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.8);
+        }
+
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            color: #00bfff;
+        }
+
+        .chart-section {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        #advanced-charts-container {
+            flex: 1;
+        }
+
+        .info-panel {
+            width: 300px;
+            background: #1a1a2e;
+            border-left: 2px solid #00ff41;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .info-panel h2 {
+            color: #00ff41;
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 8px;
+        }
+
+        .info-panel h3 {
+            color: #00bfff;
+            font-size: 14px;
+            margin: 15px 0 8px 0;
+        }
+
+        .info-panel ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .info-panel li {
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .feature-badge {
+            display: inline-block;
+            background: #16213e;
+            border: 1px solid #00ff41;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin: 2px;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a2e;
+            border: 2px solid #00ff41;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+            z-index: 9999;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #16213e;
+            border-top: 4px solid #00ff41;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ Advanced Trading Charts</h1>
+            <p>Professional-grade charting with custom indicators and backtesting</p>
+        </div>
+
+        <!-- Main Chart Section -->
+        <div class="chart-section">
+            <div id="advanced-charts-container"></div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <h2>📊 Features</h2>
+
+                <h3>Chart Types</h3>
+                <ul>
+                    <li><strong>Renko:</strong> Price movement charts filtering time</li>
+                    <li><strong>Kagi:</strong> Japanese trend reversal charts</li>
+                    <li><strong>Point & Figure:</strong> X and O charts</li>
+                    <li><strong>Market Profile:</strong> Volume distribution analysis</li>
+                    <li><strong>Footprint:</strong> Bid/ask volume at price levels</li>
+                </ul>
+
+                <h3>Drawing Tools</h3>
+                <ul>
+                    <li>Trend lines with extension</li>
+                    <li>Fibonacci retracements & extensions</li>
+                    <li>Harmonic pattern detection</li>
+                    <li>Support/resistance zones</li>
+                    <li>Custom shapes & annotations</li>
+                </ul>
+
+                <h3>Indicators</h3>
+                <ul>
+                    <li>Built-in: SMA, EMA, RSI, MACD, BB, ATR, Stochastic, ADX, OBV</li>
+                    <li>Custom indicator builder with formulas</li>
+                    <li>Combine multiple indicators</li>
+                    <li>Real-time calculations</li>
+                </ul>
+
+                <h3>Advanced Features</h3>
+                <span class="feature-badge">Alerts</span>
+                <span class="feature-badge">Backtesting</span>
+                <span class="feature-badge">WebGL</span>
+                <span class="feature-badge">Lazy Loading</span>
+                <span class="feature-badge">Export</span>
+
+                <h3>Export Options</h3>
+                <ul>
+                    <li>High-res PNG/JPG (up to 4K)</li>
+                    <li>Vector SVG for editing</li>
+                    <li>PDF reports</li>
+                    <li>Video recording (WebM)</li>
+                    <li>CSV data export</li>
+                </ul>
+
+                <h3>Keyboard Shortcuts</h3>
+                <ul>
+                    <li><strong>Space:</strong> Pan mode</li>
+                    <li><strong>Scroll:</strong> Zoom in/out</li>
+                    <li><strong>Esc:</strong> Cancel drawing</li>
+                    <li><strong>Del:</strong> Delete selection</li>
+                    <li><strong>Ctrl+Z:</strong> Undo</li>
+                    <li><strong>Ctrl+S:</strong> Export PNG</li>
+                </ul>
+
+                <h3>Performance</h3>
+                <ul>
+                    <li>Canvas rendering for 60 FPS</li>
+                    <li>WebGL acceleration for 1M+ data points</li>
+                    <li>Data decimation for smooth zooming</li>
+                    <li>Lazy loading for historical data</li>
+                </ul>
+
+                <h3>API Documentation</h3>
+                <ul>
+                    <li><code>POST /api/charts/data/ohlcv</code></li>
+                    <li><code>POST /api/charts/data/renko</code></li>
+                    <li><code>POST /api/charts/data/kagi</code></li>
+                    <li><code>POST /api/charts/indicators/calculate</code></li>
+                    <li><code>POST /api/charts/backtest/run</code></li>
+                </ul>
+
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #00ff41;">
+                    <p style="font-size: 11px; color: #00bfff;">
+                        💡 <strong>Tip:</strong> Use Ctrl+Click for multi-selection and right-click for context menus.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <p style="color: #00ff41; margin-top: 15px; text-align: center;">Loading chart data...</p>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Core Chart Libraries -->
+    <script src="/static/js/charting/chart-core.js"></script>
+
+    <!-- Chart Types -->
+    <script src="/static/js/charting/chart-types/renko.js"></script>
+    <script src="/static/js/charting/chart-types/kagi.js"></script>
+    <script src="/static/js/charting/chart-types/point-figure.js"></script>
+    <script src="/static/js/charting/chart-types/market-profile.js"></script>
+    <script src="/static/js/charting/chart-types/footprint.js"></script>
+
+    <!-- Annotations -->
+    <script src="/static/js/charting/annotations/annotation-tools.js"></script>
+    <script src="/static/js/charting/annotations/harmonic-patterns.js"></script>
+
+    <!-- Indicators -->
+    <script src="/static/js/charting/indicators/indicator-builder.js"></script>
+    <script src="/static/js/charting/indicators/alert-system.js"></script>
+    <script src="/static/js/charting/indicators/backtesting-engine.js"></script>
+
+    <!-- Performance -->
+    <script src="/static/js/charting/performance/webgl-renderer.js"></script>
+
+    <!-- Export -->
+    <script src="/static/js/charting/export/export-manager.js"></script>
+
+    <!-- UI Controller -->
+    <script src="/static/js/charting/chart-ui-controller.js"></script>
+
+    <!-- External Libraries (Optional, for enhanced features) -->
+    <!-- Uncomment to enable PDF export -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> -->
+
+    <script>
+        // Global error handler
+        window.addEventListener('error', (e) => {
+            console.error('Chart error:', e.error);
+        });
+
+        // Show loading indicator
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        // Initialize chart UI after page load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Advanced Charts UI initialized');
+
+            // Hide loading after initialization
+            setTimeout(hideLoading, 500);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+S: Export PNG
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                if (window.chartUI) {
+                    window.chartUI.exportChart('png');
+                }
+            }
+
+            // Esc: Cancel drawing
+            if (e.key === 'Escape') {
+                if (window.chartUI && window.chartUI.currentChart) {
+                    const chart = window.chartUI.currentChart;
+                    if (chart.annotationManager) {
+                        chart.annotationManager.setTool(null);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
