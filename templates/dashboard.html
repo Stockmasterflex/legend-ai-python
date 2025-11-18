@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
+    <link rel="stylesheet" href="/static/css/interactive-chart.css?v=__VERSION__" />
 </head>
 <body class="app-shell" data-default-tv-symbol="NASDAQ:AAPL">
     <main class="container" data-dashboard-shell>
@@ -613,6 +614,12 @@
     <!--TV_WIDGET_TEMPLATES-->
 
     <!-- Load scripts at end of body for proper initialization -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <script defer src="/static/js/chart-indicators.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/chart-drawings.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/chart-annotations.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/interactive-chart.js?v={{ build_sha }}"></script>
+    <script defer src="/static/js/chart-integration.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
 </body>

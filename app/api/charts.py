@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
 import time
+import httpx
+from datetime import datetime, timedelta
 
 from app.services.charting import get_charting_service
 from app.core.chart_generator import ChartGenerator, ChartConfig, get_chart_generator
@@ -420,3 +422,141 @@ async def generate_preview_batch(request: PreviewBatchRequest):
         failed=failed,
         processing_time=round(processing_time, 2)
     )
+
+
+@router.get("/data")
+async def get_chart_data(
+    symbol: str = Query(..., description="Stock ticker symbol"),
+    timeframe: str = Query("1D", description="Timeframe (1D, 1W, 1M)")
+):
+    """
+    Get raw OHLCV data for interactive charts
+
+    Returns candlestick and volume data for use with Lightweight Charts.
+    Uses Yahoo Finance as the data source with caching.
+
+    Args:
+        symbol: Stock ticker symbol
+        timeframe: Chart timeframe (1D, 1W, 1M)
+
+    Returns:
+        JSON with candles and volume arrays formatted for Lightweight Charts
+    """
+    try:
+        cache = get_cache_service()
+
+        # Try cache first (15 minute TTL for market data)
+        cache_key = f"chartdata:{symbol}:{timeframe}"
+        try:
+            cached_data = await cache.get(cache_key)
+            if cached_data:
+                logger.info(f"📊 Chart data cache hit for {symbol} {timeframe}")
+                return cached_data
+        except Exception as cache_error:
+            logger.warning(f"⚠️ Cache get failed: {cache_error}")
+
+        # Fetch fresh data from Yahoo Finance
+        logger.info(f"📊 Fetching chart data for {symbol} {timeframe}")
+
+        # Map timeframe to Yahoo Finance parameters
+        timeframe_map = {
+            "1D": {"period": "6mo", "interval": "1d"},
+            "1W": {"period": "2y", "interval": "1wk"},
+            "1M": {"period": "5y", "interval": "1mo"},
+            "60": {"period": "1mo", "interval": "60m"},
+            "15": {"period": "5d", "interval": "15m"},
+        }
+
+        params = timeframe_map.get(timeframe, timeframe_map["1D"])
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Yahoo Finance v8 API
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+            query_params = {
+                "period1": int((datetime.now() - timedelta(days=365)).timestamp()),
+                "period2": int(datetime.now().timestamp()),
+                "interval": params["interval"],
+                "events": "div,split"
+            }
+
+            response = await client.get(url, params=query_params)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if not data.get("chart") or not data["chart"].get("result"):
+                raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
+
+            result = data["chart"]["result"][0]
+
+            # Extract OHLCV data
+            timestamps = result["timestamp"]
+            quote = result["indicators"]["quote"][0]
+
+            opens = quote.get("open", [])
+            highs = quote.get("high", [])
+            lows = quote.get("low", [])
+            closes = quote.get("close", [])
+            volumes = quote.get("volume", [])
+
+            # Format for Lightweight Charts
+            candles = []
+            volume_data = []
+
+            for i in range(len(timestamps)):
+                # Skip invalid data points
+                if (opens[i] is None or highs[i] is None or
+                    lows[i] is None or closes[i] is None):
+                    continue
+
+                time_value = timestamps[i]
+
+                candles.append({
+                    "time": time_value,
+                    "open": round(opens[i], 2),
+                    "high": round(highs[i], 2),
+                    "low": round(lows[i], 2),
+                    "close": round(closes[i], 2)
+                })
+
+                volume_data.append({
+                    "time": time_value,
+                    "value": volumes[i] if volumes[i] is not None else 0,
+                    "color": "#26a69a" if closes[i] >= opens[i] else "#ef5350"
+                })
+
+            response_data = {
+                "success": True,
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "candles": candles,
+                "volume": volume_data,
+                "meta": {
+                    "currency": result.get("meta", {}).get("currency", "USD"),
+                    "exchange": result.get("meta", {}).get("exchangeName", ""),
+                    "instrument_type": result.get("meta", {}).get("instrumentType", ""),
+                }
+            }
+
+            # Cache for 15 minutes
+            try:
+                await cache.set(cache_key, response_data, ttl=900)
+            except Exception as cache_error:
+                logger.warning(f"⚠️ Cache set failed: {cache_error}")
+
+            logger.info(f"✅ Fetched {len(candles)} data points for {symbol}")
+
+            return response_data
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"💥 HTTP error fetching chart data for {symbol}: {e}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Failed to fetch data for {symbol}"
+        )
+    except Exception as e:
+        logger.error(f"💥 Error fetching chart data for {symbol}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching chart data: {str(e)}"
+        )
