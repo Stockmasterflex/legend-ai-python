@@ -102,3 +102,134 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class Venue(Base):
+    """Trading venue/broker information"""
+    __tablename__ = "venues"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)  # "Alpaca", "Interactive Brokers", etc.
+    venue_type = Column(String(50), nullable=False)  # "broker", "dark_pool", "exchange"
+    is_active = Column(Boolean, default=True)
+    commission_rate = Column(Float, default=0.0)  # Commission per share or percentage
+    commission_type = Column(String(20), default="per_share")  # "per_share", "percentage", "flat"
+    min_commission = Column(Float, default=0.0)
+    liquidity_score = Column(Float, nullable=True)  # 0-100 score
+    avg_fill_quality = Column(Float, nullable=True)  # Historical fill quality metric
+    supports_dark_pool = Column(Boolean, default=False)
+    supports_iceberg = Column(Boolean, default=False)
+    api_endpoint = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class ExecutionOrder(Base):
+    """Parent execution order"""
+    __tablename__ = "execution_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(String(50), unique=True, nullable=False, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    side = Column(String(10), nullable=False)  # "buy", "sell"
+    order_type = Column(String(50), nullable=False)  # "market", "limit", "twap", "vwap", "pov", "is"
+    total_quantity = Column(Integer, nullable=False)
+    filled_quantity = Column(Integer, default=0)
+    remaining_quantity = Column(Integer, nullable=False)
+    limit_price = Column(Float, nullable=True)
+    avg_fill_price = Column(Float, nullable=True)
+    status = Column(String(20), nullable=False, index=True)  # "pending", "active", "completed", "cancelled", "failed"
+
+    # Execution algorithm parameters
+    algo_type = Column(String(50), nullable=True)  # "twap", "vwap", "pov", "is"
+    algo_params = Column(Text, nullable=True)  # JSON of algo parameters
+
+    # Timing
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+
+    # Analytics
+    slippage_bps = Column(Float, nullable=True)  # Slippage in basis points
+    total_cost = Column(Float, nullable=True)
+    market_impact_bps = Column(Float, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class ChildOrder(Base):
+    """Child orders from order slicing"""
+    __tablename__ = "child_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    child_order_id = Column(String(50), unique=True, nullable=False, index=True)
+    parent_order_id = Column(Integer, ForeignKey("execution_orders.id"), index=True)
+    venue_id = Column(Integer, ForeignKey("venues.id"), index=True, nullable=True)
+
+    quantity = Column(Integer, nullable=False)
+    filled_quantity = Column(Integer, default=0)
+    limit_price = Column(Float, nullable=True)
+    fill_price = Column(Float, nullable=True)
+
+    status = Column(String(20), nullable=False)  # "pending", "sent", "filled", "partial", "cancelled"
+    is_iceberg = Column(Boolean, default=False)
+    display_quantity = Column(Integer, nullable=True)  # For iceberg orders
+
+    # Routing
+    route_type = Column(String(50), nullable=True)  # "smart", "direct", "dark_pool"
+
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    filled_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class ExecutionMetrics(Base):
+    """Execution quality metrics and analytics"""
+    __tablename__ = "execution_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("execution_orders.id"), index=True)
+
+    # Benchmark prices
+    arrival_price = Column(Float, nullable=True)  # Price when order received
+    vwap_benchmark = Column(Float, nullable=True)  # Market VWAP during execution
+    twap_benchmark = Column(Float, nullable=True)  # Market TWAP during execution
+
+    # Performance metrics
+    slippage_vs_arrival = Column(Float, nullable=True)  # Basis points
+    slippage_vs_vwap = Column(Float, nullable=True)
+    slippage_vs_twap = Column(Float, nullable=True)
+
+    # Cost analysis
+    total_commission = Column(Float, nullable=True)
+    price_improvement = Column(Float, nullable=True)  # If negative, it's price deterioration
+    opportunity_cost = Column(Float, nullable=True)
+
+    # Market impact
+    participation_rate = Column(Float, nullable=True)  # % of market volume
+    market_impact_bps = Column(Float, nullable=True)
+
+    # Venue performance
+    venue_breakdown = Column(Text, nullable=True)  # JSON of fills by venue
+    dark_pool_fills = Column(Integer, default=0)
+    dark_pool_fill_rate = Column(Float, nullable=True)
+
+    calculated_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class VenuePerformance(Base):
+    """Historical venue performance tracking"""
+    __tablename__ = "venue_performance"
+
+    id = Column(Integer, primary_key=True, index=True)
+    venue_id = Column(Integer, ForeignKey("venues.id"), index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True, nullable=True)
+
+    # Performance metrics
+    total_orders = Column(Integer, default=0)
+    avg_fill_time_ms = Column(Float, nullable=True)
+    fill_rate = Column(Float, nullable=True)  # % of orders filled
+    avg_slippage_bps = Column(Float, nullable=True)
+    price_improvement_bps = Column(Float, nullable=True)
+
+    # Time period
+    period_start = Column(DateTime(timezone=True), index=True)
+    period_end = Column(DateTime(timezone=True), index=True)
+
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
