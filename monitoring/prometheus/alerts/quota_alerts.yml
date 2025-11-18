@@ -1,0 +1,65 @@
+# API Quota and External Service Alerts
+
+groups:
+  - name: quota_alerts
+    interval: 60s
+    rules:
+      # API quota warning (80% used)
+      - alert: APIQuotaWarning
+        expr: |
+          (api_quota_used / api_quota_limit) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: quota
+        annotations:
+          summary: "API quota for {{ $labels.service }} at {{ $value | humanizePercentage }}"
+          description: "{{ $labels.service }} quota is {{ $value | humanizePercentage }} used - consider rate limiting or upgrading"
+
+      # API quota critical (90% used)
+      - alert: APIQuotaCritical
+        expr: |
+          (api_quota_used / api_quota_limit) > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          category: quota
+        annotations:
+          summary: "API quota for {{ $labels.service }} nearly exhausted"
+          description: "{{ $labels.service }} quota is {{ $value | humanizePercentage }} used - immediate action required"
+
+      # External API error rate high
+      - alert: ExternalAPIHighErrorRate
+        expr: |
+          sum(rate(external_api_errors_total[5m])) by (service) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: external
+        annotations:
+          summary: "High error rate for external API {{ $labels.service }}"
+          description: "{{ $labels.service }} is experiencing {{ $value }} errors/sec"
+
+      # Chart generation failures
+      - alert: ChartGenerationFailures
+        expr: |
+          sum(rate(chartimg_post_status_total{status!="success"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: charting
+        annotations:
+          summary: "Chart generation failures detected"
+          description: "Chart generation is failing at {{ $value }} failures/sec"
+
+      # Pattern detection slow
+      - alert: SlowPatternDetection
+        expr: |
+          histogram_quantile(0.95, sum(rate(detector_runtime_seconds_bucket[5m])) by (le, pattern)) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Slow pattern detection for {{ $labels.pattern }}"
+          description: "95th percentile detection time is {{ $value }}s (>10s)"
