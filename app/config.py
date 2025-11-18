@@ -127,6 +127,61 @@ class Settings(BaseSettings):
     sendgrid_api_key: Optional[str] = None
     alert_email: Optional[str] = None
 
+    # Social Media Auto-Posting
+    twitter_api_key: Optional[str] = None
+    twitter_api_secret: Optional[str] = None
+    twitter_access_token: Optional[str] = None
+    twitter_access_token_secret: Optional[str] = None
+
+    reddit_client_id: Optional[str] = None
+    reddit_client_secret: Optional[str] = None
+    reddit_username: Optional[str] = None
+    reddit_password: Optional[str] = None
+
+    linkedin_username: Optional[str] = None
+    linkedin_password: Optional[str] = None
+
+    # Auto-posting settings
+    auto_posting_enabled: bool = False
+    auto_posting_platforms: str = "twitter"  # Comma-separated: twitter,reddit,linkedin
+    auto_posting_min_score: float = 75.0  # Minimum pattern score to auto-post
+
+    @property
+    def TWITTER_CREDENTIALS(self) -> Optional[dict]:
+        """Get Twitter credentials as dict"""
+        if all([self.twitter_api_key, self.twitter_api_secret,
+                self.twitter_access_token, self.twitter_access_token_secret]):
+            return {
+                "api_key": self.twitter_api_key,
+                "api_secret": self.twitter_api_secret,
+                "access_token": self.twitter_access_token,
+                "access_token_secret": self.twitter_access_token_secret
+            }
+        return None
+
+    @property
+    def REDDIT_CREDENTIALS(self) -> Optional[dict]:
+        """Get Reddit credentials as dict"""
+        if all([self.reddit_client_id, self.reddit_client_secret,
+                self.reddit_username, self.reddit_password]):
+            return {
+                "client_id": self.reddit_client_id,
+                "client_secret": self.reddit_client_secret,
+                "username": self.reddit_username,
+                "password": self.reddit_password
+            }
+        return None
+
+    @property
+    def LINKEDIN_CREDENTIALS(self) -> Optional[dict]:
+        """Get LinkedIn credentials as dict"""
+        if all([self.linkedin_username, self.linkedin_password]):
+            return {
+                "username": self.linkedin_username,
+                "password": self.linkedin_password
+            }
+        return None
+
     # Security
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60

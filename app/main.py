@@ -31,6 +31,7 @@ from app.api.errors import router as errors_router
 from app.api.cache_mgmt import router as cache_mgmt_router
 from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
+from app.api.auto_posting import router as auto_posting_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
@@ -115,6 +116,7 @@ app.include_router(errors_router)
 app.include_router(cache_mgmt_router)
 app.include_router(api_usage_router)
 app.include_router(docs_router)
+app.include_router(auto_posting_router)
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
 
@@ -159,7 +161,10 @@ async def root(request: Request):
             "📊 Professional Chart Generation",
             "🔍 Market Scanner",
             "📈 Real-time Market Data",
-            "⚡ Smart Caching (Redis)"
+            "⚡ Smart Caching (Redis)",
+            "📱 Auto-Posting to Social Media",
+            "📊 Engagement Analytics Tracking",
+            "🤝 Community Engagement Automation"
         ]
     }
 
