@@ -8,6 +8,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.lifecycle import lifespan
 from app.docs_config import tags_metadata, openapi_custom_info
+from app.services.universe_store import universe_store
 from app.api.telegram_enhanced import router as telegram_router
 from app.api.patterns import router as patterns_router
 from app.api.charts import router as charts_router
@@ -33,6 +34,10 @@ from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
+from app.api.playback import router as playback_router
+from app.api.simulation import router as simulation_router
+from app.api.whatif import router as whatif_router
+from app.api.pattern_training import router as pattern_training_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.utils.build_info import resolve_build_sha
@@ -117,6 +122,10 @@ app.include_router(api_usage_router)
 app.include_router(docs_router)
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
+app.include_router(playback_router)
+app.include_router(simulation_router)
+app.include_router(whatif_router)
+app.include_router(pattern_training_router)
 
 # Mount static files if they exist
 static_path = Path(__file__).parent.parent / "static"
@@ -159,7 +168,11 @@ async def root(request: Request):
             "📊 Professional Chart Generation",
             "🔍 Market Scanner",
             "📈 Real-time Market Data",
-            "⚡ Smart Caching (Redis)"
+            "⚡ Smart Caching (Redis)",
+            "⏪ Historical Playback & Time-Travel",
+            "📝 Paper Trading Simulation",
+            "🔮 What-If Analysis",
+            "🎓 Pattern Recognition Training"
         ]
     }
 
