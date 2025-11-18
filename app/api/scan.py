@@ -144,12 +144,12 @@ async def get_top_setups(
 
 
 async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResult], bool]:
-    """Fetch cached universe scan results or trigger a fresh run."""
+    """Fetch cached universe scan results or trigger a fresh run using multi-pattern scanner."""
 
     cached = False
     results = []
 
-    cache_key = f"universe:scan:min{min_score}"
+    cache_key = f"top_setups:multi:min{min_score}"
 
     # Try Redis cache first to keep responses fast.
     try:
@@ -158,16 +158,33 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
         if cached_payload:
             cached = True
             results = json.loads(cached_payload)
+            logger.info(f"✅ Top setups cache hit: {len(results)} results")
     except Exception as exc:
         logger.debug("Top setups cache lookup failed: %s", exc)
 
-    # Run a fresh universe scan (it will populate cache) if needed.
+    # Run a fresh multi-pattern scan if cache miss
     if not results:
-        results = await universe_service.scan_universe(
-            min_score=min_score,
-            max_results=max(limit, 20),
-            pattern_types=None,
-        )
+        logger.info(f"Running fresh multi-pattern scan for top setups (min_score={min_score})")
+        try:
+            scan_result = await pattern_scanner_service.scan_universe(
+                universe=None,
+                limit=max(limit, 20),
+                pattern_filter=None,  # Scan all patterns
+                min_score=min_score
+            )
+
+            if scan_result.get("success") and scan_result.get("results"):
+                results = scan_result["results"]
+
+                # Cache the results for 1 hour
+                try:
+                    redis = await universe_service.cache._get_redis()
+                    await redis.setex(cache_key, 3600, json.dumps(results))
+                    logger.info(f"✅ Cached {len(results)} top setups")
+                except Exception as exc:
+                    logger.warning(f"Failed to cache top setups: {exc}")
+        except Exception as exc:
+            logger.error(f"Multi-pattern scan failed: {exc}")
 
     # Fall back to quick scan cache if we still don't have data.
     if not results:
@@ -209,8 +226,11 @@ def _normalize_quick_scan(results: list[dict]) -> list[dict]:
 def _coerce_scan_result(item: dict) -> dict:
     """Ensure dict matches ScanResult schema (floats required)."""
 
+    # Handle both "symbol" (from pattern_scanner) and "ticker" (from old scanner)
+    ticker = item.get("ticker") or item.get("symbol", "???")
+
     return {
-        "ticker": item.get("ticker", "???"),
+        "ticker": ticker,
         "pattern": item.get("pattern", "Unknown"),
         "score": float(item.get("score") or 0.0),
         "entry": _to_float(item.get("entry")),
@@ -218,7 +238,7 @@ def _coerce_scan_result(item: dict) -> dict:
         "target": _to_float(item.get("target")),
         "risk_reward": float(item.get("risk_reward") or 0.0),
         "current_price": item.get("current_price"),
-        "source": item.get("source", "Universe"),
+        "source": item.get("source", "Multi-Pattern"),
     }
 
 
