@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.lifecycle import lifespan
+from app.docs_config import tags_metadata, openapi_custom_info
 from app.api.telegram_enhanced import router as telegram_router
 from app.api.patterns import router as patterns_router
 from app.api.charts import router as charts_router
@@ -26,6 +27,7 @@ from app.api.version import router as version_router
 from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
 from app.api.tv import router as tv_router
+from app.api.docs import router as docs_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
@@ -38,12 +40,26 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Create FastAPI app
+# Create FastAPI app with enhanced documentation
 app = FastAPI(
-    title="Legend AI",
-    description="Professional Trading Pattern Scanner",
-    version="1.0.0",
-    lifespan=lifespan
+    title=openapi_custom_info["title"],
+    description=openapi_custom_info["description"],
+    version=openapi_custom_info["version"],
+    contact=openapi_custom_info["contact"],
+    license_info=openapi_custom_info["license_info"],
+    openapi_tags=tags_metadata,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": -1,  # Hide schemas section by default
+        "docExpansion": "list",  # Expand tag lists by default
+        "filter": True,  # Enable search filter
+        "showCommonExtensions": True,
+        "syntaxHighlight.theme": "monokai",  # Beautiful syntax highlighting
+        "tryItOutEnabled": True,  # Enable "Try it out" by default
+    }
 )
 
 # Structured logging sits at the top of the stack to capture everything
@@ -87,6 +103,7 @@ app.include_router(version_router)
 app.include_router(metrics_router)
 app.include_router(scan_router)
 app.include_router(tv_router)
+app.include_router(docs_router)
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
 
@@ -98,14 +115,41 @@ if static_path.exists():
 
 @app.get("/")
 async def root(request: Request):
-    """Root endpoint - redirects to dashboard"""
+    """
+    🏠 **API Root Endpoint**
+
+    Welcome to Legend AI Trading Pattern Scanner API!
+
+    Navigate to `/docs` for interactive API documentation.
+    """
     request.state.telemetry = {"event": "root", "status": 200}
     return {
         "status": "running",
-        "service": "Legend AI",
+        "service": "Legend AI - Trading Pattern Scanner",
         "version": "1.0.0",
-        "dashboard": "/dashboard",
-        "docs": "/docs"
+        "message": "Welcome to Legend AI API! Visit /docs for interactive documentation.",
+        "documentation": {
+            "swagger_ui": "/docs",
+            "redoc": "/redoc",
+            "openapi_schema": "/openapi.json",
+            "error_codes": "/api/docs/errors",
+            "getting_started": "/api/docs/getting-started"
+        },
+        "endpoints": {
+            "dashboard": "/dashboard",
+            "health": "/health",
+            "pattern_detection": "/api/patterns/detect",
+            "ai_chat": "/api/ai/chat",
+            "ai_analysis": "/api/ai/analyze"
+        },
+        "features": [
+            "🎯 AI-Powered Pattern Detection",
+            "🤖 Trading Assistant Chatbot",
+            "📊 Professional Chart Generation",
+            "🔍 Market Scanner",
+            "📈 Real-time Market Data",
+            "⚡ Smart Caching (Redis)"
+        ]
     }
 
 @app.get("/healthz")
