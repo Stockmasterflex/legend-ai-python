@@ -13,6 +13,7 @@ from app.api.patterns import router as patterns_router
 from app.api.charts import router as charts_router
 from app.api.universe import router as universe_router
 from app.api.watchlist import router as watchlist_router
+from app.api.watchlists_v2 import router as watchlists_v2_router
 from app.api.trade_plan import router as trade_router
 from app.api.analytics import router as analytics_router
 from app.api.market import router as market_router
@@ -98,6 +99,7 @@ app.include_router(patterns_router)
 app.include_router(charts_router)
 app.include_router(universe_router)
 app.include_router(watchlist_router)
+app.include_router(watchlists_v2_router)  # Professional watchlist features
 app.include_router(trade_router)
 app.include_router(analytics_router)
 app.include_router(market_router)
