@@ -28,7 +28,15 @@ def _build_test_client(tmp_path, monkeypatch) -> TestClient:
 def test_watchlist_file_fallback_flow(tmp_path, monkeypatch):
     client = _build_test_client(tmp_path, monkeypatch)
 
+<<<<<<< HEAD
+<<<<<<< HEAD
     payload = {"ticker": "nvda", "reason": "Breakout", "status": "Watching", "tags": ["VCP", "Momentum"]}
+=======
+    payload = {"ticker": "nvda", "reason": "Breakout", "status": "Watching"}
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+    payload = {"ticker": "nvda", "reason": "Breakout", "status": "Watching"}
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
     res = client.post("/api/watchlist/add", json=payload)
     assert res.status_code == 200
     assert res.json()["ticker"] == "NVDA"
@@ -38,6 +46,8 @@ def test_watchlist_file_fallback_flow(tmp_path, monkeypatch):
     assert body["total"] == 1
     assert body["items"][0]["ticker"] == "NVDA"
     assert body["items"][0]["status"] == "Watching"
+<<<<<<< HEAD
+<<<<<<< HEAD
     assert set(body["items"][0]["tags"]) == {"VCP", "Momentum"}
 
     update_payload = {"reason": "Updated thesis", "status": "Setup", "tags": ["Swing"]}
@@ -48,6 +58,10 @@ def test_watchlist_file_fallback_flow(tmp_path, monkeypatch):
     assert updated["reason"] == "Updated thesis"
     assert updated["status"] == "Setup"
     assert updated["tags"] == ["Swing"]
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 
     res = client.delete("/api/watchlist/remove/NVDA")
     assert res.status_code == 200

@@ -383,7 +383,15 @@ class ChartingService:
         # Check if API key is available
         if not self.api_key or self.api_key.lower().startswith('dev'):
             logger.error(f"❌ Chart-IMG API key not configured for {ticker}")
+<<<<<<< HEAD
+<<<<<<< HEAD
             raise ValueError("Chart-IMG API key not configured. Please set the CHART_IMG_API_KEY environment variable.")
+=======
+            return self._get_fallback_url(ticker, timeframe)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+            return self._get_fallback_url(ticker, timeframe)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 
         try:
             # Check rate limiting

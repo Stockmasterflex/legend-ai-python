@@ -1,7 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+<<<<<<< HEAD
+<<<<<<< HEAD
 from fastapi.middleware.gzip import GZipMiddleware
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 from fastapi.staticfiles import StaticFiles
 import logging
 from pathlib import Path
@@ -32,6 +38,14 @@ from app.api.errors import router as errors_router
 from app.api.cache_mgmt import router as cache_mgmt_router
 from app.api.api_usage import router as api_usage_router
 from app.api.docs import router as docs_router
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+from app.api.crypto import router as crypto_router
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+from app.api.crypto import router as crypto_router
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
@@ -71,10 +85,16 @@ from app.middleware.metrics_middleware import MetricsMiddleware
 app.add_middleware(MetricsMiddleware)
 logger.info("📊 Metrics middleware enabled")
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 # GZip compression for responses > 1KB (70-80% size reduction)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 logger.info("🗜️ GZip compression enabled (minimum 1KB)")
 
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 # Structured logging sits at the top of the stack to capture everything
 app.add_middleware(StructuredLoggingMiddleware)
 
@@ -120,6 +140,14 @@ app.include_router(errors_router)
 app.include_router(cache_mgmt_router)
 app.include_router(api_usage_router)
 app.include_router(docs_router)
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+app.include_router(crypto_router)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+app.include_router(crypto_router)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
 

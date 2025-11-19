@@ -8,7 +8,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.core.detectors.vcp_detector import VCPDetector
 from app.core.detectors.cup_handle_detector import CupHandleDetector
 from app.core.detectors.triangle_detector import TriangleDetector
+<<<<<<< HEAD
+<<<<<<< HEAD
 from app.core.detector_registry import get_detector_registry
+=======
+from app.core.detector_registry import detector_registry
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+from app.core.detector_registry import detector_registry
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 
 
 # Mark all tests in this module as benchmarks
@@ -90,7 +98,15 @@ def test_benchmark_all_detectors():
     timings = {}
 
     for name in detector_names:
+<<<<<<< HEAD
+<<<<<<< HEAD
         detector = get_detector_registry().get_detector(name)
+=======
+        detector = detector_registry.get_detector(name)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+        detector = detector_registry.get_detector(name)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
         if detector:
             start_time = time.perf_counter()
             results = detector.find(df, "1D", "BENCHMARK")

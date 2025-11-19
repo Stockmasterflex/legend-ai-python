@@ -1,5 +1,13 @@
 from fastapi import APIRouter, HTTPException
+<<<<<<< HEAD
+<<<<<<< HEAD
 from pydantic import BaseModel, Field
+=======
+from pydantic import BaseModel
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+from pydantic import BaseModel
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 from typing import Optional
 import logging
 

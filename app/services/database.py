@@ -421,7 +421,15 @@ class DatabaseService:
                         "id": r[0],
                         "ticker": r[1],
                         "reason": r[2],
+<<<<<<< HEAD
+<<<<<<< HEAD
                         "tags": [tag.strip() for tag in (r[3] or "").split(",") if tag.strip()],
+=======
+                        "tags": r[3],
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+                        "tags": r[3],
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
                         "status": r[4],
                         "added_at": r[5].isoformat() if r[5] else None,
                     }
@@ -446,6 +454,8 @@ class DatabaseService:
             logger.warning(f"add_watchlist_symbol failed: {e}")
             return False
 
+<<<<<<< HEAD
+<<<<<<< HEAD
     def update_watchlist_symbol(self, symbol: str, reason: Optional[str] = None, tags: Optional[str] = None, status: Optional[str] = None) -> bool:
         try:
             if not self.engine:
@@ -485,6 +495,10 @@ class DatabaseService:
             logger.warning(f"remove_watchlist_symbol failed: {e}")
             return False
 
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 # Global database service instance
 _db_service: Optional[DatabaseService] = None
 

@@ -10,7 +10,15 @@ from datetime import datetime
 
 from app.config import get_settings
 from app.services.multi_tier_cache import get_multi_tier_cache
+<<<<<<< HEAD
+<<<<<<< HEAD
 from app.services.market_data import market_data_service
+=======
+from app.services.market_data import get_market_data_service
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+from app.services.market_data import get_market_data_service
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 from app.services.universe_store import universe_store
 
 logger = logging.getLogger(__name__)
@@ -60,7 +68,15 @@ class CacheWarmer:
         start_time = datetime.utcnow()
 
         self.cache = get_multi_tier_cache()
+<<<<<<< HEAD
+<<<<<<< HEAD
         self.market_data = market_data_service
+=======
+        self.market_data = get_market_data_service()
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+        self.market_data = get_market_data_service()
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 
         stats = {
             "market_data": 0,

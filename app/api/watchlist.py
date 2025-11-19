@@ -1,5 +1,13 @@
 from fastapi import APIRouter, HTTPException
+<<<<<<< HEAD
+<<<<<<< HEAD
 from pydantic import BaseModel, field_validator
+=======
+from pydantic import BaseModel
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+from pydantic import BaseModel
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
@@ -56,6 +64,8 @@ class WatchlistItem(BaseModel):
     reason: Optional[str] = None
     target_entry: Optional[float] = None
     status: str = "Watching"
+<<<<<<< HEAD
+<<<<<<< HEAD
     tags: Optional[List[str]] = None
 
     @field_validator("ticker")
@@ -97,6 +107,12 @@ class WatchlistUpdate(BaseModel):
             cleaned = [str(tag).strip() for tag in value if str(tag).strip()]
             return cleaned or None
         return None
+=======
+    tags: Optional[str] = None
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+    tags: Optional[str] = None
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
 
 
 @router.post("/add")
@@ -105,8 +121,16 @@ async def add_to_watchlist(item: WatchlistItem):
     try:
         from app.services.database import get_database_service
         dbs = get_database_service()
+<<<<<<< HEAD
+<<<<<<< HEAD
         tags_str = ",".join(item.tags) if item.tags else None
         dbs.add_watchlist_symbol(item.ticker, item.reason, tags_str, item.status)
+=======
+        dbs.add_watchlist_symbol(item.ticker, item.reason, item.tags, item.status)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+        dbs.add_watchlist_symbol(item.ticker, item.reason, item.tags, item.status)
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
         all_items = dbs.get_watchlist_items()
         await _sync_cache(all_items)
         return {"success": True, "ticker": item.ticker.upper()}
@@ -118,7 +142,15 @@ async def add_to_watchlist(item: WatchlistItem):
             "reason": item.reason,
             "target_entry": item.target_entry,
             "status": item.status,
+<<<<<<< HEAD
+<<<<<<< HEAD
             "tags": item.tags or [],
+=======
+            "tags": item.tags,
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+            "tags": item.tags,
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
             "added_date": datetime.utcnow().isoformat(),
         }
         _save(db)
@@ -133,11 +165,17 @@ async def get_watchlist():
         dbs = get_database_service()
         items = dbs.get_watchlist_items()
         if items:
+<<<<<<< HEAD
+<<<<<<< HEAD
             for item in items:
                 raw_tags = item.get("tags")
                 if isinstance(raw_tags, str):
                     tags = [tag.strip() for tag in raw_tags.split(",") if tag.strip()]
                     item["tags"] = tags
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
             await _sync_cache(items)
             return {"success": True, "items": items, "total": len(items)}
     except Exception:
@@ -153,6 +191,8 @@ async def get_watchlist():
 
 @router.delete("/remove/{ticker}")
 async def remove_from_watchlist(ticker: str):
+<<<<<<< HEAD
+<<<<<<< HEAD
     t = ticker.upper().strip()
     try:
         from app.services.database import get_database_service
@@ -164,12 +204,22 @@ async def remove_from_watchlist(ticker: str):
     except Exception:
         pass
     db = _load()
+=======
+    db = _load()
+    t = ticker.upper().strip()
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+    db = _load()
+    t = ticker.upper().strip()
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
     if t in db:
         db.pop(t)
         _save(db)
         await _sync_cache(list(db.values()))
         return {"success": True, "message": f"{t} removed"}
     raise HTTPException(status_code=404, detail=f"{t} not in watchlist")
+<<<<<<< HEAD
+<<<<<<< HEAD
 
 
 @router.put("/{ticker}")
@@ -207,3 +257,7 @@ async def update_watchlist_item(ticker: str, payload: WatchlistUpdate):
     _save(db)
     await _sync_cache(list(db.values()))
     return {"success": True}
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
+=======
+>>>>>>> remotes/origin/claude/add-crypto-analysis-01XGmBZsBCfF6bHWVEa7RYZd
