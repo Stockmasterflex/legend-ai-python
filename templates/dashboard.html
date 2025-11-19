@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/css/cyberpunk-design-system.css?v=__VERSION__" />
     <link rel="stylesheet" href="/static/css/dashboard.css?v=__VERSION__" />
 </head>
-<body class="app-shell">
+<body class="app-shell" data-default-tv-symbol="NASDAQ:NVDA">
     <main class="container" data-dashboard-shell>
         <header class="hero">
             <div class="hero-content">
@@ -92,6 +92,65 @@
                             <p class="chart-hint">Charts auto-sync after each analysis. Use Snapshot for a shareable link.</p>
                         </aside>
                     </div>
+                    <div class="analyze-tv-divider" aria-hidden="true"></div>
+                    <section class="tradingview-demo-layout" aria-label="TradingView trading interface">
+                        <div class="tv-demo-header">
+                            <div class="tv-demo-title">
+                                <h3 class="tv-demo-symbol" data-tv-symbol-label>NASDAQ:AAPL</h3>
+                                <span class="tv-demo-subtitle">Live Trading Interface</span>
+                            </div>
+                            <div class="tv-demo-actions">
+                                <button class="tv-demo-btn tv-demo-btn--secondary" id="tv-weekly-toggle">Weekly View</button>
+                                <button class="tv-demo-btn tv-demo-btn--primary" id="tv-fullscreen">Fullscreen</button>
+                            </div>
+                        </div>
+
+                        <div class="tv-demo-main-chart">
+                            <div class="tv-demo-chart-container">
+                                <div data-tv-widget-target="tv-template-advanced-chart"></div>
+                            </div>
+                            <div class="tv-demo-chart-weekly" style="display: none;">
+                                <div data-tv-widget-target="tv-template-advanced-chart-weekly"></div>
+                            </div>
+                        </div>
+
+                        <div class="tv-demo-widgets-grid">
+                            <div class="tv-demo-widget tv-demo-widget--symbol">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Symbol Info</span>
+                                </div>
+                                <div data-tv-widget-target="tv-template-symbol-info"></div>
+                            </div>
+
+                            <div class="tv-demo-widget tv-demo-widget--technical">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Technical Analysis</span>
+                                </div>
+                                <div data-tv-widget-target="tv-template-technical-analysis"></div>
+                            </div>
+
+                            <div class="tv-demo-widget tv-demo-widget--fundamentals">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Fundamentals</span>
+                                </div>
+                                <div data-tv-widget-target="tv-template-fundamentals"></div>
+                            </div>
+
+                            <div class="tv-demo-widget tv-demo-widget--profile">
+                                <div class="tv-demo-widget-header">
+                                    <span class="tv-demo-widget-title">Company Profile</span>
+                                </div>
+                                <div data-tv-widget-target="tv-template-company-profile"></div>
+                            </div>
+                        </div>
+
+                        <div class="tv-demo-news-section">
+                            <div class="tv-demo-widget-header">
+                                <span class="tv-demo-widget-title">Market News & Analysis</span>
+                            </div>
+                            <div data-tv-widget-target="tv-template-news-timeline"></div>
+                        </div>
+                    </section>
                 </section>
 
                 <section id="tab-scanner" class="tab-pane" data-tab-panel="scanner" hidden>
@@ -360,8 +419,11 @@
 
     <div id="toast-stack" class="toast-stack"></div>
 
+    <!-- TradingView Widget Templates -->
+    {% include 'partials/tv_widget_templates.html' %}
+
     <!-- Load scripts at end of body for proper initialization -->
+    <script defer src="/static/js/tv-widgets.js?v={{ build_sha }}"></script>
     <script defer src="/static/js/dashboard.js?v={{ build_sha }}"></script>
-    <script async src="https://s3.tradingview.com/tv.js"></script>
 </body>
 </html>
