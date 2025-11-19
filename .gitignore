@@ -62,3 +62,14 @@ coverage-*.json
 .env.production
 node_modules/
 screenshots/playwright-mcp/
+
+# API Keys and Secrets - NEVER COMMIT
+railway-env-vars.txt
+RAILWAY_ENV_CHECKLIST.md
+*.env.local
+.env.production
+.env.railway
+railway-env-*.txt
+*-api-keys.txt
+*-secrets.txt
+credentials.json
