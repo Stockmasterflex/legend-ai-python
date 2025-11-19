@@ -90,9 +90,9 @@ class TestPatternAnalysisFlow:
         """Test: Add to watchlist -> View watchlist -> Remove from watchlist"""
         # Step 1: Add ticker to watchlist
         add_response = client.post(
-            "/api/watchlist/add",
+            "/api/watchlist",
             json={
-                "ticker": "TSLA",
+                "symbol": "TSLA",
                 "status": "Watching",
                 "reason": "VCP forming",
                 "tags": ["VCP", "Momentum"]
@@ -107,21 +107,18 @@ class TestPatternAnalysisFlow:
         assert get_response.status_code == 200
 
         watchlist = get_response.json()
-        # The response structure is {"success": True, "items": [...], "total": ...}
-        assert "items" in watchlist
-        items = watchlist["items"]
-        assert isinstance(items, list)
+        assert isinstance(watchlist, list)
 
         # Find our added ticker
-        tsla_items = [item for item in items if item.get("ticker") == "TSLA"]
+        tsla_items = [item for item in watchlist if item.get("symbol") == "TSLA"]
 
         if tsla_items:
             tsla_item = tsla_items[0]
-            ticker = tsla_item.get("ticker")
+            item_id = tsla_item.get("id")
 
             # Step 3: Delete ticker from watchlist
-            if ticker:
-                delete_response = client.delete(f"/api/watchlist/remove/{ticker}")
+            if item_id:
+                delete_response = client.delete(f"/api/watchlist/{item_id}")
                 # Should succeed (200, 204, or 404 if already deleted)
                 assert delete_response.status_code in [200, 204, 404]
 
@@ -133,7 +130,6 @@ class TestPatternAnalysisFlow:
         ticker = "NVDA"
 
         # Step 1: Detect patterns (which should trigger chart caching)
-        # Note: scan_symbol returns a list of dicts
         patterns = await pattern_scanner_service.scan_symbol(ticker, "1day")
 
         # Step 2: Chart URL should be available
@@ -159,11 +155,11 @@ class TestAPIEndpoints:
 
     def test_analyze_endpoint(self, client):
         """Test /api/analyze endpoint"""
-        response = client.get(
+        response = client.post(
             "/api/analyze",
-            params={
+            json={
                 "ticker": "AAPL",
-                "tf": "daily"
+                "interval": "1day"
             }
         )
 
@@ -176,7 +172,7 @@ class TestAPIEndpoints:
             "/api/patterns/detect",
             json={
                 "ticker": "NVDA",
-                "interval": "1day"
+                "timeframe": "1day"
             }
         )
 
@@ -185,8 +181,8 @@ class TestAPIEndpoints:
 
     def test_universe_endpoint(self, client):
         """Test /api/universe endpoints"""
-        # Get universe tickers
-        get_response = client.get("/api/universe/tickers")
+        # Get universe
+        get_response = client.get("/api/universe")
         assert get_response.status_code == 200
 
         # Seed universe
@@ -197,13 +193,13 @@ class TestAPIEndpoints:
         assert "success" in seed_data or "symbols_loaded" in seed_data
 
     def test_scan_endpoint(self, client):
-        """Test /api/universe/scan endpoint"""
+        """Test /api/scan/universe endpoint"""
         response = client.post(
-            "/api/universe/scan",
+            "/api/scan/universe",
             json={
-                "min_score": 7.0,
-                "max_results": 5,
-                "pattern_types": ["VCP"]
+                "universe": ["AAPL", "NVDA"],
+                "limit": 5,
+                "min_score": 7.0
             }
         )
 
@@ -233,7 +229,7 @@ class TestErrorHandling:
             "/api/patterns/detect",
             json={
                 "ticker": "AAPL",
-                "interval": "invalid"
+                "timeframe": "invalid"
             }
         )
 

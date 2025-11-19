@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional
 import logging
 
@@ -18,14 +18,6 @@ class PatternRequest(BaseModel):
     ticker: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, SPY)", example="AAPL")
     interval: str = Field("1day", description="Time interval: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week", example="1day")
     use_yahoo_fallback: bool = Field(True, description="Use Yahoo Finance as fallback data source")
-
-    @field_validator("interval")
-    @classmethod
-    def validate_interval(cls, v: str) -> str:
-        allowed = {"1min", "5min", "15min", "30min", "1h", "4h", "1day", "1week"}
-        if v not in allowed:
-            raise ValueError(f"Interval must be one of: {', '.join(allowed)}")
-        return v
 
     class Config:
         json_schema_extra = {
