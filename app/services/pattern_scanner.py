@@ -76,6 +76,9 @@ class PatternScannerService:
                 logger.debug(f"No price data for {symbol}")
                 return []
 
+            data_points = len(price_data.get("c", []))
+            logger.debug(f"Fetched {data_points} data points for {symbol}")
+
             # Convert to DataFrame
             df = self._to_dataframe(price_data)
 
@@ -85,6 +88,7 @@ class PatternScannerService:
 
             # Get all detectors
             detectors = get_all_detectors()
+            logger.debug(f"Running {len(detectors)} detectors on {symbol}")
 
             # Run all detectors
             all_patterns: List[PatternResult] = []
@@ -93,28 +97,34 @@ class PatternScannerService:
                     patterns = detector.find(df, timeframe, symbol)
                     if patterns:
                         all_patterns.extend(patterns)
+                        logger.debug(f"Detector {detector.name} found {len(patterns)} patterns for {symbol}")
                 except Exception as e:
                     logger.error(f"Detector {detector.name} failed for {symbol}: {e}")
 
+            logger.debug(f"Total patterns found for {symbol}: {len(all_patterns)}")
+
             # Filter by confidence
-            all_patterns = [
+            confident_patterns = [
                 p for p in all_patterns
                 if p.confidence >= self.min_confidence
             ]
+            logger.debug(f"After confidence filter (>= {self.min_confidence}): {len(confident_patterns)} patterns")
 
             # Filter by pattern names if specified
             if pattern_filter:
                 pattern_filter_lower = [p.lower() for p in pattern_filter]
-                all_patterns = [
-                    p for p in all_patterns
+                confident_patterns = [
+                    p for p in confident_patterns
                     if p.pattern_type.value.lower() in pattern_filter_lower
                 ]
+                logger.debug(f"After pattern filter {pattern_filter}: {len(confident_patterns)} patterns")
 
             # Convert to dict format
             results = []
-            for pattern in all_patterns:
+            for pattern in confident_patterns:
                 results.append(self._pattern_to_dict(pattern, symbol, timeframe))
 
+            logger.debug(f"Returning {len(results)} patterns for {symbol}")
             return results
 
         except Exception as e:
@@ -149,11 +159,16 @@ class PatternScannerService:
                 fallback = universe_data.get_full_universe()
                 universe_meta = {symbol: {"symbol": symbol} for symbol in fallback}
             symbols = list(universe_meta.keys())[:self.max_symbols]
+            logger.info(f"Using universe from store: {len(symbols)} symbols")
         else:
             symbols = universe[:self.max_symbols]
+            logger.info(f"Using provided universe: {len(symbols)} symbols")
 
         if not symbols:
+            logger.warning("No symbols to scan - universe is empty")
             return self._response(started, 0, [])
+
+        logger.info(f"Starting scan of {len(symbols)} symbols with min_score={min_score}")
 
         # Scan symbols concurrently
         sem = asyncio.Semaphore(self.max_concurrency)
@@ -167,11 +182,18 @@ class PatternScannerService:
 
         # Flatten results (each symbol can have multiple patterns)
         all_patterns = []
+        success_count = 0
+        error_count = 0
         for result in raw_results:
             if isinstance(result, list):
                 all_patterns.extend(result)
+                if result:  # Only count if patterns were found
+                    success_count += 1
             elif isinstance(result, Exception):
                 logger.error(f"Scan task failed: {result}")
+                error_count += 1
+
+        logger.info(f"Scan results: {success_count} symbols with patterns, {error_count} errors, {len(all_patterns)} total patterns")
 
         # Sort by score
         all_patterns.sort(key=lambda x: x.get("score", 0), reverse=True)
@@ -182,14 +204,17 @@ class PatternScannerService:
             if p.get("score", 0) >= min_score
         ]
 
+        logger.info(f"After filtering by min_score {min_score}: {len(filtered_patterns)} patterns remain")
+
         # Limit results
         limited_results = filtered_patterns[:limit]
 
         duration = time.perf_counter() - started
         logger.info(
-            f"✅ Multi-pattern scan complete: {len(symbols)} symbols, "
+            f"✅ Multi-pattern scan complete: {len(symbols)} symbols scanned, "
             f"{len(all_patterns)} patterns found, "
             f"{len(filtered_patterns)} above {min_score}/10, "
+            f"{len(limited_results)} returned, "
             f"{duration:.2f}s"
         )
 
