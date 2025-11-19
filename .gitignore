@@ -62,3 +62,5 @@ coverage-*.json
 .env.production
 node_modules/
 screenshots/playwright-mcp/
+railway-env-vars.txt
+RAILWAY_ENV_CHECKLIST.md
