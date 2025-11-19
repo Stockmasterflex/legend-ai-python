@@ -69,6 +69,8 @@ async def analyze(
     if not ticker_clean:
         raise HTTPException(status_code=400, detail="ticker_required")
 
+    if tf.lower() not in ("daily", "weekly"):
+        raise HTTPException(status_code=400, detail="invalid_timeframe")
     interval = "1day" if tf.lower().startswith("d") else "1week"
     timeframe_label = "daily" if interval == "1day" else "weekly"
     cache = get_cache_service()

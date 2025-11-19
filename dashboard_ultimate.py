@@ -8,7 +8,9 @@ import json
 import pandas as pd
 from datetime import datetime
 
-API_BASE = "https://legend-ai-python-production.up.railway.app"
+import os
+
+API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Custom CSS
 custom_css = """
