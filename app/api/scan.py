@@ -187,22 +187,33 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
     except Exception as exc:
         logger.warning(f"Top setups cache lookup failed: {exc}")
 
-    # Run a fresh multi-pattern scan if cache miss
+    # Run a fresh scan using the old VCP scanner as fallback
     if not results:
-        logger.info(f"Running fresh multi-pattern scan for top setups (min_score={min_score})")
+        logger.info(f"Running fallback VCP scan for top setups (min_score={min_score})")
         try:
-            scan_result = await pattern_scanner_service.scan_universe(
-                universe=None,
-                limit=max(limit, 20),
-                pattern_filter=None,  # Scan all patterns
-                min_score=min_score
-            )
+            # Use the old scanner temporarily
+            from app.services.scanner import scan_service
+            scan_result = await scan_service.run_daily_vcp_scan(limit=max(limit, 20))
 
-            logger.info(f"Multi-pattern scan result: success={scan_result.get('success')}, results_count={len(scan_result.get('results', []))}")
+            logger.info(f"VCP scan result: results_count={len(scan_result.get('results', []))}")
 
-            if scan_result.get("success") and scan_result.get("results"):
-                results = scan_result["results"]
-                logger.info(f"Using {len(results)} results from multi-pattern scan")
+            if scan_result.get("results"):
+                # Convert old format to new format
+                converted_results = []
+                for item in scan_result["results"]:
+                    converted_results.append({
+                        "ticker": item.get("ticker", item.get("symbol", "???")),
+                        "pattern": item.get("pattern", "VCP"),
+                        "score": float(item.get("score", 0)),
+                        "entry": item.get("entry", 0),
+                        "stop": item.get("stop", 0),
+                        "target": item.get("target", 0),
+                        "risk_reward": item.get("risk_reward", 0),
+                        "current_price": item.get("current_price"),
+                        "source": "VCP_Scanner"
+                    })
+                results = converted_results
+                logger.info(f"Using {len(results)} results from VCP scan")
 
                 # Cache the results for 1 hour
                 try:
@@ -212,9 +223,9 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
                 except Exception as exc:
                     logger.warning(f"Failed to cache top setups: {exc}")
             else:
-                logger.warning("Multi-pattern scan returned no results or failed")
+                logger.warning("VCP scan returned no results")
         except Exception as exc:
-            logger.error(f"Multi-pattern scan failed: {exc}")
+            logger.error(f"VCP scan failed: {exc}")
 
     # Fall back to quick scan if we still don't have data.
     if not results:
