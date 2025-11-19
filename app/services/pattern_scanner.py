@@ -31,7 +31,7 @@ class PatternScannerService:
         max_symbols: int = 600,
         bars: int = 320,
         max_concurrency: int = 8,
-        min_confidence: float = 0.6,
+        min_confidence: float = 0.4,  # Temporarily lowered to debug
     ):
         """
         Initialize the pattern scanner
