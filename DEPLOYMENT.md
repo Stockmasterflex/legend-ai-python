@@ -1,183 +1,363 @@
-# Legend AI - Railway Deployment Guide
+# Legend AI - Deployment Guide
 
-## 🚀 Quick Railway Deployment
+## Quick Start (Railway)
 
-### Prerequisites
-- Railway account (https://railway.app)
-- GitHub repository with this code
-
-### Step 1: Connect to Railway
+### 1. Fork & Connect Repository
 ```bash
-# Install Railway CLI (optional)
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Or use Railway web dashboard
+# Railway will automatically detect this as a Python/FastAPI app
+# Railway will use: python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-### Step 2: Deploy from GitHub
-1. Go to Railway dashboard
-2. Click "New Project" → "Deploy from GitHub"
-3. Select your `legend-ai-python` repository
-4. Railway will auto-detect the configuration
+### 2. Add PostgreSQL Plugin
+- In Railway dashboard, click "Add Plugin"
+- Select "PostgreSQL"
+- Railway will automatically set DATABASE_URL
 
-### Step 3: Configure Environment Variables
-In Railway dashboard, go to your project → Variables, and set:
+### 3. Add Redis Plugin
+- Click "Add Plugin"
+- Select "Redis"
+- Railway will automatically set REDIS_URL
 
-```bash
-# Required API Keys
-TELEGRAM_BOT_TOKEN=your-telegram-bot-token
-OPENROUTER_API_KEY=your-openrouter-api-key
-TWELVEDATA_API_KEY=your-twelvedata-api-key
-CHARTIMG_API_KEY=your-chartimg-api-key
+### 4. Configure Environment Variables
+Copy variables from `.env.production.template` and set in Railway:
 
-# App Settings
+**Required Variables:**
+```
+ENVIRONMENT=production
+TWELVEDATA_API_KEY=<get from twelvedata.com>
+FINNHUB_API_KEY=<get from finnhub.io>
+ALPHA_VANTAGE_API_KEY=<get from alphavantage.co>
+CHART_IMG_API_KEY=<get from chart-img.com>
+OPENROUTER_API_KEY=<get from openrouter.ai>
+LOG_LEVEL=INFO
 DEBUG=false
-SECRET_KEY=your-production-secret-key
-
-# Database (Railway provides PostgreSQL)
-DATABASE_URL=${{ PostgreSQL.DATABASE_URL }}
-
-# Redis (Railway provides Redis)
-REDIS_URL=${{ Redis.REDIS_URL }}
+ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-### Step 4: Add PostgreSQL Database
-1. In Railway project, click "Add Plugin" → PostgreSQL
-2. Railway will auto-configure DATABASE_URL
-
-### Step 5: Add Redis Cache
-1. In Railway project, click "Add Plugin" → Redis
-2. Railway will auto-configure REDIS_URL
-
-### Step 6: Deploy
-```bash
-railway deploy
+**Optional:**
+```
+TELEGRAM_BOT_TOKEN=<your-bot-token>
 ```
 
-### Step 7: Set Telegram Webhook
-After deployment, get your Railway URL and set the webhook:
-
+### 5. Deploy
 ```bash
-curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
--H "Content-Type: application/json" \
--d '{"url": "https://your-railway-app.railway.app/api/webhook/telegram"}'
+git push origin integration/ai-features
+# Railway will auto-deploy
 ```
 
-### Step 8: Verify Deployment
-Test the bot:
+### 6. Verify Deployment
 ```bash
-curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
--H "Content-Type: application/json" \
--d '{"chat_id": "YOUR_CHAT_ID", "text": "🤖 Legend AI deployed successfully!"}'
+curl https://your-app.up.railway.app/health
+# Should return: {"status": "healthy", ...}
+
+curl https://your-app.up.railway.app/api/universe/tickers
+# Should return: {"success": true, "total": 518, ...}
 ```
 
-## 🔧 Local Development
+---
 
-### Using Docker Compose
+## Manual Deployment (Docker)
+
+### Build Image
 ```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f app
-
-# Stop services
-docker-compose down
+docker build -t legend-ai:latest .
 ```
 
-### Manual Setup
+### Run Container
 ```bash
+docker run -d \
+  --name legend-ai \
+  -p 8000:8000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e REDIS_URL="redis://..." \
+  -e TWELVEDATA_API_KEY="..." \
+  -e FINNHUB_API_KEY="..." \
+  -e ALPHA_VANTAGE_API_KEY="..." \
+  -e CHART_IMG_API_KEY="..." \
+  -e OPENROUTER_API_KEY="..." \
+  -e ENVIRONMENT="production" \
+  legend-ai:latest
+```
+
+---
+
+## Local Development
+
+### 1. Setup
+```bash
+# Clone repository
+git clone https://github.com/Stockmasterflex/legend-ai-python.git
+cd legend-ai-python
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
-
-# Start Redis (if not using Docker)
-redis-server
-
-# Start PostgreSQL (if not using Docker)
-# Install and start PostgreSQL
-
-# Run the app
-uvicorn app.main:app --reload
 ```
 
-## 📊 Health Checks
+### 2. Configure Environment
+```bash
+# Copy template
+cp .env.production.template .env
 
-### Application Health
-- **URL**: `https://your-app.railway.app/health`
-- **Expected**: `{"status":"healthy","telegram":"connected","redis":"healthy","database":"healthy"}`
+# Edit .env with your API keys
+nano .env
+```
 
-### API Endpoints
-- **Pattern Detection**: `POST /api/patterns/detect`
-- **Chart Generation**: `POST /api/charts/generate`
-- **Cache Stats**: `GET /api/patterns/health`
-- **Telegram Webhook**: `POST /api/webhook/telegram`
+### 3. Run Application
+```bash
+# Start Redis (if testing locally)
+redis-server --daemonize yes
 
-## 🚨 Troubleshooting
+# Start application
+python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-### Common Issues
+### 4. Access Dashboard
+```
+http://localhost:8000/dashboard
+http://localhost:8000/docs  # API documentation
+```
 
-1. **Database Connection Failed**
-   - Check DATABASE_URL format
-   - Verify PostgreSQL plugin is active
+---
 
-2. **Redis Connection Failed**
-   - Check REDIS_URL format
-   - Verify Redis plugin is active
+## Post-Deployment Checklist
 
-3. **API Key Errors**
-   - Verify all required environment variables are set
-   - Check API key formats
+### ✅ Verify Services
+- [ ] `/health` endpoint returns "healthy" (not "degraded")
+- [ ] `/api/universe/tickers` returns 518 symbols
+- [ ] `/api/universe/seed` successfully seeds universe
+- [ ] `/dashboard` loads correctly
+- [ ] Pattern detection works with real ticker
 
-4. **Telegram Webhook Issues**
-   - Verify webhook URL is accessible
-   - Check Railway app is not sleeping
+### ✅ Test Pattern Detection
+```bash
+curl -X POST https://your-app.railway.app/api/patterns/detect \
+  -H "Content-Type: application/json" \
+  -d '{"ticker": "NVDA", "interval": "1day"}'
+```
+
+### ✅ Verify API Usage
+```bash
+curl https://your-app.railway.app/api/usage
+# Should show API call counts
+```
+
+### ✅ Monitor Logs
+```bash
+# Railway Dashboard -> Logs
+# Watch for errors during startup
+```
+
+---
+
+## Troubleshooting
+
+### Health Check Shows "degraded"
+**Symptoms:**
+```json
+{"status": "degraded", "issues": ["Telegram bot not configured"]}
+```
+
+**Causes:**
+1. Missing API keys → Add all required keys
+2. Redis not connected → Verify REDIS_URL
+3. Database not accessible → Check DATABASE_URL
+4. Telegram not configured → Optional, can ignore
+
+**Fix:**
+```bash
+# Check environment variables are set
+railway vars
+
+# Verify PostgreSQL plugin is attached
+railway plugins
+
+# Check Redis connection in logs
+railway logs
+```
+
+### Pattern Detection Returns "No data available"
+**Cause:** API keys not working or rate limit exceeded
+
+**Fix:**
+```bash
+# Test API keys directly
+curl "https://api.twelvedata.com/time_series?symbol=AAPL&interval=1day&apikey=YOUR_KEY"
+
+# Check API usage
+curl https://your-app.railway.app/api/usage
+```
+
+### Universe Not Seeding
+**Symptoms:** `/api/universe/tickers` returns 0 symbols
+
+**Fix:**
+```bash
+# Manually trigger seed
+curl -X POST https://your-app.railway.app/api/universe/seed
+
+# Check logs for errors
+railway logs | grep "universe"
+```
+
+### Out of API Calls
+**Symptoms:** All market data requests fail with 429 errors
+
+**Solution:**
+- Check usage: `GET /api/usage`
+- Wait for daily reset (midnight UTC)
+- Upgrade API plan
+- Enable Redis caching to reduce calls
+
+---
+
+## Performance Tips
+
+### 1. Enable Redis Caching
+Redis dramatically reduces API calls:
+```
+Without Redis: ~100-200 API calls/day for active users
+With Redis: ~10-20 API calls/day for active users
+```
+
+### 2. Cache Warming
+On startup, app warms cache with popular tickers (SPY, QQQ, etc.)
+- Reduces initial load time
+- Prevents API rate limit issues
+
+### 3. API Rate Limits
+Monitor usage to stay within free tier limits:
+```bash
+curl https://your-app.railway.app/api/usage
+```
+
+**Daily Limits (Free Tier):**
+- TwelveData: 800 calls/day
+- Finnhub: 60 calls/minute
+- Alpha Vantage: 500 calls/day
+- Chart-IMG: Depends on plan
+
+---
+
+## Security Best Practices
+
+### 1. Never Commit API Keys
+```bash
+# Always use environment variables
+# Add to .gitignore:
+.env
+.env.local
+.env.production
+```
+
+### 2. Use HTTPS Only
+```bash
+# In production, enforce HTTPS
+ALLOWED_ORIGINS=https://yourdomain.com
+```
+
+### 3. Rate Limiting
+Built-in rate limiting:
+- 60 requests/minute per IP
+- Configure in `app/middleware/rate_limit.py`
+
+### 4. CORS Configuration
+```bash
+# Restrict to your domains only
+ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+```
+
+---
+
+## Monitoring & Alerts
+
+### Setup Telegram Alerts
+```bash
+1. Talk to @BotFather on Telegram
+2. Create new bot: /newbot
+3. Copy token
+4. Set in Railway: TELEGRAM_BOT_TOKEN=<token>
+5. Restart app
+```
+
+### Health Monitoring
+```bash
+# Set up external monitoring (UptimeRobot, etc.)
+# Ping: https://your-app.railway.app/health every 5 minutes
+```
+
+### Error Tracking (Optional)
+```bash
+# Add Sentry for error tracking
+pip install sentry-sdk
+# Configure in app/main.py
+```
+
+---
+
+## Scaling
+
+### Horizontal Scaling
+Railway supports automatic scaling:
+```bash
+# In Railway dashboard:
+Settings -> Replicas -> Auto-scale
+```
+
+### Database Connection Pooling
+Already configured in `app/services/database.py`:
+```python
+pool_size=10
+max_overflow=20
+```
+
+### Redis Connection Pooling
+Built into redis-py client
+
+---
+
+## Backup & Disaster Recovery
+
+### Database Backups
+```bash
+# Railway PostgreSQL automatic backups
+# Manual backup:
+railway run pg_dump $DATABASE_URL > backup.sql
+```
+
+### Environment Variables Backup
+```bash
+# Export from Railway
+railway vars > railway-env-backup.txt
+# Keep this file secure!
+```
+
+---
+
+## Support
+
+### Documentation
+- API Docs: `https://your-app.railway.app/docs`
+- Redoc: `https://your-app.railway.app/redoc`
+- Error Codes: `https://your-app.railway.app/api/docs/errors`
 
 ### Logs
 ```bash
-# Railway logs
-railway logs
+# Railway
+railway logs --tail 100
 
-# Local logs
-docker-compose logs app
+# Local
+tail -f app.log
 ```
 
-## 🎯 Performance Monitoring
+### Issues
+Report issues: https://github.com/Stockmasterflex/legend-ai-python/issues
 
-### Key Metrics
-- Response time: <3s for pattern detection
-- Cache hit rate: >70%
-- API usage: Monitor TwelveData limits (800/day)
-- Error rate: <1%
+---
 
-### Scaling
-Railway automatically scales based on usage. Monitor costs and upgrade plan if needed.
-
-## 🔄 Updates & Maintenance
-
-### Deploying Updates
-```bash
-# Push to GitHub main branch
-git add .
-git commit -m "Update Legend AI"
-git push origin main
-
-# Railway auto-deploys
-```
-
-### Database Migrations
-```bash
-# For future schema changes
-alembic revision --autogenerate -m "Add new table"
-alembic upgrade head
-```
-
-## 📞 Support
-
-If issues persist:
-1. Check Railway dashboard for errors
-2. Review application logs
-3. Verify all environment variables
-4. Test API keys independently
+**Last Updated**: 2025-11-19  
+**Version**: 1.0.0  
+**Build**: 76bfbd9
