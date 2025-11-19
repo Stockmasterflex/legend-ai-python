@@ -122,7 +122,7 @@ class TopSetupsResponse(BaseModel):
 @router.get("/top-setups", response_model=TopSetupsResponse)
 async def get_top_setups(
     limit: int = Query(10, ge=1, le=50),
-    min_score: float = Query(7.0, ge=0.0, le=10.0),
+    min_score: float = Query(6.0, ge=0.0, le=10.0),  # Temporarily lowered to debug
 ):
     """Return the latest top setups for the dashboard tab with timeout protection."""
 
