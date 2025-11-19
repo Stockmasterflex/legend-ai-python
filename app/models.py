@@ -31,7 +31,8 @@ class PatternScan(Base):
     pattern_type = Column(String(50), index=True)  # VCP, Cup & Handle, etc.
     score = Column(Float, nullable=False)
     entry_price = Column(Float)
-    stop_price = Column(Float)
+    stop_loss = Column(Float)  # Renamed from stop_price for consistency
+    stop_price = Column(Float)  # Keep for compatibility
     target_price = Column(Float)
     risk_reward_ratio = Column(Float)
     criteria_met = Column(Text)  # JSON string of met criteria
@@ -58,6 +59,12 @@ class Watchlist(Base):
     notes = Column(Text)  # Additional notes
     alerts_enabled = Column(Boolean, default=True)  # Enable/disable price alerts
     alert_threshold = Column(Float, nullable=True)  # Alert when price moves this %
+    alert_on_pattern = Column(Boolean, default=True)  # Alert on pattern formation
+    alert_on_price_target = Column(Boolean, default=True)  # Alert on price target
+    alert_on_stop_loss = Column(Boolean, default=True)  # Alert on stop loss
+    alert_frequency = Column(String(20), default='once')  # 'once', 'hourly', 'daily', 'always', 'disabled'
+    last_alerted_at = Column(DateTime(timezone=True), nullable=True)  # Last alert time
+    muted_until = Column(DateTime(timezone=True), nullable=True)  # Temporary mute
     added_at = Column(DateTime(timezone=True), server_default=func.now())
     triggered_at = Column(DateTime(timezone=True), nullable=True)  # When pattern triggered
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -98,7 +105,33 @@ class AlertLog(Base):
     alert_type = Column(String(50), index=True)  # "price", "pattern", "breakout", "volume"
     trigger_price = Column(Float, nullable=True)
     trigger_value = Column(Float, nullable=True)
+    message = Column(Text, nullable=True)  # Alert message content
+    metadata = Column(Text, nullable=True)  # JSON metadata
+    error_message = Column(Text, nullable=True)  # Error if failed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     alert_sent_at = Column(DateTime(timezone=True), server_default=func.now())
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+
+class User(Base):
+    """User accounts for multi-user support"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    full_name = Column(String(255), nullable=True)
+    hashed_password = Column(String(255), nullable=False)
+    telegram_user_id = Column(String(100), unique=True, nullable=True, index=True)
+    is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
+    api_key = Column(String(100), unique=True, nullable=True)
+    api_quota_per_day = Column(Integer, default=1000)  # API calls per day
+    api_calls_count = Column(Integer, default=0)
+    last_api_call_at = Column(DateTime(timezone=True), nullable=True)
+    preferences = Column(Text, nullable=True)  # JSON preferences
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_login_at = Column(DateTime(timezone=True), nullable=True)

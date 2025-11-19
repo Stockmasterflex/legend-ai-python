@@ -26,6 +26,10 @@ from app.api.version import router as version_router
 from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
 from app.api.tv import router as tv_router
+from app.api.pattern_validation import router as pattern_validation_router
+from app.api.watchlist_alerts import router as watchlist_alerts_router
+from app.api.auth import router as auth_router
+from app.api.admin import router as admin_router
 from app.routers.ai_chat import router as ai_chat_router
 from app.routers.advanced_analysis import router as advanced_analysis_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
@@ -87,6 +91,10 @@ app.include_router(version_router)
 app.include_router(metrics_router)
 app.include_router(scan_router)
 app.include_router(tv_router)
+app.include_router(pattern_validation_router, prefix="/api/validation", tags=["pattern-validation"])
+app.include_router(watchlist_alerts_router, prefix="/api/alerts/watchlist", tags=["watchlist-alerts"])
+app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(ai_chat_router)
 app.include_router(advanced_analysis_router)
 
