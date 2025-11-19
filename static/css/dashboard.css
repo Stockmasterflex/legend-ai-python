@@ -137,6 +137,207 @@
     min-width: 0;
 }
 
+/* Analyze tab divider */
+.analyze-tv-divider {
+    margin: var(--spacing-2xl) 0;
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0), rgba(59, 130, 246, 0.65), rgba(59, 130, 246, 0));
+    opacity: 0.5;
+}
+
+/* TradingView Demo Layout - Professional Trading Interface */
+.tradingview-demo-layout {
+    margin-top: var(--spacing-2xl);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-2xl);
+    padding: var(--spacing-xl);
+    background: rgba(11, 17, 32, 0.95);
+    backdrop-filter: blur(20px);
+}
+
+.tv-demo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tv-demo-title h3 {
+    margin: 0;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-neon-aqua);
+    font-family: var(--font-mono);
+}
+
+.tv-demo-subtitle {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: var(--spacing-xs);
+}
+
+.tv-demo-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.tv-demo-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid transparent;
+}
+
+.tv-demo-btn--primary {
+    background: linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-aqua));
+    color: var(--color-bg-primary);
+    box-shadow: var(--glow-purple-sm);
+}
+
+.tv-demo-btn--primary:hover {
+    box-shadow: var(--glow-purple-md);
+    transform: translateY(-1px);
+}
+
+.tv-demo-btn--secondary {
+    background: rgba(32, 240, 255, 0.1);
+    border-color: rgba(32, 240, 255, 0.3);
+    color: var(--color-neon-aqua);
+}
+
+.tv-demo-btn--secondary:hover {
+    background: rgba(32, 240, 255, 0.2);
+}
+
+/* Main Chart Section */
+.tv-demo-main-chart {
+    margin-bottom: var(--spacing-xl);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background: rgba(5, 8, 15, 0.9);
+    min-height: 500px;
+    position: relative;
+}
+
+.tv-demo-chart-container,
+.tv-demo-chart-weekly {
+    height: 100%;
+    min-height: 500px;
+}
+
+.tv-demo-chart-container .tradingview-widget-container,
+.tv-demo-chart-weekly .tradingview-widget-container {
+    height: 100%;
+    width: 100%;
+}
+
+/* Widgets Grid */
+.tv-demo-widgets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.tv-demo-widget {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.tv-demo-widget-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tv-demo-widget-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.tv-demo-widget .tradingview-widget-container {
+    flex: 1;
+    min-height: 250px;
+}
+
+/* News Section */
+.tv-demo-news-section {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    min-height: 400px;
+}
+
+.tv-demo-news-section .tv-demo-widget-header {
+    margin: 0;
+}
+
+.tv-demo-news-section .tradingview-widget-container {
+    min-height: 350px;
+}
+
+/* Responsive Design for TradingView */
+@media (max-width: 1200px) {
+    .tv-demo-widgets-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .tv-demo-header {
+        flex-direction: column;
+        gap: var(--spacing-lg);
+        align-items: flex-start;
+    }
+
+    .tv-demo-actions {
+        align-self: stretch;
+        justify-content: center;
+    }
+
+    .tv-demo-widgets-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+
+    .tv-demo-main-chart {
+        min-height: 400px;
+    }
+}
+
+.tv-symbol-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 0.35rem 1rem;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    background: rgba(15, 23, 42, 0.8);
+}
+
 .scanner-controls {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
