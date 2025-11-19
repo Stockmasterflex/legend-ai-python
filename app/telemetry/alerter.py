@@ -195,6 +195,9 @@ class MonitoringAlerter:
     async def _check_health_status(self):
         """Monitor health check status"""
         try:
+            # Only alert for critical components (skip optional services)
+            CRITICAL_COMPONENTS = {"redis"}  # Database is optional, external APIs have natural rate limits
+
             for metric in REGISTRY.collect():
                 if metric.name == "health_check_status":
                     for sample in metric.samples:
@@ -205,7 +208,8 @@ class MonitoringAlerter:
                             # Increment failure counter
                             self._health_failures[component] += 1
 
-                            if self._health_failures[component] >= self.thresholds["health_check_failed"]:
+                            # Only send alerts for critical components
+                            if component in CRITICAL_COMPONENTS and self._health_failures[component] >= self.thresholds["health_check_failed"]:
                                 await self._send_alert(
                                     alert_type=f"health_check_failed_{component}",
                                     message=f"❌ *Health Check Failed*\n\n"
@@ -215,6 +219,9 @@ class MonitoringAlerter:
                                             f"*Action:* Investigate {component} connectivity and configuration\n\n"
                                             f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                                 )
+                            elif component not in CRITICAL_COMPONENTS:
+                                # Log non-critical failures but don't alert
+                                logger.debug(f"Non-critical health check failed: {component} (failures: {self._health_failures[component]})")
                         else:
                             # Reset failure counter if healthy
                             if component in self._health_failures:
