@@ -168,6 +168,7 @@ async def get_top_setups(
 async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResult], bool]:
     """Fetch cached universe scan results or trigger a fresh run using multi-pattern scanner."""
 
+    logger.info(f"Loading top setups: min_score={min_score}, limit={limit}")
     cached = False
     results = []
 
@@ -181,8 +182,10 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
             cached = True
             results = json.loads(cached_payload)
             logger.info(f"✅ Top setups cache hit: {len(results)} results")
+        else:
+            logger.info("Top setups cache miss")
     except Exception as exc:
-        logger.debug("Top setups cache lookup failed: %s", exc)
+        logger.warning(f"Top setups cache lookup failed: {exc}")
 
     # Run a fresh multi-pattern scan if cache miss
     if not results:
@@ -195,8 +198,11 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
                 min_score=min_score
             )
 
+            logger.info(f"Multi-pattern scan result: success={scan_result.get('success')}, results_count={len(scan_result.get('results', []))}")
+
             if scan_result.get("success") and scan_result.get("results"):
                 results = scan_result["results"]
+                logger.info(f"Using {len(results)} results from multi-pattern scan")
 
                 # Cache the results for 1 hour
                 try:
@@ -205,16 +211,33 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
                     logger.info(f"✅ Cached {len(results)} top setups")
                 except Exception as exc:
                     logger.warning(f"Failed to cache top setups: {exc}")
+            else:
+                logger.warning("Multi-pattern scan returned no results or failed")
         except Exception as exc:
             logger.error(f"Multi-pattern scan failed: {exc}")
 
-    # Fall back to quick scan cache if we still don't have data.
+    # Fall back to quick scan if we still don't have data.
     if not results:
-        logger.info("Top setups falling back to quick scan cache")
-        fallback = await quick_scan()
-        results = _normalize_quick_scan(fallback.get("results", []))
+        logger.info("Top setups falling back to quick scan")
+        try:
+            # Create a default QuickScanRequest for fallback
+            from app.api.universe import QuickScanRequest
+            default_request = QuickScanRequest(
+                universe="nasdaq100",
+                limit=max(limit * 2, 20),  # Scan more for better results
+                min_score=min_score,
+                min_rs=60.0,
+                timeframe="1day"
+            )
+            fallback = await quick_scan(default_request)
+            raw_results = fallback.get("data", [])
+            results = _normalize_quick_scan(raw_results)
+            logger.info(f"Quick scan fallback: {len(raw_results)} raw results, {len(results)} normalized")
+        except Exception as exc:
+            logger.error(f"Quick scan fallback failed: {exc}")
 
     normalized = [_coerce_scan_result(item) for item in results[:limit]]
+    logger.info(f"Returning {len(normalized)} normalized top setups (cached={cached})")
     return normalized, cached
 
 
