@@ -62,15 +62,19 @@
   }
 
   function renderTemplates(symbol) {
+    console.log('LegendTV: Rendering templates for symbol:', symbol);
     const containers = document.querySelectorAll('[data-tv-widget-target]');
+    console.log('LegendTV: Found containers:', containers.length);
     containers.forEach((container) => {
       const templateId = container.getAttribute('data-tv-widget-target');
       if (!templateId) return;
       const template = document.getElementById(templateId);
       if (!template) {
+        console.error('LegendTV: Template missing for ID:', templateId);
         container.innerHTML = '<p class="tv-error">Widget template missing.</p>';
         return;
       }
+      console.log('LegendTV: Using template:', templateId);
       const fragment = template.content.cloneNode(true);
       replacePlaceholders(fragment, symbol);
       container.innerHTML = '';

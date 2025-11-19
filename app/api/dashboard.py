@@ -147,10 +147,16 @@ def _resolve_build_sha() -> str:
 
 def _inject_tv_templates(html: str) -> str:
     """Insert shared TradingView templates into the page."""
+    logger.info(f"Checking for TV_WIDGET_TEMPLATES placeholder in HTML (length: {len(html)})")
     if "<!--TV_WIDGET_TEMPLATES-->" not in html:
+        logger.warning("TV_WIDGET_TEMPLATES placeholder not found in dashboard HTML")
         return html
     try:
         partial = TV_TEMPLATE_PATH.read_text(encoding="utf-8")
+        logger.info(f"Successfully read TV template partial (length: {len(partial)})")
     except FileNotFoundError:
+        logger.error(f"TV template partial not found at {TV_TEMPLATE_PATH}")
         partial = ""
-    return html.replace("<!--TV_WIDGET_TEMPLATES-->", partial)
+    result = html.replace("<!--TV_WIDGET_TEMPLATES-->", partial)
+    logger.info(f"Injected TV templates into HTML (new length: {len(result)})")
+    return result
