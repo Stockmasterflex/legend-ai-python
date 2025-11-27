@@ -4,8 +4,8 @@
  */
 (function () {
   // Initialize Dashboard object immediately to prevent Alpine.js errors
-  window.Dashboard = window.Dashboard || { 
-    focusTab: function(tab) {
+  window.Dashboard = window.Dashboard || {
+    focusTab: function (tab) {
       // Stub function that will be replaced on DOMContentLoaded
       // This prevents errors if Alpine.js tries to call it before initialization
       if (document.readyState === 'loading') {
@@ -38,7 +38,7 @@
       cacheDom();
       bindEvents();
       initTabNavigation();
-      window.Dashboard = { 
+      window.Dashboard = {
         focusTab: (tab) => switchTab(tab),
         initialized: true
       };
@@ -62,7 +62,7 @@
       .then(v => {
         const el = document.getElementById('build-version');
         if (el && v && v.commit && String(v.commit).trim() !== 'unknown') {
-          el.textContent = `(build ${String(v.commit).slice(0,7)})`;
+          el.textContent = `(build ${String(v.commit).slice(0, 7)})`;
         } else if (el) {
           el.textContent = '';
         }
@@ -162,7 +162,7 @@
     const origLabel = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
+    const timer = setTimeout(() => controller.abort(), 60000);
     try {
       const url = `/api/analyze?ticker=${encodeURIComponent(ticker)}&tf=${tf}`;
       console.log('Fetching analyze:', url);
@@ -1246,7 +1246,7 @@
     const chartWeekly = document.querySelector('.tv-demo-chart-weekly');
 
     if (weeklyToggle) {
-      weeklyToggle.addEventListener('click', function() {
+      weeklyToggle.addEventListener('click', function () {
         const isWeekly = chartWeekly.style.display !== 'none';
         if (isWeekly) {
           // Switch to daily
@@ -1267,7 +1267,7 @@
     }
 
     if (fullscreenBtn) {
-      fullscreenBtn.addEventListener('click', function() {
+      fullscreenBtn.addEventListener('click', function () {
         const mainChart = document.querySelector('.tv-demo-main-chart');
         if (!document.fullscreenElement) {
           mainChart.requestFullscreen().catch(err => {
@@ -1280,7 +1280,7 @@
     }
 
     // Handle fullscreen change events
-    document.addEventListener('fullscreenchange', function() {
+    document.addEventListener('fullscreenchange', function () {
       if (document.fullscreenElement) {
         fullscreenBtn.textContent = 'Exit Fullscreen';
       } else {
