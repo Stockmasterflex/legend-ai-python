@@ -33,8 +33,8 @@ def get_ai_assistant() -> AIFinancialAssistant:
 
 class ChatRequest(BaseModel):
     """Chat request for AI assistant"""
-    message: str = Field(..., description="User message or question", example="What are the best tech stocks right now?")
-    symbol: Optional[str] = Field(None, description="Stock symbol for context (optional)", example="AAPL")
+    message: str = Field(..., description="User message or question", json_schema_extra={"example": "What are the best tech stocks right now?"})
+    symbol: Optional[str] = Field(None, description="Stock symbol for context (optional)", json_schema_extra={"example": "AAPL"})
     include_market_data: bool = Field(True, description="Include live market data in context")
     conversation_id: Optional[str] = Field(None, description="Conversation ID for history tracking")
 
@@ -51,7 +51,7 @@ class ChatRequest(BaseModel):
 
 class AnalyzeStockRequest(BaseModel):
     """Stock analysis request"""
-    symbol: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, NVDA)", example="AAPL")
+    symbol: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, NVDA)", json_schema_extra={"example": "AAPL"})
 
     class Config:
         json_schema_extra = {
@@ -63,7 +63,7 @@ class AnalyzeStockRequest(BaseModel):
 
 class CompareStocksRequest(BaseModel):
     """Stock comparison request"""
-    symbols: List[str] = Field(..., description="List of stock symbols (2-5)", example=["AAPL", "MSFT", "GOOGL"])
+    symbols: List[str] = Field(..., description="List of stock symbols (2-5)", json_schema_extra={"example": ["AAPL", "MSFT", "GOOGL"]})
 
     class Config:
         json_schema_extra = {
@@ -75,7 +75,7 @@ class CompareStocksRequest(BaseModel):
 
 class ExplainPatternRequest(BaseModel):
     """Pattern explanation request"""
-    pattern_name: str = Field(..., description="Name of chart pattern to explain", example="Cup and Handle")
+    pattern_name: str = Field(..., description="Name of chart pattern to explain", json_schema_extra={"example": "Cup and Handle"})
 
     class Config:
         json_schema_extra = {

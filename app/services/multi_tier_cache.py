@@ -24,7 +24,7 @@ from pathlib import Path
 import hashlib
 
 from sqlalchemy import Column, String, Text, Integer, DateTime, Float, Index, text
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 from app.config import get_settings
 from app.services.cache import CacheService

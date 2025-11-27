@@ -244,8 +244,7 @@ with gr.Blocks(
             headers=["Ticker", "Pattern", "Score", "Entry", "Stop", "Target", "Current Price"],
             label="Pattern Scan Results",
             interactive=False,
-            wrap=True,
-            height=400
+            wrap=True
         )
 
         gr.Markdown(f"""

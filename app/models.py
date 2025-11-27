@@ -4,7 +4,7 @@ Phase 1.5: Database Integration
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 
 Base = declarative_base()

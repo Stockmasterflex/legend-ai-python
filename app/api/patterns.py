@@ -15,8 +15,8 @@ router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
 class PatternRequest(BaseModel):
     """Request model for pattern detection"""
-    ticker: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, SPY)", example="AAPL")
-    interval: str = Field("1day", description="Time interval: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week", example="1day")
+    ticker: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, SPY)", json_schema_extra={"example": "AAPL"})
+    interval: str = Field("1day", description="Time interval: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week", json_schema_extra={"example": "1day"})
     use_yahoo_fallback: bool = Field(True, description="Use Yahoo Finance as fallback data source")
 
     @field_validator("interval")
