@@ -73,7 +73,7 @@ def test_chart_payload_limits_overlays(monkeypatch):
     assert payload["drawings"] and payload["drawings"][0]["name"] == "Long Position"
     # One slot is reserved for drawings, so studies never exceed MAX_PARAMETERS-1
     assert len(payload["studies"]) <= service.MAX_PARAMETERS - 1
-    assert any(s.get("name") == "Volume" for s in payload["studies"])
+    assert payload["hideVolume"] is False
 
 
 def test_multi_timeframe_charts_collects_urls(monkeypatch):
@@ -91,8 +91,7 @@ def test_multi_timeframe_charts_collects_urls(monkeypatch):
     assert charts == {"1day": "https://chart/1day", "1week": "https://chart/1week"}
 
 
-def test_fallback_url_normalizes_timeframe(monkeypatch):
+def test_resolve_interval_normalizes_timeframe(monkeypatch):
     service = _service(monkeypatch)
-    url = service._get_fallback_url("spy", "1week")
-    assert "symbol=NASDAQ:SPY" in url
-    assert "interval=W" in url
+    interval = service._resolve_interval("1week")
+    assert interval == "1W"

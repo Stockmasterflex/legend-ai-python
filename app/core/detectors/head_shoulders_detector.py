@@ -5,7 +5,10 @@ Implements both regular (topping) and inverse (bottoming) patterns
 from typing import List, Optional, Dict, Any, Tuple
 import pandas as pd
 import numpy as np
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from app.core.detector_base import (
     Detector, PatternResult, PatternType, PricePoint, LineSegment,

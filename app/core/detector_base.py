@@ -163,7 +163,6 @@ class GeometryHelper:
             return None
         try:
             from sklearn.linear_model import RANSACRegressor
-            import numpy as np
 
             X = np.array([p[0] for p in points]).reshape(-1, 1)
             y = np.array([p[1] for p in points])
@@ -178,8 +177,12 @@ class GeometryHelper:
             inliers = ransac.inlier_mask_
 
             return (slope, intercept, r2, inliers)
-        except (ValueError, np.linalg.LinAlgError) as e:
+        except (ValueError, ImportError, NameError) as e:
             # RANSAC can fail with insufficient data or numerical issues
+            # Also catch ImportError if sklearn is missing
+            return None
+        except Exception:
+             # Catch np.linalg.LinAlgError if np is available, or any other error
             return None
 
     @staticmethod

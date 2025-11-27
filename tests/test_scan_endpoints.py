@@ -41,6 +41,35 @@ def _stub_universe_service(monkeypatch):
 
     monkeypatch.setattr(universe_mod, "universe_service", dummy)
     monkeypatch.setattr(scan_mod, "universe_service", dummy)
+
+    # Stub scan_service
+    async def _run_daily_vcp_scan(limit=20, sector=None):
+        return {
+            "universe_size": 100,
+            "results": [
+                {
+                    "ticker": "NVDA",
+                    "pattern": "VCP",
+                    "score": 9.2,
+                    "entry": 100.0,
+                    "stop": 95.0,
+                    "target": 130.0,
+                    "risk_reward": 6.0,
+                    "current_price": 104.0,
+                    "source": "SP500",
+                }
+            ]
+        }
+    
+    scan_dummy = types.SimpleNamespace(
+        run_daily_vcp_scan=_run_daily_vcp_scan
+    )
+    monkeypatch.setattr(scan_mod, "scan_service", scan_dummy)
+    
+    # Also patch where it might be imported inside functions
+    import app.services.scanner
+    monkeypatch.setattr(app.services.scanner, "scan_service", scan_dummy)
+
     return dummy
 
 

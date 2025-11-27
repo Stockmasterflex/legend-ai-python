@@ -90,9 +90,9 @@ class TestPatternAnalysisFlow:
         """Test: Add to watchlist -> View watchlist -> Remove from watchlist"""
         # Step 1: Add ticker to watchlist
         add_response = client.post(
-            "/api/watchlist",
+            "/api/watchlist/add",
             json={
-                "symbol": "TSLA",
+                "ticker": "TSLA",
                 "status": "Watching",
                 "reason": "VCP forming",
                 "tags": ["VCP", "Momentum"]
@@ -106,19 +106,23 @@ class TestPatternAnalysisFlow:
         get_response = client.get("/api/watchlist")
         assert get_response.status_code == 200
 
-        watchlist = get_response.json()
+        data = get_response.json()
+        assert data["success"] is True
+        assert "items" in data
+        watchlist = data["items"]
         assert isinstance(watchlist, list)
 
         # Find our added ticker
-        tsla_items = [item for item in watchlist if item.get("symbol") == "TSLA"]
+        tsla_items = [item for item in watchlist if item.get("ticker") == "TSLA"]
 
         if tsla_items:
             tsla_item = tsla_items[0]
-            item_id = tsla_item.get("id")
+            # The API uses 'ticker' as the ID for deletion in the current implementation
+            item_id = tsla_item.get("ticker")
 
             # Step 3: Delete ticker from watchlist
             if item_id:
-                delete_response = client.delete(f"/api/watchlist/{item_id}")
+                delete_response = client.delete(f"/api/watchlist/remove/{item_id}")
                 # Should succeed (200, 204, or 404 if already deleted)
                 assert delete_response.status_code in [200, 204, 404]
 
@@ -155,11 +159,11 @@ class TestAPIEndpoints:
 
     def test_analyze_endpoint(self, client):
         """Test /api/analyze endpoint"""
-        response = client.post(
+        response = client.get(
             "/api/analyze",
-            json={
+            params={
                 "ticker": "AAPL",
-                "interval": "1day"
+                "tf": "daily"
             }
         )
 
@@ -172,7 +176,7 @@ class TestAPIEndpoints:
             "/api/patterns/detect",
             json={
                 "ticker": "NVDA",
-                "timeframe": "1day"
+                "interval": "1day"
             }
         )
 
@@ -182,8 +186,13 @@ class TestAPIEndpoints:
     def test_universe_endpoint(self, client):
         """Test /api/universe endpoints"""
         # Get universe
-        get_response = client.get("/api/universe")
+        get_response = client.get("/api/universe/tickers")
         assert get_response.status_code == 200
+        
+        data = get_response.json()
+        assert data["success"] is True
+        assert "tickers" in data
+        assert isinstance(data["tickers"], list)
 
         # Seed universe
         seed_response = client.post("/api/universe/seed")
@@ -195,11 +204,11 @@ class TestAPIEndpoints:
     def test_scan_endpoint(self, client):
         """Test /api/scan/universe endpoint"""
         response = client.post(
-            "/api/scan/universe",
+            "/api/universe/scan",
             json={
-                "universe": ["AAPL", "NVDA"],
-                "limit": 5,
-                "min_score": 7.0
+                "min_score": 7.0,
+                "max_results": 5,
+                "pattern_types": ["VCP"]
             }
         )
 
@@ -229,12 +238,12 @@ class TestErrorHandling:
             "/api/patterns/detect",
             json={
                 "ticker": "AAPL",
-                "timeframe": "invalid"
+                "interval": "invalid_interval"
             }
         )
 
-        # Should reject invalid input
-        assert response.status_code in [400, 422]
+        # Should reject invalid input (Pydantic validation error)
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_empty_universe_scan(self):

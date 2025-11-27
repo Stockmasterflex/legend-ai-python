@@ -4,6 +4,9 @@ import numpy as np
 import pytest
 from datetime import datetime, timedelta
 
+# Skip all tests in this module if sklearn is not installed
+pytest.importorskip("sklearn")
+
 from app.core.detectors.vcp_detector import VCPDetector
 from app.core.detectors.cup_handle_detector import CupHandleDetector
 from app.core.detectors.triangle_detector import TriangleDetector
