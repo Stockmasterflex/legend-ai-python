@@ -2,29 +2,22 @@
 Monitoring service for collecting and exposing system metrics
 Tracks database pools, API quotas, health checks, and application info
 """
-import time
-import logging
+
 import asyncio
+import logging
 import os
-from datetime import datetime
-from typing import Dict, Any, Optional
+import time
+from typing import Optional
+
 import httpx
 
 from app.config import get_settings
-from app.telemetry.metrics import (
-    DB_CONNECTIONS_TOTAL,
-    DB_CONNECTIONS_POOL_SIZE,
-    DB_CONNECTIONS_POOL_OVERFLOW,
-    API_QUOTA_USED,
-    API_QUOTA_LIMIT,
-    API_QUOTA_REMAINING,
-    HEALTH_CHECK_STATUS,
-    HEALTH_CHECK_DURATION_SECONDS,
-    APP_INFO,
-    UPTIME_SECONDS,
-    ALERTS_SENT_TOTAL,
-    EXTERNAL_API_ERRORS_TOTAL,
-)
+from app.telemetry.metrics import (ALERTS_SENT_TOTAL, API_QUOTA_LIMIT,
+                                   APP_INFO, DB_CONNECTIONS_POOL_OVERFLOW,
+                                   DB_CONNECTIONS_POOL_SIZE,
+                                   DB_CONNECTIONS_TOTAL,
+                                   HEALTH_CHECK_DURATION_SECONDS,
+                                   HEALTH_CHECK_STATUS, UPTIME_SECONDS)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -40,11 +33,17 @@ class MonitoringService:
 
         # Initialize app info
         build_sha = os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev")[:7]
-        APP_INFO.info({
-            "version": "1.0.0",
-            "build_sha": build_sha,
-            "environment": "production" if os.getenv("RAILWAY_PUBLIC_DOMAIN") else "development",
-        })
+        APP_INFO.info(
+            {
+                "version": "1.0.0",
+                "build_sha": build_sha,
+                "environment": (
+                    "production"
+                    if os.getenv("RAILWAY_PUBLIC_DOMAIN")
+                    else "development"
+                ),
+            }
+        )
 
     async def start_monitoring(self):
         """Start background monitoring tasks"""
@@ -114,7 +113,9 @@ class MonitoringService:
                 DB_CONNECTIONS_TOTAL.labels(state="idle").set(pool_size - checked_out)
                 DB_CONNECTIONS_POOL_OVERFLOW.set(overflow)
 
-                logger.debug(f"DB Pool: size={pool_size}, active={checked_out}, idle={pool_size - checked_out}, overflow={overflow}")
+                logger.debug(
+                    f"DB Pool: size={pool_size}, active={checked_out}, idle={pool_size - checked_out}, overflow={overflow}"
+                )
 
         except Exception as e:
             logger.warning(f"Could not collect DB metrics: {e}")
@@ -124,21 +125,29 @@ class MonitoringService:
         try:
             # TwelveData quota
             if self.settings.twelvedata_api_key:
-                API_QUOTA_LIMIT.labels(service="twelvedata").set(self.settings.twelvedata_daily_limit)
+                API_QUOTA_LIMIT.labels(service="twelvedata").set(
+                    self.settings.twelvedata_daily_limit
+                )
                 # Note: Actual usage tracking would require persistent storage
                 # For now, we just set the limit
 
             # Finnhub quota
             if self.settings.finnhub_api_key:
-                API_QUOTA_LIMIT.labels(service="finnhub").set(self.settings.finnhub_daily_limit)
+                API_QUOTA_LIMIT.labels(service="finnhub").set(
+                    self.settings.finnhub_daily_limit
+                )
 
             # Alpha Vantage quota
             if self.settings.alpha_vantage_api_key:
-                API_QUOTA_LIMIT.labels(service="alpha_vantage").set(self.settings.alpha_vantage_daily_limit)
+                API_QUOTA_LIMIT.labels(service="alpha_vantage").set(
+                    self.settings.alpha_vantage_daily_limit
+                )
 
             # Chart-IMG quota
             if self.settings.chart_img_api_key:
-                API_QUOTA_LIMIT.labels(service="chartimg").set(self.settings.chartimg_daily_limit)
+                API_QUOTA_LIMIT.labels(service="chartimg").set(
+                    self.settings.chartimg_daily_limit
+                )
 
         except Exception as e:
             logger.warning(f"Could not collect API quota metrics: {e}")
@@ -225,16 +234,23 @@ class MonitoringService:
                         HEALTH_CHECK_STATUS.labels(component=f"api_{api_name}").set(0)
 
                 duration = time.perf_counter() - start_time
-                HEALTH_CHECK_DURATION_SECONDS.labels(component=f"api_{api_name}").observe(duration)
+                HEALTH_CHECK_DURATION_SECONDS.labels(
+                    component=f"api_{api_name}"
+                ).observe(duration)
 
             except Exception as e:
                 HEALTH_CHECK_STATUS.labels(component=f"api_{api_name}").set(0)
                 logger.debug(f"{api_name} health check failed: {e}")
 
-    async def send_telegram_alert(self, message: str, alert_type: str = "system") -> bool:
+    async def send_telegram_alert(
+        self, message: str, alert_type: str = "system"
+    ) -> bool:
         """Send a monitoring alert via Telegram"""
         try:
-            if not self.settings.telegram_bot_token or not self.settings.telegram_chat_id:
+            if (
+                not self.settings.telegram_bot_token
+                or not self.settings.telegram_chat_id
+            ):
                 logger.warning("Telegram credentials not configured")
                 return False
 
@@ -250,12 +266,16 @@ class MonitoringService:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
 
-            ALERTS_SENT_TOTAL.labels(alert_type=alert_type, channel="telegram", status="success").inc()
+            ALERTS_SENT_TOTAL.labels(
+                alert_type=alert_type, channel="telegram", status="success"
+            ).inc()
             logger.info(f"Telegram alert sent successfully: {alert_type}")
             return True
 
         except Exception as e:
-            ALERTS_SENT_TOTAL.labels(alert_type=alert_type, channel="telegram", status="failed").inc()
+            ALERTS_SENT_TOTAL.labels(
+                alert_type=alert_type, channel="telegram", status="failed"
+            ).inc()
             logger.error(f"Failed to send Telegram alert: {e}")
             return False
 

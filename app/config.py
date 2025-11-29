@@ -1,10 +1,13 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", case_sensitive=False, extra="ignore"
+    )
     # App
     app_name: str = "Legend AI"
     debug: bool = False
@@ -22,6 +25,7 @@ class Settings(BaseSettings):
     def auto_webhook_url(self) -> str:
         """Auto-generate webhook URL from Railway domain"""
         import os
+
         # Try to get from Railway environment
         railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
         if railway_domain:
@@ -65,6 +69,7 @@ class Settings(BaseSettings):
     def chart_img_api_key(self) -> Optional[str]:
         """Get Chart-IMG API key from multiple possible environment variable names"""
         import os
+
         return (
             os.getenv("CHART_IMG_API_KEY")
             or os.getenv("CHARTIMG_API_KEY")
@@ -132,23 +137,26 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
 
 
-
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance"""
-    import os
     import logging
+    import os
 
     logger = logging.getLogger(__name__)
 
     # Debug environment variables
-    chartimg_key = os.getenv('CHARTIMG_API_KEY')
+    chartimg_key = os.getenv("CHARTIMG_API_KEY")
     logger.info(f"🔍 Environment CHARTIMG_API_KEY present: {bool(chartimg_key)}")
     if chartimg_key:
         logger.info(f"🔍 CHARTIMG_API_KEY length: {len(chartimg_key)}")
 
     settings = Settings()
-    logger.info(f"🔍 Settings chart_img_api_key present: {bool(settings.chart_img_api_key)}")
-    logger.info(f"🔍 Settings chartimg_api_key present: {bool(settings.chartimg_api_key)}")
+    logger.info(
+        f"🔍 Settings chart_img_api_key present: {bool(settings.chart_img_api_key)}"
+    )
+    logger.info(
+        f"🔍 Settings chartimg_api_key present: {bool(settings.chartimg_api_key)}"
+    )
 
     return settings

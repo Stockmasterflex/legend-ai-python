@@ -1,7 +1,7 @@
 import numpy as np
 
-from app.core.pattern_engine.patterns.channels import find_channels
 from app.core.pattern_engine.helpers import get_pattern_helpers
+from app.core.pattern_engine.patterns.channels import find_channels
 
 
 def test_detect_ascending_channel():

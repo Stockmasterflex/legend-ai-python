@@ -10,8 +10,8 @@ tags_metadata = [
         "description": "🎯 **Pattern Detection & Analysis** - Detect and analyze chart patterns with AI-powered insights",
         "externalDocs": {
             "description": "Pattern Detection Guide",
-            "url": "https://github.com/Stockmasterflex/legend-ai-python/blob/main/API_REFERENCE.md#patterns"
-        }
+            "url": "https://github.com/Stockmasterflex/legend-ai-python/blob/main/API_REFERENCE.md#patterns",
+        },
     },
     {
         "name": "AI Assistant",
@@ -162,12 +162,9 @@ The API uses standard HTTP status codes:
     "contact": {
         "name": "Legend AI Support",
         "url": "https://github.com/Stockmasterflex/legend-ai-python",
-        "email": "support@legend-ai.com"
+        "email": "support@legend-ai.com",
     },
-    "license_info": {
-        "name": "MIT",
-        "url": "https://opensource.org/licenses/MIT"
-    }
+    "license_info": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
 }
 
 # Example responses for common error scenarios
@@ -179,10 +176,10 @@ error_responses = {
                 "example": {
                     "success": False,
                     "error": "Invalid ticker symbol format",
-                    "detail": "Ticker must be alphanumeric"
+                    "detail": "Ticker must be alphanumeric",
                 }
             }
-        }
+        },
     },
     404: {
         "description": "Not Found",
@@ -191,10 +188,10 @@ error_responses = {
                 "example": {
                     "success": False,
                     "error": "No price data available for INVALID",
-                    "detail": "Symbol not found in any data source"
+                    "detail": "Symbol not found in any data source",
                 }
             }
-        }
+        },
     },
     429: {
         "description": "Too Many Requests",
@@ -202,10 +199,10 @@ error_responses = {
             "application/json": {
                 "example": {
                     "error": "Rate limit exceeded",
-                    "detail": "Maximum 60 requests per minute. Try again in 30 seconds."
+                    "detail": "Maximum 60 requests per minute. Try again in 30 seconds.",
                 }
             }
-        }
+        },
     },
     500: {
         "description": "Internal Server Error",
@@ -214,10 +211,10 @@ error_responses = {
                 "example": {
                     "success": False,
                     "error": "Pattern analysis failed",
-                    "detail": "Internal processing error"
+                    "detail": "Internal processing error",
                 }
             }
-        }
+        },
     },
     503: {
         "description": "Service Unavailable",
@@ -225,11 +222,11 @@ error_responses = {
             "application/json": {
                 "example": {
                     "error": "Service temporarily unavailable",
-                    "detail": "External data provider is down. Please try again later."
+                    "detail": "External data provider is down. Please try again later.",
                 }
             }
-        }
-    }
+        },
+    },
 }
 
 # Code examples for different languages
@@ -272,7 +269,7 @@ response = requests.post(
 
 result = response.json()
 print(result['response'])
-        """
+        """,
     },
     "javascript": {
         "pattern_detect": """
@@ -314,7 +311,7 @@ const response = await fetch('https://your-api.com/api/ai/chat', {
 
 const result = await response.json();
 console.log(result.response);
-        """
+        """,
     },
     "curl": {
         "pattern_detect": """
@@ -335,6 +332,6 @@ curl -X POST "https://your-api.com/api/ai/chat" \\
     "symbol": "TSLA",
     "include_market_data": true
   }'
-        """
-    }
+        """,
+    },
 }

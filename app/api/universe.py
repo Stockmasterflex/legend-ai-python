@@ -3,22 +3,21 @@ Universe Scanner API Endpoints
 
 Provides endpoints for scanning S&P 500 and NASDAQ 100 for pattern setups.
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-import logging
 
-from app.services.universe import universe_service
-from app.services.universe_data import (
-    get_nasdaq,
-    get_sp500,
-    get_quick_scan_universe,
-)
-from app.services.market_data import market_data_service
-from app.services.cache import get_cache_service
-from app.services.universe_store import universe_store
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 from app.core.pattern_detector import PatternDetector, PatternResult
+from app.services.cache import get_cache_service
+from app.services.market_data import market_data_service
+from app.services.universe import universe_service
+from app.services.universe_data import (get_nasdaq, get_quick_scan_universe,
+                                        get_sp500)
+from app.services.universe_store import universe_store
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +26,17 @@ router = APIRouter(prefix="/api/universe", tags=["universe"])
 
 class ScanRequest(BaseModel):
     """Request model for universe scan"""
+
     min_score: float = 7.0
     max_results: int = 20
-    pattern_types: Optional[List[str]] = None  # Filter by patterns: ["VCP", "Cup & Handle"]
+    pattern_types: Optional[List[str]] = (
+        None  # Filter by patterns: ["VCP", "Cup & Handle"]
+    )
 
 
 class ScanResult(BaseModel):
     """Scan result model"""
+
     ticker: str
     pattern: str
     score: float
@@ -47,6 +50,7 @@ class ScanResult(BaseModel):
 
 class ScanResponse(BaseModel):
     """Response model for scan"""
+
     success: bool
     results: List[ScanResult]
     total_scanned: int
@@ -105,12 +109,7 @@ def _normalize_pattern_filters(patterns: Optional[List[str]]) -> set[str]:
     for raw in patterns:
         if not raw:
             continue
-        slug = (
-            raw.replace("&amp;", "&")
-            .replace("-", " ")
-            .strip()
-            .lower()
-        )
+        slug = raw.replace("&amp;", "&").replace("-", " ").strip().lower()
         if slug in {"", "all"}:
             continue
         slug = " ".join(slug.split())
@@ -124,33 +123,30 @@ def _normalize_pattern_filters(patterns: Optional[List[str]]) -> set[str]:
 @router.get("/health")
 async def health():
     """Health check for universe service"""
-    return {
-        "status": "healthy",
-        "message": "Universe scanner ready"
-    }
+    return {"status": "healthy", "message": "Universe scanner ready"}
 
 
 @router.get("/tickers")
 async def get_universe_tickers():
     """
     Get full universe ticker list (S&P 500 + NASDAQ 100)
-    
+
     Returns:
         List of all tickers in the universe
     """
     try:
         universe = await universe_service.get_full_universe()
-        
+
         return {
             "success": True,
             "total": len(universe),
             "tickers": [item["ticker"] for item in universe],
             "sources": {
                 "SP500": len([u for u in universe if u["source"] == "SP500"]),
-                "NASDAQ100": len([u for u in universe if u["source"] == "NASDAQ100"])
-            }
+                "NASDAQ100": len([u for u in universe if u["source"] == "NASDAQ100"]),
+            },
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting universe: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -160,16 +156,16 @@ async def get_universe_tickers():
 async def scan_universe(request: ScanRequest):
     """
     Scan full universe (S&P 500 + NASDAQ 100) for pattern setups
-    
+
     This endpoint is rate-limited and cached to avoid API abuse.
     Results are cached for 24 hours.
-    
+
     Args:
         request: Scan configuration
-        
+
     Returns:
         Top pattern setups sorted by score
-        
+
     Example:
         POST /api/universe/scan
         {
@@ -180,33 +176,38 @@ async def scan_universe(request: ScanRequest):
     """
     try:
         import time
+
         start_time = time.time()
-        
-        logger.info(f"🔍 Starting universe scan (min_score={request.min_score}, max={request.max_results})")
-        
+
+        logger.info(
+            f"🔍 Starting universe scan (min_score={request.min_score}, max={request.max_results})"
+        )
+
         # Run scan
         results = await universe_service.scan_universe(
             min_score=request.min_score,
             max_results=request.max_results,
-            pattern_types=request.pattern_types
+            pattern_types=request.pattern_types,
         )
-        
+
         scan_time = time.time() - start_time
-        
+
         # Check if results were cached
         cached = scan_time < 1.0  # If it took < 1s, it was probably cached
-        
-        logger.info(f"✅ Universe scan complete: {len(results)} setups found in {scan_time:.2f}s")
-        
+
+        logger.info(
+            f"✅ Universe scan complete: {len(results)} setups found in {scan_time:.2f}s"
+        )
+
         return ScanResponse(
             success=True,
             results=[ScanResult(**r) for r in results],
             total_scanned=600,  # Approximate
             total_found=len(results),
             cached=cached,
-            scan_time=round(scan_time, 2)
+            scan_time=round(scan_time, 2),
         )
-        
+
     except Exception as e:
         logger.error(f"Universe scan error: {e}")
         return ScanResponse(
@@ -215,11 +216,13 @@ async def scan_universe(request: ScanRequest):
             total_scanned=0,
             total_found=0,
             cached=False,
-            scan_time=0
+            scan_time=0,
         )
 
 
-def _compute_atr_percent(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> Optional[float]:
+def _compute_atr_percent(
+    highs: List[float], lows: List[float], closes: List[float], period: int = 14
+) -> Optional[float]:
     """Calculate ATR as a percent of the latest close price."""
 
     try:
@@ -266,7 +269,9 @@ async def quick_scan(request: QuickScanRequest):
         interval = "1week" if "week" in requested_interval else "1day"
 
         universe_key = request.universe.lower().strip()
-        label, universe_fn = universe_map.get(universe_key, ("Focus", get_quick_scan_universe))
+        label, universe_fn = universe_map.get(
+            universe_key, ("Focus", get_quick_scan_universe)
+        )
         tickers = universe_fn()
 
         def _matches_sector(symbol: str) -> bool:
@@ -308,19 +313,27 @@ async def quick_scan(request: QuickScanRequest):
                 if cached_pattern:
                     cache_hits += 1
                     if isinstance(cached_pattern.get("timestamp"), str):
-                        cached_pattern["timestamp"] = datetime.fromisoformat(cached_pattern["timestamp"])
+                        cached_pattern["timestamp"] = datetime.fromisoformat(
+                            cached_pattern["timestamp"]
+                        )
 
                     pattern_result = PatternResult(**cached_pattern)
 
                 if pattern_result is None:
-                    price_data = await market_data_service.get_time_series(ticker, interval, 400)
+                    price_data = await market_data_service.get_time_series(
+                        ticker, interval, 400
+                    )
                     if not price_data:
                         continue
 
-                    pattern_result = await detector.analyze_ticker(ticker, price_data, spy_data)
+                    pattern_result = await detector.analyze_ticker(
+                        ticker, price_data, spy_data
+                    )
 
                     if pattern_result:
-                        await cache.set_pattern(ticker, cache_interval, pattern_result.to_dict())
+                        await cache.set_pattern(
+                            ticker, cache_interval, pattern_result.to_dict()
+                        )
 
                 if pattern_result is None:
                     continue
@@ -338,39 +351,49 @@ async def quick_scan(request: QuickScanRequest):
                         continue
 
                 if price_data is None:
-                    price_data = await market_data_service.get_time_series(ticker, interval, 200)
+                    price_data = await market_data_service.get_time_series(
+                        ticker, interval, 200
+                    )
 
                 atr_percent = None
                 if price_data and all(k in price_data for k in ("h", "l", "c")):
-                    atr_percent = _compute_atr_percent(price_data["h"], price_data["l"], price_data["c"])
+                    atr_percent = _compute_atr_percent(
+                        price_data["h"], price_data["l"], price_data["c"]
+                    )
 
-                if request.max_atr_percent and atr_percent and atr_percent > request.max_atr_percent:
+                if (
+                    request.max_atr_percent
+                    and atr_percent
+                    and atr_percent > request.max_atr_percent
+                ):
                     continue
 
                 meta = metadata_map.get(ticker.upper())
 
-                rows.append({
-                    "ticker": ticker,
-                    "pattern": pattern_result.pattern,
-                    "score": pattern_result.score,
-                    "entry": pattern_result.entry,
-                    "stop": pattern_result.stop,
-                    "target": pattern_result.target,
-                    "rs_rating": rs_rating,
-                    "atr_percent": atr_percent,
-                    "current_price": pattern_result.current_price,
-                    "source": label,
-                    "sector": meta.get("sector") if meta else None,
-                    "timeframe": interval,
-                    "chart_url": pattern_result.chart_url,
-                })
+                rows.append(
+                    {
+                        "ticker": ticker,
+                        "pattern": pattern_result.pattern,
+                        "score": pattern_result.score,
+                        "entry": pattern_result.entry,
+                        "stop": pattern_result.stop,
+                        "target": pattern_result.target,
+                        "rs_rating": rs_rating,
+                        "atr_percent": atr_percent,
+                        "current_price": pattern_result.current_price,
+                        "source": label,
+                        "sector": meta.get("sector") if meta else None,
+                        "timeframe": interval,
+                        "chart_url": pattern_result.chart_url,
+                    }
+                )
 
             except Exception as ticker_error:
                 logger.debug(f"Quick scan error for {ticker}: {ticker_error}")
                 continue
 
         rows.sort(key=lambda item: item.get("score", 0), reverse=True)
-        limited_rows = rows[: scan_limit]
+        limited_rows = rows[:scan_limit]
         stats_payload = {
             "universe": label,
             "requested_universe": request.universe,
@@ -400,11 +423,7 @@ async def get_sp500():
     """Get S&P 500 ticker list"""
     try:
         tickers = await universe_service.get_sp500_tickers()
-        return {
-            "success": True,
-            "total": len(tickers),
-            "tickers": tickers
-        }
+        return {"success": True, "total": len(tickers), "tickers": tickers}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -414,11 +433,7 @@ async def get_nasdaq100():
     """Get NASDAQ 100 ticker list"""
     try:
         tickers = await universe_service.get_nasdaq100_tickers()
-        return {
-            "success": True,
-            "total": len(tickers),
-            "tickers": tickers
-        }
+        return {"success": True, "total": len(tickers), "tickers": tickers}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -448,11 +463,10 @@ async def seed_universe_manual():
             "success": True,
             "symbols_loaded": symbol_count,
             "message": f"Universe seeded with {symbol_count} symbols",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         logger.error(f"❌ Manual universe seed failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to seed universe: {str(e)}"
+            status_code=500, detail=f"Failed to seed universe: {str(e)}"
         )

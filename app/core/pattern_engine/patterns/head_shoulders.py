@@ -1,6 +1,7 @@
 """
 Head & Shoulders Top and Bottom detection adapted from Patternz.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
@@ -37,7 +38,11 @@ def _build_pattern(
     lows: np.ndarray,
     metadata: Dict[str, Any],
 ) -> Dict[str, Any]:
-    height = float(highs[mid_idx] - lows[start_idx]) if start_idx is not None and mid_idx is not None else None
+    height = (
+        float(highs[mid_idx] - lows[start_idx])
+        if start_idx is not None and mid_idx is not None
+        else None
+    )
     current_price = float(highs[end_idx]) if end_idx is not None else None
     return {
         "pattern": name,
@@ -48,10 +53,20 @@ def _build_pattern(
         "stop": round(stop, 2) if stop is not None else None,
         "target": round(target, 2) if target is not None else None,
         "risk_reward": _risk_reward(entry, stop, target),
-        "width": int(end_idx - start_idx) if start_idx is not None and end_idx is not None else None,
+        "width": (
+            int(end_idx - start_idx)
+            if start_idx is not None and end_idx is not None
+            else None
+        ),
         "height": round(height, 2) if height is not None else None,
         "current_price": round(current_price, 2) if current_price is not None else None,
-        "confirmed": bool(current_price and entry and ((current_price <= entry) if "Top" in name else (current_price >= entry))),
+        "confirmed": bool(
+            current_price
+            and entry
+            and (
+                (current_price <= entry) if "Top" in name else (current_price >= entry)
+            )
+        ),
         "metadata": metadata,
         "start_idx": int(start_idx),
         "mid_idx": int(mid_idx),
@@ -60,7 +75,11 @@ def _build_pattern(
 
 
 def _find_shoulder_head(
-    pivots: np.ndarray, series: np.ndarray, helpers: Any, tolerance: float, inverted: bool
+    pivots: np.ndarray,
+    series: np.ndarray,
+    helpers: Any,
+    tolerance: float,
+    inverted: bool,
 ) -> Tuple[int, int, int]:
     """
     Locate left shoulder, head, right shoulder indices using pivot arrays.
@@ -71,11 +90,19 @@ def _find_shoulder_head(
         head = int(np.argmin(series)) if inverted else int(np.argmax(series))
         if head <= 0 or head >= len(series) - 1:
             return None, None, None
-        ls = int(np.argmax(series[:head])) if inverted is False else int(np.argmin(series[:head]))
+        ls = (
+            int(np.argmax(series[:head]))
+            if inverted is False
+            else int(np.argmin(series[:head]))
+        )
         rs_segment = series[head + 1 :]
         if len(rs_segment) == 0:
             return None, None, None
-        rs = int((np.argmax(rs_segment) if not inverted else np.argmin(rs_segment)) + head + 1)
+        rs = int(
+            (np.argmax(rs_segment) if not inverted else np.argmin(rs_segment))
+            + head
+            + 1
+        )
         if not (ls < head < rs):
             return None, None, None
     else:
@@ -119,8 +146,12 @@ def find_head_shoulders_top(
     if ls is None:
         return results
 
-    trough_left = min([b for b in bottoms if ls < b < head], default=None, key=lambda i: low[i])
-    trough_right = min([b for b in bottoms if head < b < rs], default=None, key=lambda i: low[i])
+    trough_left = min(
+        [b for b in bottoms if ls < b < head], default=None, key=lambda i: low[i]
+    )
+    trough_right = min(
+        [b for b in bottoms if head < b < rs], default=None, key=lambda i: low[i]
+    )
     if trough_left is None:
         trough_left = int(np.argmin(low[ls:head]) + ls)
     if trough_right is None:
@@ -189,8 +220,12 @@ def find_head_shoulders_bottom(
     if ls is None:
         return results
 
-    peak_left = max([t for t in tops if ls < t < head], default=None, key=lambda i: high[i])
-    peak_right = max([t for t in tops if head < t < rs], default=None, key=lambda i: high[i])
+    peak_left = max(
+        [t for t in tops if ls < t < head], default=None, key=lambda i: high[i]
+    )
+    peak_right = max(
+        [t for t in tops if head < t < rs], default=None, key=lambda i: high[i]
+    )
     if peak_left is None:
         peak_left = int(np.argmax(high[ls:head]) + ls)
     if peak_right is None:

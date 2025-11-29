@@ -1,8 +1,8 @@
 import pytest
 
 pytest.importorskip("fastapi")
-from fastapi.testclient import TestClient
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 class _StubCache:
@@ -30,8 +30,8 @@ def _make_series(n=250):
 
 def test_analyze_contract(monkeypatch):
     # Stub settings before importing route that pulls market_data_service
-    import types
     import app.config as cfg
+
     class _StubSettings:
         app_name = "Legend AI"
         debug = False
@@ -56,6 +56,7 @@ def test_analyze_contract(monkeypatch):
         alert_email = None
         algorithm = "HS256"
         access_token_expire_minutes = 60
+
         @property
         def auto_webhook_url(self):
             return "http://localhost:8000"
@@ -66,9 +67,12 @@ def test_analyze_contract(monkeypatch):
     from app.api.analyze import router as analyze_router
     # Monkeypatch market data and cache
     from app.services import market_data as md
+
     series = _make_series(260)
 
-    async def fake_get_time_series(ticker: str, interval: str = "1day", outputsize: int = 400):
+    async def fake_get_time_series(
+        ticker: str, interval: str = "1day", outputsize: int = 400
+    ):
         return series
 
     monkeypatch.setattr(md.market_data_service, "get_time_series", fake_get_time_series)
@@ -83,6 +87,7 @@ def test_analyze_contract(monkeypatch):
 
     # Patch universe store cache/memory to avoid redis/file IO
     import app.services.universe_store as uni_mod
+
     uni_mod.universe_store.cache = _StubCache()
     uni_mod.universe_store._memory = {
         "TSLA": {
@@ -109,7 +114,9 @@ def test_analyze_contract(monkeypatch):
     data = res.json()
 
     # Top-level keys
-    assert set(["ticker", "timeframe", "ohlcv", "indicators", "patterns", "plan"]).issubset(data.keys())
+    assert set(
+        ["ticker", "timeframe", "ohlcv", "indicators", "patterns", "plan"]
+    ).issubset(data.keys())
     assert data["ticker"] == "TSLA"
     assert data["timeframe"] == "daily"
 

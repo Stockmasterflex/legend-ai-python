@@ -16,9 +16,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
-from collections import defaultdict
 from threading import Lock
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +166,9 @@ class InvalidIntervalError(ValidationError):
     """Invalid time interval."""
 
     default_user_message = "Invalid time interval"
-    recovery_hint = "Use valid intervals: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week, 1month"
+    recovery_hint = (
+        "Use valid intervals: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week, 1month"
+    )
 
 
 class InvalidParameterError(ValidationError):
@@ -195,7 +196,9 @@ class MarketDataError(ExternalServiceError):
     """Market data API error."""
 
     default_user_message = "Unable to fetch market data"
-    recovery_hint = "Market data service may be temporarily unavailable. Try again in a moment."
+    recovery_hint = (
+        "Market data service may be temporarily unavailable. Try again in a moment."
+    )
 
 
 class RateLimitError(ExternalServiceError):
@@ -213,7 +216,9 @@ class APIQuotaExceededError(ExternalServiceError):
     severity = ErrorSeverity.HIGH
     retryable = False
     default_user_message = "API quota exceeded"
-    recovery_hint = "Daily API quota reached. Please try again tomorrow or upgrade your plan."
+    recovery_hint = (
+        "Daily API quota reached. Please try again tomorrow or upgrade your plan."
+    )
 
 
 class NetworkError(ExternalServiceError):
@@ -253,7 +258,9 @@ class InsufficientDataError(DataError):
 
     severity = ErrorSeverity.LOW
     default_user_message = "Not enough data for analysis"
-    recovery_hint = "The stock may be newly listed or data is unavailable for the selected period"
+    recovery_hint = (
+        "The stock may be newly listed or data is unavailable for the selected period"
+    )
 
 
 class DataTransformError(DataError):
@@ -437,7 +444,10 @@ class ErrorAggregator:
             type(exc).__name__,
             fingerprint[:8],
             self._groups[fingerprint].occurrences,
-            extra={"error_context": context.to_dict() if context else {}, **(extra or {})},
+            extra={
+                "error_context": context.to_dict() if context else {},
+                **(extra or {}),
+            },
             exc_info=exc,
         )
 
@@ -585,6 +595,7 @@ def handle_errors(
             # Your code here
             return data
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -614,6 +625,7 @@ def handle_errors(
 
         # Return appropriate wrapper based on whether function is async
         import inspect
+
         if inspect.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         else:

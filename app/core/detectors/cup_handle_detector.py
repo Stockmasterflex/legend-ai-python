@@ -8,18 +8,16 @@ Key features:
 - Handle pullback ≤8-15% with volume dry-up
 - Breakout above cup rim with volume surge
 """
+
+from datetime import datetime
+from typing import List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
-import logging
 
-from app.core.detector_base import (
-    Detector, PatternResult, PatternType, PricePoint, LineSegment, StatsHelper, GeometryHelper
-)
-from app.core.detector_config import CupHandleConfig, BreakoutConfig
-
-logger = logging.getLogger(__name__)
+from app.core.detector_base import (Detector, PatternResult, PatternType,
+                                    StatsHelper)
+from app.core.detector_config import CupHandleConfig
 
 
 class CupHandleDetector(Detector):
@@ -40,7 +38,9 @@ class CupHandleDetector(Detector):
             if hasattr(self.config, key.upper()):
                 setattr(self.config, key.upper(), value)
 
-    def find(self, ohlcv: pd.DataFrame, timeframe: str, symbol: str) -> List[PatternResult]:
+    def find(
+        self, ohlcv: pd.DataFrame, timeframe: str, symbol: str
+    ) -> List[PatternResult]:
         """Detect Cup & Handle patterns"""
         results = []
 
@@ -48,11 +48,13 @@ class CupHandleDetector(Detector):
             return results
 
         try:
-            high = ohlcv['high'].values
-            low = ohlcv['low'].values
-            close = ohlcv['close'].values
-            volume = ohlcv['volume'].values
-            dates = ohlcv.get('datetime', pd.date_range(end=datetime.now(), periods=len(ohlcv)))
+            high = ohlcv["high"].values
+            low = ohlcv["low"].values
+            close = ohlcv["close"].values
+            volume = ohlcv["volume"].values
+            dates = ohlcv.get(
+                "datetime", pd.date_range(end=datetime.now(), periods=len(ohlcv))
+            )
 
             # Calculate metrics
             atr = StatsHelper.atr(high, low, close, period=14)
@@ -81,29 +83,38 @@ class CupHandleDetector(Detector):
         candidates = []
 
         for i in range(
-            self.config.CUP_MIN_LENGTH,
-            len(low) - self.config.CUP_MIN_LENGTH,
-            5
+            self.config.CUP_MIN_LENGTH, len(low) - self.config.CUP_MIN_LENGTH, 5
         ):
             # Check if this could be a cup bottom
-            left_high = np.max(high[max(0, i - self.config.CUP_MAX_LENGTH):i])
+            left_high = np.max(high[max(0, i - self.config.CUP_MAX_LENGTH) : i])
             cup_low = low[i]
-            right_high = np.max(high[i:min(len(high), i + self.config.CUP_MIN_LENGTH)])
+            right_high = np.max(
+                high[i : min(len(high), i + self.config.CUP_MIN_LENGTH)]
+            )
 
             # Cup depth
             left_depth = (left_high - cup_low) / left_high
             right_depth = (right_high - cup_low) / right_high
 
             # Check if depths are reasonable
-            if (self.config.CUP_DEPTH_MIN <= left_depth <= 0.60 and
-                self.config.CUP_DEPTH_MIN <= right_depth <= 0.60):
+            if (
+                self.config.CUP_DEPTH_MIN <= left_depth <= 0.60
+                and self.config.CUP_DEPTH_MIN <= right_depth <= 0.60
+            ):
                 candidates.append(i)
 
         return candidates
 
     def _analyze_cup_handle(
-        self, cup_idx: int, high: np.ndarray, low: np.ndarray, close: np.ndarray,
-        volume: np.ndarray, dates, atr: np.ndarray, vol_z: np.ndarray
+        self,
+        cup_idx: int,
+        high: np.ndarray,
+        low: np.ndarray,
+        close: np.ndarray,
+        volume: np.ndarray,
+        dates,
+        atr: np.ndarray,
+        vol_z: np.ndarray,
     ) -> Optional[PatternResult]:
         """Analyze if a cup candidate is valid and has a handle"""
 
@@ -128,7 +139,7 @@ class CupHandleDetector(Detector):
             return None
 
         # Check roundedness (curvature score)
-        cup_prices = close[cup_start + left_peak_idx:cup_end + 1]
+        cup_prices = close[cup_start + left_peak_idx : cup_end + 1]
         roundedness_score = StatsHelper.curvature_score(cup_prices)
 
         if roundedness_score < self.config.ROUNDEDNESS_MIN_SCORE:
@@ -178,7 +189,7 @@ class CupHandleDetector(Detector):
 
         # Check volume on handle (should dry up)
         handle_vol_mean = np.mean(volume[handle_start:handle_end])
-        preceding_vol_mean = np.mean(volume[max(0, handle_start - 20):handle_start])
+        preceding_vol_mean = np.mean(volume[max(0, handle_start - 20) : handle_start])
 
         volume_dryup_ratio = handle_vol_mean / (preceding_vol_mean + 1)
 
@@ -186,12 +197,20 @@ class CupHandleDetector(Detector):
         breakout_start = handle_end
         breakout_end = min(len(close), handle_end + 10)
 
-        breakout_vol_z = np.max(vol_z[breakout_start:breakout_end]) if breakout_end > breakout_start else 0
+        breakout_vol_z = (
+            np.max(vol_z[breakout_start:breakout_end])
+            if breakout_end > breakout_start
+            else 0
+        )
 
         # Compute confidence
         confidence = self._score_cup_handle(
-            cup_depth, roundedness_score, handle_depth,
-            volume_dryup_ratio, breakout_vol_z, cup_length
+            cup_depth,
+            roundedness_score,
+            handle_depth,
+            volume_dryup_ratio,
+            breakout_vol_z,
+            cup_length,
         )
 
         if confidence < 0.40:
@@ -199,44 +218,55 @@ class CupHandleDetector(Detector):
 
         # Build result
         result = PatternResult(
-            symbol=symbol,
-            timeframe='1D',
+            symbol=dates.name if hasattr(dates, "name") else "UNKNOWN",
+            timeframe="1D",
             asof=datetime.now().isoformat(),
             pattern_type=PatternType.CUP_HANDLE,
             strong=confidence >= 0.75,
             confidence=confidence,
-            window_start=str(dates[cup_start])[:10] if len(dates) > cup_start else '2025-01-01',
-            window_end=str(dates[breakout_end - 1])[:10] if len(dates) > breakout_end - 1 else '2025-01-01',
+            window_start=(
+                str(dates[cup_start])[:10] if len(dates) > cup_start else "2025-01-01"
+            ),
+            window_end=(
+                str(dates[breakout_end - 1])[:10]
+                if len(dates) > breakout_end - 1
+                else "2025-01-01"
+            ),
             lines={
-                'cup_start': float(left_peak),
-                'cup_bottom': float(cup_low),
-                'right_peak': float(right_peak),
-                'handle_low': float(handle_low),
-                'breakout_level': float(left_peak),
+                "cup_start": float(left_peak),
+                "cup_bottom": float(cup_low),
+                "right_peak": float(right_peak),
+                "handle_low": float(handle_low),
+                "breakout_level": float(left_peak),
             },
             touches={
-                'cup_bars': int(cup_length),
-                'handle_bars': int(handle_end - handle_start),
+                "cup_bars": int(cup_length),
+                "handle_bars": int(handle_end - handle_start),
             },
             breakout={
-                'direction': 'up',
-                'price': float(left_peak),
-                'volume_z': float(breakout_vol_z),
-                'bar_index': int(breakout_start),
+                "direction": "up",
+                "price": float(left_peak),
+                "volume_z": float(breakout_vol_z),
+                "bar_index": int(breakout_start),
             },
             evidence={
-                'cup_depth_pct': float(cup_depth * 100),
-                'roundedness_score': float(roundedness_score),
-                'handle_depth_pct': float(handle_depth * 100),
-                'volume_dryup_ratio': float(volume_dryup_ratio),
-                'handle_midpoint_check': float(handle_low - cup_midpoint),
-            }
+                "cup_depth_pct": float(cup_depth * 100),
+                "roundedness_score": float(roundedness_score),
+                "handle_depth_pct": float(handle_depth * 100),
+                "volume_dryup_ratio": float(volume_dryup_ratio),
+                "handle_midpoint_check": float(handle_low - cup_midpoint),
+            },
         )
         return result
 
     def _score_cup_handle(
-        self, cup_depth: float, roundedness: float, handle_depth: float,
-        volume_dryup: float, breakout_vol_z: float, cup_length: int
+        self,
+        cup_depth: float,
+        roundedness: float,
+        handle_depth: float,
+        volume_dryup: float,
+        breakout_vol_z: float,
+        cup_length: int,
     ) -> float:
         """Compute Cup & Handle confidence score"""
         score = 0.0
@@ -247,9 +277,13 @@ class CupHandleDetector(Detector):
         if ideal_range[0] <= cup_depth <= ideal_range[1]:
             depth_score = 1.0
         elif self.config.CUP_DEPTH_MIN <= cup_depth < ideal_range[0]:
-            depth_score = (cup_depth - self.config.CUP_DEPTH_MIN) / (ideal_range[0] - self.config.CUP_DEPTH_MIN)
+            depth_score = (cup_depth - self.config.CUP_DEPTH_MIN) / (
+                ideal_range[0] - self.config.CUP_DEPTH_MIN
+            )
         else:
-            depth_score = max(0, 1.0 - (cup_depth - ideal_range[1]) / (0.60 - ideal_range[1]))
+            depth_score = max(
+                0, 1.0 - (cup_depth - ideal_range[1]) / (0.60 - ideal_range[1])
+            )
         score += 0.25 * depth_score
 
         # Roundedness weight: 25%
@@ -263,7 +297,7 @@ class CupHandleDetector(Detector):
         elif handle_depth < handle_ideal_range[0]:
             handle_score = handle_depth / handle_ideal_range[0]
         else:
-            handle_score = max(0, 1.0 - (handle_depth - handle_ideal_range[1]) / (0.10))
+            handle_score = max(0, 1.0 - (handle_depth - handle_ideal_range[1]) / 0.10)
         score += 0.20 * handle_score
 
         # Volume weight: 20%

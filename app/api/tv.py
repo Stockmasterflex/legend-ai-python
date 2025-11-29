@@ -1,14 +1,19 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
-from pathlib import Path
-from urllib.parse import quote
 
 from app.utils.build_info import resolve_build_sha
 
 router = APIRouter(tags=["tradingview"])
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "tv_symbol_lab.html"
-TV_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "partials" / "tv_widget_templates.html"
+TV_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "templates"
+    / "partials"
+    / "tv_widget_templates.html"
+)
 
 
 def _normalize_symbol(raw_symbol: str | None) -> str:

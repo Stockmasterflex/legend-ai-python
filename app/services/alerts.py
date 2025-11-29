@@ -2,16 +2,17 @@
 Real-time pattern alerts service for swing traders
 Monitors watchlist for pattern formations and sends alerts via email/SMS/Telegram
 """
-import asyncio
+
 import logging
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Any, Dict, Optional
+
 import httpx
 
 from app.config import get_settings
+from app.core.pattern_detector import PatternDetector
 from app.services.cache import get_cache_service
 from app.services.market_data import market_data_service
-from app.core.pattern_detector import PatternDetector
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -58,9 +59,7 @@ class AlertService:
                 try:
                     # Fetch fresh market data
                     price_data = await market_data_service.get_time_series(
-                        ticker=ticker,
-                        interval="1day",
-                        outputsize=500
+                        ticker=ticker, interval="1day", outputsize=500
                     )
 
                     if not price_data:
@@ -68,16 +67,29 @@ class AlertService:
                         continue
 
                     # Analyze for patterns
-                    spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
-                    pattern_result = await self.detector.analyze_ticker(ticker, price_data, spy_data)
+                    spy_data = await market_data_service.get_time_series(
+                        "SPY", "1day", 500
+                    )
+                    pattern_result = await self.detector.analyze_ticker(
+                        ticker, price_data, spy_data
+                    )
 
                     monitored_count += 1
 
-                    if pattern_result and pattern_result.score >= self.min_confidence_threshold:
+                    if (
+                        pattern_result
+                        and pattern_result.score >= self.min_confidence_threshold
+                    ):
                         # Check if we've already alerted recently (within 6 hours)
                         last_alert_time = self.last_alerted.get(ticker)
-                        if last_alert_time and (datetime.now() - last_alert_time).total_seconds() < 6 * 3600:
-                            logger.debug(f"⏭️ {ticker} already alerted recently, skipping")
+                        if (
+                            last_alert_time
+                            and (datetime.now() - last_alert_time).total_seconds()
+                            < 6 * 3600
+                        ):
+                            logger.debug(
+                                f"⏭️ {ticker} already alerted recently, skipping"
+                            )
                             continue
 
                         # Send alert
@@ -90,7 +102,7 @@ class AlertService:
                             "target": pattern_result.target,
                             "risk_reward": pattern_result.risk_reward,
                             "current_price": pattern_result.current_price,
-                            "reason": item.get("reason", "No reason specified")
+                            "reason": item.get("reason", "No reason specified"),
                         }
 
                         # Send to all configured channels
@@ -99,19 +111,23 @@ class AlertService:
                         self.last_alerted[ticker] = datetime.now()
                         alerts_sent.append(alert_data)
 
-                        logger.info(f"🚨 ALERT: {ticker} - {pattern_result.pattern} (Score: {pattern_result.score:.2f})")
+                        logger.info(
+                            f"🚨 ALERT: {ticker} - {pattern_result.pattern} (Score: {pattern_result.score:.2f})"
+                        )
 
                 except Exception as e:
                     logger.warning(f"⚠️ Error monitoring {ticker}: {e}")
                     continue
 
-            logger.info(f"✅ Monitoring complete: {monitored_count} monitored, {len(alerts_sent)} alerts sent")
+            logger.info(
+                f"✅ Monitoring complete: {monitored_count} monitored, {len(alerts_sent)} alerts sent"
+            )
 
             return {
                 "success": True,
                 "monitored": monitored_count,
                 "alerts_sent": len(alerts_sent),
-                "alerts": alerts_sent
+                "alerts": alerts_sent,
             }
 
         except Exception as e:
@@ -173,17 +189,25 @@ class AlertService:
 
         # Create inline keyboard with quick actions
         keyboard = {
-            "inline_keyboard": [[
-                {"text": "📊 View Chart", "url": f"https://www.tradingview.com/chart/?symbol={alert['ticker']}"},
-                {"text": "📈 Add to Watchlist", "callback_data": f"add_{alert['ticker']}"}
-            ]]
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "📊 View Chart",
+                        "url": f"https://www.tradingview.com/chart/?symbol={alert['ticker']}",
+                    },
+                    {
+                        "text": "📈 Add to Watchlist",
+                        "callback_data": f"add_{alert['ticker']}",
+                    },
+                ]
+            ]
         }
 
         payload = {
             "chat_id": self.telegram_chat_id,
             "text": message,
             "parse_mode": "Markdown",
-            "reply_markup": keyboard
+            "reply_markup": keyboard,
         }
 
         async with httpx.AsyncClient(timeout=10) as client:
@@ -266,29 +290,27 @@ class AlertService:
         url = "https://api.sendgrid.com/v3/mail/send"
 
         payload = {
-            "personalizations": [{
-                "to": [{"email": self.alert_email}],
-                "subject": f"🚨 Pattern Alert: {alert['ticker']} - {alert['pattern']}"
-            }],
-            "from": {
-                "email": "alerts@legendai.com",
-                "name": "Legend AI Alerts"
-            },
-            "content": [{
-                "type": "text/html",
-                "value": html_content
-            }]
+            "personalizations": [
+                {
+                    "to": [{"email": self.alert_email}],
+                    "subject": f"🚨 Pattern Alert: {alert['ticker']} - {alert['pattern']}",
+                }
+            ],
+            "from": {"email": "alerts@legendai.com", "name": "Legend AI Alerts"},
+            "content": [{"type": "text/html", "value": html_content}],
         }
 
         headers = {
             "Authorization": f"Bearer {self.sendgrid_api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(url, json=payload, headers=headers)
             if response.status_code not in [200, 202]:
-                raise Exception(f"SendGrid error: {response.status_code} - {response.text}")
+                raise Exception(
+                    f"SendGrid error: {response.status_code} - {response.text}"
+                )
 
 
 # Global alert service instance

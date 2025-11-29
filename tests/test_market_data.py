@@ -10,6 +10,7 @@ async def test_yahoo_request_includes_user_agent(monkeypatch):
 
     async def fake_get(url, params=None, headers=None):
         captured["headers"] = headers or {}
+
         class FakeResponse:
             status_code = 200
 

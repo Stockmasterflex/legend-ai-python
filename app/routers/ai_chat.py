@@ -1,10 +1,12 @@
 """
 AI Chat Router - Conversational AI Financial Assistant
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
-from typing import Optional, List
+
 import logging
+from typing import List, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from app.ai.assistant import AIFinancialAssistant
 
@@ -26,17 +28,28 @@ def get_ai_assistant() -> AIFinancialAssistant:
             logger.error(f"Failed to initialize AI assistant: {e}")
             raise HTTPException(
                 status_code=503,
-                detail="AI Assistant is not available. Please check OPENAI_API_KEY configuration."
+                detail="AI Assistant is not available. Please check OPENAI_API_KEY configuration.",
             )
     return _ai_assistant
 
 
 class ChatRequest(BaseModel):
     """Chat request for AI assistant"""
-    message: str = Field(..., description="User message or question", example="What are the best tech stocks right now?")
-    symbol: Optional[str] = Field(None, description="Stock symbol for context (optional)", example="AAPL")
-    include_market_data: bool = Field(True, description="Include live market data in context")
-    conversation_id: Optional[str] = Field(None, description="Conversation ID for history tracking")
+
+    message: str = Field(
+        ...,
+        description="User message or question",
+        example="What are the best tech stocks right now?",
+    )
+    symbol: Optional[str] = Field(
+        None, description="Stock symbol for context (optional)", example="AAPL"
+    )
+    include_market_data: bool = Field(
+        True, description="Include live market data in context"
+    )
+    conversation_id: Optional[str] = Field(
+        None, description="Conversation ID for history tracking"
+    )
 
     class Config:
         json_schema_extra = {
@@ -44,63 +57,64 @@ class ChatRequest(BaseModel):
                 "message": "Analyze TSLA for me",
                 "symbol": "TSLA",
                 "include_market_data": True,
-                "conversation_id": None
+                "conversation_id": None,
             }
         }
 
 
 class AnalyzeStockRequest(BaseModel):
     """Stock analysis request"""
-    symbol: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, NVDA)", example="AAPL")
+
+    symbol: str = Field(
+        ..., description="Stock ticker symbol (e.g., AAPL, TSLA, NVDA)", example="AAPL"
+    )
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "symbol": "AAPL"
-            }
-        }
+        json_schema_extra = {"example": {"symbol": "AAPL"}}
 
 
 class CompareStocksRequest(BaseModel):
     """Stock comparison request"""
-    symbols: List[str] = Field(..., description="List of stock symbols (2-5)", example=["AAPL", "MSFT", "GOOGL"])
+
+    symbols: List[str] = Field(
+        ...,
+        description="List of stock symbols (2-5)",
+        example=["AAPL", "MSFT", "GOOGL"],
+    )
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "symbols": ["AAPL", "MSFT", "GOOGL"]
-            }
-        }
+        json_schema_extra = {"example": {"symbols": ["AAPL", "MSFT", "GOOGL"]}}
 
 
 class ExplainPatternRequest(BaseModel):
     """Pattern explanation request"""
-    pattern_name: str = Field(..., description="Name of chart pattern to explain", example="Cup and Handle")
+
+    pattern_name: str = Field(
+        ..., description="Name of chart pattern to explain", example="Cup and Handle"
+    )
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "pattern_name": "Cup and Handle"
-            }
+        json_schema_extra = {"example": {"pattern_name": "Cup and Handle"}}
+
+
+@router.post(
+    "/chat",
+    summary="Chat with AI Assistant",
+    responses={
+        200: {
+            "description": "Successful chat response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "response": "Based on current market data, here are the top tech stocks...",
+                        "symbol": None,
+                        "conversation_id": "conv_123",
+                    }
+                }
+            },
         }
-
-
-@router.post("/chat",
-             summary="Chat with AI Assistant",
-             responses={
-                 200: {
-                     "description": "Successful chat response",
-                     "content": {
-                         "application/json": {
-                             "example": {
-                                 "response": "Based on current market data, here are the top tech stocks...",
-                                 "symbol": None,
-                                 "conversation_id": "conv_123"
-                             }
-                         }
-                     }
-                 }
-             })
+    },
+)
 async def chat(request: ChatRequest):
     """
     🤖 **Chat with AI Financial Assistant**
@@ -174,7 +188,7 @@ async def chat(request: ChatRequest):
             user_message=request.message,
             symbol=request.symbol,
             include_market_data=request.include_market_data,
-            conversation_id=request.conversation_id
+            conversation_id=request.conversation_id,
         )
 
         return response
@@ -186,24 +200,26 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/analyze",
-             summary="AI Stock Analysis",
-             responses={
-                 200: {
-                     "description": "Comprehensive stock analysis",
-                     "content": {
-                         "application/json": {
-                             "example": {
-                                 "symbol": "AAPL",
-                                 "analysis": "Apple (AAPL) is showing strong technical setup...",
-                                 "pattern": "Bullish Flag",
-                                 "score": 8.5,
-                                 "recommendation": "Consider entry on pullback to support"
-                             }
-                         }
-                     }
-                 }
-             })
+@router.post(
+    "/analyze",
+    summary="AI Stock Analysis",
+    responses={
+        200: {
+            "description": "Comprehensive stock analysis",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "symbol": "AAPL",
+                        "analysis": "Apple (AAPL) is showing strong technical setup...",
+                        "pattern": "Bullish Flag",
+                        "score": 8.5,
+                        "recommendation": "Consider entry on pullback to support",
+                    }
+                }
+            },
+        }
+    },
+)
 async def analyze_stock(request: AnalyzeStockRequest):
     """
     📊 **Get Comprehensive AI Stock Analysis**
@@ -295,14 +311,12 @@ async def compare_stocks(request: CompareStocksRequest):
     try:
         if len(request.symbols) < 2:
             raise HTTPException(
-                status_code=400,
-                detail="Need at least 2 symbols to compare"
+                status_code=400, detail="Need at least 2 symbols to compare"
             )
 
         if len(request.symbols) > 5:
             raise HTTPException(
-                status_code=400,
-                detail="Maximum 5 symbols can be compared at once"
+                status_code=400, detail="Maximum 5 symbols can be compared at once"
             )
 
         assistant = get_ai_assistant()
@@ -381,11 +395,8 @@ async def ai_status():
                 "conversational_chat",
                 "stock_analysis",
                 "stock_comparison",
-                "pattern_education"
-            ]
+                "pattern_education",
+            ],
         }
     except Exception as e:
-        return {
-            "status": "unavailable",
-            "error": str(e)
-        }
+        return {"status": "unavailable", "error": str(e)}

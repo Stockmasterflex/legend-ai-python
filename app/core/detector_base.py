@@ -2,17 +2,19 @@
 Base classes and utilities for pattern detectors.
 Provides the common Detector interface and shared data structures.
 """
-from dataclasses import dataclass, asdict, field
-from typing import Protocol, Dict, Any, List, Optional
-from datetime import datetime
-from enum import Enum
-import pandas as pd
-import numpy as np
+
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 
 class PatternType(str, Enum):
     """All supported pattern types"""
+
     HORIZONTAL_SR = "Horizontal S/R"
     TRENDLINE_SR = "Trendline S/R"
     TRIANGLE_ASC = "Triangle Ascending"
@@ -36,6 +38,7 @@ class PatternType(str, Enum):
 @dataclass
 class PricePoint:
     """A point in time-price space"""
+
     datetime: str  # ISO8601
     price: float
     bar_index: int  # Index in OHLCV series
@@ -44,6 +47,7 @@ class PricePoint:
 @dataclass
 class LineSegment:
     """A line segment defined by two points"""
+
     p1: PricePoint
     p2: PricePoint
     r_squared: Optional[float] = None  # Fit quality
@@ -56,10 +60,12 @@ class PatternResult:
     Standard output for all pattern detectors.
     Follows JSON schema for consistency.
     """
+
     symbol: str
     timeframe: str
     asof: str  # ISO8601 timestamp
     pattern_type: PatternType
+    strong: bool  # Is this a "Strong" pattern (confidence ≥ 0.75)?
     confidence: float  # [0, 1]
 
     # Pattern geometry
@@ -70,61 +76,33 @@ class PatternResult:
     lines: Dict[str, Any]  # e.g., {"upper": LineSegment, "lower": LineSegment}
     touches: Dict[str, int]  # e.g., {"upper": 4, "lower": 3}
 
-    # Optional metadata (Added to fix crashes and support API)
-    entry: Optional[float] = None
-    stop: Optional[float] = None
-    target: Optional[float] = None
-    risk_reward: Optional[float] = None
-    strong: bool = False
-    description: Optional[str] = None
-    breakout: Optional[Dict[str, Any]] = None
-    evidence: Optional[Dict[str, Any]] = None
+    # Breakout info (if applicable)
+    breakout: Optional[Dict[str, Any]] = (
+        None  # {"dir": "up/down", "t": "...", "price": X, "volume_z": Y}
+    )
 
-    # Extended metadata (for advanced scanner)
-    criteria_met: Optional[List[str]] = None
-    analysis: Optional[str] = None
-    chart_url: Optional[str] = None
-    current_price: Optional[float] = None
-    support_start: Optional[float] = None
-    support_end: Optional[float] = None
-    score: Optional[float] = None
-    timestamp: Optional[datetime] = None
+    # Evidence for transparency
+    evidence: Optional[Dict[str, Any]] = None  # {"pivots": [...], "metrics": {...}}
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary, handling nested dataclasses and numpy types"""
-        # First conversion to dict
+        """Convert to dictionary, handling nested dataclasses"""
         result = asdict(self)
-
-        # Handle Enum serialization
-        result["pattern_type"] = self.pattern_type.value if hasattr(self.pattern_type, "value") else str(self.pattern_type)
-
-        # Recursive serialization and cleaning
-        clean_result = self._serialize_lines(result)
-
-        return clean_result
+        result["pattern_type"] = self.pattern_type.value
+        # Recursively handle nested PricePoint and LineSegment
+        result["lines"] = self._serialize_lines(self.lines)
+        if self.breakout:
+            result["breakout"] = self._serialize_lines(self.breakout)
+        return result
 
     @staticmethod
     def _serialize_lines(obj: Any) -> Any:
-        """Recursively serialize nested objects and handle numpy types"""
-        # Handle numpy types
-        if isinstance(obj, (np.integer, np.int64, np.int32)):
-            return int(obj)
-        if isinstance(obj, (np.floating, np.float64, np.float32)):
-            return float(obj)
-        if isinstance(obj, (np.bool_, bool)):
-            return bool(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-
-        # Handle complex structures
+        """Recursively serialize nested dataclass objects"""
         if isinstance(obj, dict):
             return {k: PatternResult._serialize_lines(v) for k, v in obj.items()}
         elif isinstance(obj, (list, tuple)):
             return [PatternResult._serialize_lines(item) for item in obj]
         elif isinstance(obj, (PricePoint, LineSegment)):
             return asdict(obj)
-        elif isinstance(obj, datetime):
-            return obj.isoformat()
         else:
             return obj
 
@@ -152,7 +130,9 @@ class Detector(ABC):
         self._config = kwargs
 
     @abstractmethod
-    def find(self, ohlcv: pd.DataFrame, timeframe: str, symbol: str) -> List[PatternResult]:
+    def find(
+        self, ohlcv: pd.DataFrame, timeframe: str, symbol: str
+    ) -> List[PatternResult]:
         """
         Detect patterns in OHLCV data.
 
@@ -164,7 +144,6 @@ class Detector(ABC):
         Returns:
             List of PatternResult objects (may be empty)
         """
-        pass
 
     @property
     def config(self):
@@ -183,7 +162,9 @@ class GeometryHelper:
     """Utilities for line fitting, distance calculations, convergence, etc."""
 
     @staticmethod
-    def fit_line_ransac(points: List[tuple], max_iterations: int = 100) -> Optional[tuple]:
+    def fit_line_ransac(
+        points: List[tuple], max_iterations: int = 100
+    ) -> Optional[tuple]:
         """
         Fit a line to points using RANSAC.
         Returns (slope, intercept, r_squared, inliers_indices)
@@ -206,12 +187,12 @@ class GeometryHelper:
             inliers = ransac.inlier_mask_
 
             return (slope, intercept, r2, inliers)
-        except (ValueError, ImportError, NameError) as e:
+        except (ValueError, ImportError, NameError):
             # RANSAC can fail with insufficient data or numerical issues
             # Also catch ImportError if sklearn is missing
             return None
         except Exception:
-             # Catch np.linalg.LinAlgError if np is available, or any other error
+            # Catch np.linalg.LinAlgError if np is available, or any other error
             return None
 
     @staticmethod
@@ -225,7 +206,9 @@ class GeometryHelper:
         return numerator / denominator
 
     @staticmethod
-    def count_touches(points: List[tuple], slope: float, intercept: float, tolerance: float) -> int:
+    def count_touches(
+        points: List[tuple], slope: float, intercept: float, tolerance: float
+    ) -> int:
         """Count how many points are within tolerance of the line"""
         count = 0
         for point in points:
@@ -235,7 +218,9 @@ class GeometryHelper:
         return count
 
     @staticmethod
-    def convergence_percent(line1_width: float, line2_width: float, window_len: int) -> float:
+    def convergence_percent(
+        line1_width: float, line2_width: float, window_len: int
+    ) -> float:
         """
         Compute convergence as percentage change in width.
         Higher = more convergence.
@@ -253,7 +238,9 @@ class GeometryHelper:
         return (slope, intercept + offset_y)
 
     @staticmethod
-    def line_intersection(s1: float, i1: float, s2: float, i2: float) -> Optional[tuple]:
+    def line_intersection(
+        s1: float, i1: float, s2: float, i2: float
+    ) -> Optional[tuple]:
         """Find intersection of two lines: y = s1*x + i1 and y = s2*x + i2"""
         if s1 == s2:
             return None  # Parallel lines
@@ -269,14 +256,15 @@ class StatsHelper:
     """Utilities for ATR, volume z-score, Kendall τ, etc."""
 
     @staticmethod
-    def atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+    def atr(
+        high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14
+    ) -> np.ndarray:
         """Calculate Average True Range"""
         tr = np.maximum(
             high - low,
             np.maximum(
-                np.abs(high - np.roll(close, 1)),
-                np.abs(low - np.roll(close, 1))
-            )
+                np.abs(high - np.roll(close, 1)), np.abs(low - np.roll(close, 1))
+            ),
         )
         tr[0] = high[0] - low[0]  # First bar has no previous close
         atr = pd.Series(tr).rolling(period).mean().values
@@ -294,17 +282,16 @@ class StatsHelper:
     @staticmethod
     def kendall_tau(series: np.ndarray) -> float:
         """Kendall's τ correlation with time index (detects trend)"""
-        try:
-            from scipy.stats import kendalltau
-            x = np.arange(len(series))
-            tau, _ = kendalltau(x, series)
-            return tau
-        except ImportError:
-            return 0.0
+        from scipy.stats import kendalltau
+
+        x = np.arange(len(series))
+        tau, _ = kendalltau(x, series)
+        return tau
 
     @staticmethod
-    def zigzag_pivots(high: np.ndarray, low: np.ndarray, close: np.ndarray,
-                      atr: np.ndarray) -> List[tuple]:
+    def zigzag_pivots(
+        high: np.ndarray, low: np.ndarray, close: np.ndarray, atr: np.ndarray
+    ) -> List[tuple]:
         """
         Detect pivots using ZigZag with adaptive threshold.
         Threshold = max(1.5*ATR/close, 0.5%), clamped to [0.5%, 8%]
@@ -316,22 +303,23 @@ class StatsHelper:
 
         # Compute adaptive threshold
         atr_pct = (1.5 * atr[:-1]) / close[:-1]
-        threshold = np.clip(atr_pct, 0.005, 0.08)
+        np.clip(atr_pct, 0.005, 0.08)
 
         # Simple zigzag: find local highs and lows
         for i in range(1, len(close) - 1):
-            if high[i] > high[i-1] and high[i] > high[i+1]:
-                if not pivots or pivots[-1][2] != 'high':
-                    pivots.append((i, high[i], 'high'))
-            elif low[i] < low[i-1] and low[i] < low[i+1]:
-                if not pivots or pivots[-1][2] != 'low':
-                    pivots.append((i, low[i], 'low'))
+            if high[i] > high[i - 1] and high[i] > high[i + 1]:
+                if not pivots or pivots[-1][2] != "high":
+                    pivots.append((i, high[i], "high"))
+            elif low[i] < low[i - 1] and low[i] < low[i + 1]:
+                if not pivots or pivots[-1][2] != "low":
+                    pivots.append((i, low[i], "low"))
 
         return pivots
 
     @staticmethod
-    def find_zigzag_pivots(high: np.ndarray, low: np.ndarray, close: np.ndarray,
-                          threshold: float = 0.03) -> List[Dict]:
+    def find_zigzag_pivots(
+        high: np.ndarray, low: np.ndarray, close: np.ndarray, threshold: float = 0.03
+    ) -> List[Dict]:
         """
         Find zigzag pivots using simple percentage threshold.
         Returns list of dicts with keys: index, price, type
@@ -351,17 +339,19 @@ class StatsHelper:
 
         # Simple zigzag: find local highs and lows
         for i in range(1, len(close) - 1):
-            if high[i] > high[i-1] and high[i] > high[i+1]:
-                if not pivots or pivots[-1]['type'] != 'high':
-                    pivots.append({'index': i, 'price': high[i], 'type': 'high'})
-            elif low[i] < low[i-1] and low[i] < low[i+1]:
-                if not pivots or pivots[-1]['type'] != 'low':
-                    pivots.append({'index': i, 'price': low[i], 'type': 'low'})
+            if high[i] > high[i - 1] and high[i] > high[i + 1]:
+                if not pivots or pivots[-1]["type"] != "high":
+                    pivots.append({"index": i, "price": high[i], "type": "high"})
+            elif low[i] < low[i - 1] and low[i] < low[i + 1]:
+                if not pivots or pivots[-1]["type"] != "low":
+                    pivots.append({"index": i, "price": low[i], "type": "low"})
 
         return pivots
 
     @staticmethod
-    def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+    def calculate_atr(
+        high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14
+    ) -> np.ndarray:
         """Calculate Average True Range (convenience alias for atr method)"""
         return StatsHelper.atr(high, low, close, period)
 
@@ -400,7 +390,9 @@ class ResultDeduplicator:
         return intersection / union
 
     @staticmethod
-    def deduplicate(results: List[PatternResult], iou_threshold: float = 0.50) -> List[PatternResult]:
+    def deduplicate(
+        results: List[PatternResult], iou_threshold: float = 0.50
+    ) -> List[PatternResult]:
         """Remove overlapping results, keeping highest confidence"""
         if len(results) <= 1:
             return results

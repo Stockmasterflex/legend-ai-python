@@ -2,10 +2,12 @@
 Trade Management API endpoints
 Track open/closed trades and performance statistics
 """
+
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-import logging
 
 from app.services.trades import get_trade_manager
 
@@ -16,6 +18,7 @@ router = APIRouter(prefix="/api/trades", tags=["trades"])
 
 class CreateTradeRequest(BaseModel):
     """Create trade request"""
+
     ticker: str
     entry_price: float
     stop_loss: float
@@ -27,6 +30,7 @@ class CreateTradeRequest(BaseModel):
 
 class CloseTradeRequest(BaseModel):
     """Close trade request"""
+
     trade_id: str
     exit_price: float
 
@@ -37,7 +41,7 @@ async def trades_health():
     return {
         "status": "healthy",
         "service": "trade management",
-        "features": ["create", "close", "stats", "history"]
+        "features": ["create", "close", "stats", "history"],
     }
 
 
@@ -62,10 +66,15 @@ async def create_trade(request: CreateTradeRequest):
             target_price=request.target_price,
             position_size=request.position_size,
             risk_amount=request.risk_amount,
-            notes=request.notes
+            notes=request.notes,
         )
 
-        rr = abs(request.target_price - request.entry_price) / abs(request.entry_price - request.stop_loss) if request.entry_price != request.stop_loss else 0
+        rr = (
+            abs(request.target_price - request.entry_price)
+            / abs(request.entry_price - request.stop_loss)
+            if request.entry_price != request.stop_loss
+            else 0
+        )
 
         return {
             "success": True,
@@ -80,8 +89,8 @@ async def create_trade(request: CreateTradeRequest):
                 "risk_amount": f"${trade.risk_amount:,.2f}",
                 "reward_amount": f"${trade.reward_amount:,.2f}",
                 "status": trade.status,
-                "entry_date": trade.entry_date
-            }
+                "entry_date": trade.entry_date,
+            },
         }
 
     except Exception as e:
@@ -104,8 +113,7 @@ async def close_trade(request: CloseTradeRequest):
         manager = get_trade_manager()
 
         trade = await manager.close_trade(
-            trade_id=request.trade_id,
-            exit_price=request.exit_price
+            trade_id=request.trade_id, exit_price=request.exit_price
         )
 
         return {
@@ -121,8 +129,8 @@ async def close_trade(request: CloseTradeRequest):
                 "win": "✅" if trade.win else "❌",
                 "r_multiple": f"{trade.r_multiple:.2f}R",
                 "status": trade.status,
-                "exit_date": trade.exit_date
-            }
+                "exit_date": trade.exit_date,
+            },
         }
 
     except ValueError as e:
@@ -141,23 +149,21 @@ async def get_open_trades():
 
         trade_list = []
         for trade in trades:
-            trade_list.append({
-                "trade_id": trade.trade_id,
-                "ticker": trade.ticker,
-                "entry_price": f"${trade.entry_price:.2f}",
-                "stop_loss": f"${trade.stop_loss:.2f}",
-                "target_price": f"${trade.target_price:.2f}",
-                "position_size": trade.position_size,
-                "risk": f"${trade.risk_amount:,.2f}",
-                "reward": f"${trade.reward_amount:,.2f}",
-                "entry_date": trade.entry_date
-            })
+            trade_list.append(
+                {
+                    "trade_id": trade.trade_id,
+                    "ticker": trade.ticker,
+                    "entry_price": f"${trade.entry_price:.2f}",
+                    "stop_loss": f"${trade.stop_loss:.2f}",
+                    "target_price": f"${trade.target_price:.2f}",
+                    "position_size": trade.position_size,
+                    "risk": f"${trade.risk_amount:,.2f}",
+                    "reward": f"${trade.reward_amount:,.2f}",
+                    "entry_date": trade.entry_date,
+                }
+            )
 
-        return {
-            "success": True,
-            "open_trades": len(trade_list),
-            "trades": trade_list
-        }
+        return {"success": True, "open_trades": len(trade_list), "trades": trade_list}
 
     except Exception as e:
         logger.error(f"Error fetching open trades: {e}")
@@ -173,24 +179,22 @@ async def get_closed_trades(limit: int = 20):
 
         trade_list = []
         for trade in trades:
-            trade_list.append({
-                "trade_id": trade.trade_id,
-                "ticker": trade.ticker,
-                "entry_price": f"${trade.entry_price:.2f}",
-                "exit_price": f"${trade.exit_price:.2f}",
-                "profit_loss": f"${trade.profit_loss:,.2f}",
-                "profit_loss_pct": f"{trade.profit_loss_pct:.2f}%",
-                "win": "✅" if trade.win else "❌",
-                "r_multiple": f"{trade.r_multiple:.2f}R",
-                "entry_date": trade.entry_date,
-                "exit_date": trade.exit_date
-            })
+            trade_list.append(
+                {
+                    "trade_id": trade.trade_id,
+                    "ticker": trade.ticker,
+                    "entry_price": f"${trade.entry_price:.2f}",
+                    "exit_price": f"${trade.exit_price:.2f}",
+                    "profit_loss": f"${trade.profit_loss:,.2f}",
+                    "profit_loss_pct": f"{trade.profit_loss_pct:.2f}%",
+                    "win": "✅" if trade.win else "❌",
+                    "r_multiple": f"{trade.r_multiple:.2f}R",
+                    "entry_date": trade.entry_date,
+                    "exit_date": trade.exit_date,
+                }
+            )
 
-        return {
-            "success": True,
-            "closed_trades": len(trade_list),
-            "trades": trade_list
-        }
+        return {"success": True, "closed_trades": len(trade_list), "trades": trade_list}
 
     except Exception as e:
         logger.error(f"Error fetching closed trades: {e}")
@@ -217,8 +221,8 @@ async def get_trading_statistics():
                 "profit_factor": stats.get("profit_factor", 0),
                 "average_r_multiple": f"{stats.get('average_r_multiple', 0):.2f}R",
                 "expectancy_per_trade": f"${stats.get('expectancy_per_trade', 0):,.2f}",
-                "expectancy_quality": stats.get("expectancy_description")
-            }
+                "expectancy_quality": stats.get("expectancy_description"),
+            },
         }
 
     except Exception as e:

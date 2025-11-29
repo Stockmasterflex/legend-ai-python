@@ -1,5 +1,5 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 import app.main as main
 
@@ -35,6 +35,7 @@ def client(monkeypatch):
 
     # Reload settings to pick up env vars
     from app.config import get_settings
+
     get_settings.cache_clear()
 
     # Keep universe store in-memory during tests
@@ -81,10 +82,14 @@ def test_analyze_endpoint_smoke(monkeypatch, client):
 
     series = _make_series()
 
-    async def fake_get_time_series(ticker: str, interval: str = "1day", outputsize: int = 400):
+    async def fake_get_time_series(
+        ticker: str, interval: str = "1day", outputsize: int = 400
+    ):
         return series
 
-    monkeypatch.setattr(analyze_mod.market_data_service, "get_time_series", fake_get_time_series)
+    monkeypatch.setattr(
+        analyze_mod.market_data_service, "get_time_series", fake_get_time_series
+    )
     monkeypatch.setattr(analyze_mod, "get_cache_service", lambda: _StubCache())
 
     async def fake_chart(*args, **kwargs):

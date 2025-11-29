@@ -3,14 +3,16 @@ Automated alerting service for monitoring metrics
 Monitors error rates, response times, and system health
 Sends Telegram alerts when thresholds are breached
 """
+
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
-from collections import defaultdict
 import time
+from collections import defaultdict
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from prometheus_client import REGISTRY
+
 from app.telemetry.monitoring import get_monitoring_service
 
 logger = logging.getLogger(__name__)
@@ -110,25 +112,31 @@ class MonitoringAlerter:
                             severity = labels.get("severity", "unknown")
                             endpoint = labels.get("endpoint", "unknown")
 
-                            if severity == "error" and rate > self.thresholds["error_rate_5xx"]:
+                            if (
+                                severity == "error"
+                                and rate > self.thresholds["error_rate_5xx"]
+                            ):
                                 await self._send_alert(
                                     alert_type="high_error_rate",
                                     message=f"⚠️ *High Error Rate Alert*\n\n"
-                                            f"*Severity:* {severity}\n"
-                                            f"*Endpoint:* {endpoint}\n"
-                                            f"*Rate:* {rate:.0f} errors/min\n"
-                                            f"*Threshold:* {self.thresholds['error_rate_5xx']}/min\n\n"
-                                            f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                    f"*Severity:* {severity}\n"
+                                    f"*Endpoint:* {endpoint}\n"
+                                    f"*Rate:* {rate:.0f} errors/min\n"
+                                    f"*Threshold:* {self.thresholds['error_rate_5xx']}/min\n\n"
+                                    f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                                 )
 
-                            elif severity == "warning" and rate > self.thresholds["error_rate_4xx"]:
+                            elif (
+                                severity == "warning"
+                                and rate > self.thresholds["error_rate_4xx"]
+                            ):
                                 await self._send_alert(
                                     alert_type="high_4xx_rate",
                                     message=f"⚠️ *High 4xx Error Rate*\n\n"
-                                            f"*Endpoint:* {endpoint}\n"
-                                            f"*Rate:* {rate:.0f} errors/min\n"
-                                            f"*Threshold:* {self.thresholds['error_rate_4xx']}/min\n\n"
-                                            f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                    f"*Endpoint:* {endpoint}\n"
+                                    f"*Rate:* {rate:.0f} errors/min\n"
+                                    f"*Threshold:* {self.thresholds['error_rate_4xx']}/min\n\n"
+                                    f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                                 )
 
         except Exception as e:
@@ -141,7 +149,10 @@ class MonitoringAlerter:
                 if metric.name == "http_request_duration_seconds":
                     for sample in metric.samples:
                         # Check 95th percentile (0.95 quantile)
-                        if "quantile" in sample.labels and sample.labels["quantile"] == "0.95":
+                        if (
+                            "quantile" in sample.labels
+                            and sample.labels["quantile"] == "0.95"
+                        ):
                             endpoint = sample.labels.get("endpoint", "unknown")
                             p95 = sample.value
 
@@ -149,10 +160,10 @@ class MonitoringAlerter:
                                 await self._send_alert(
                                     alert_type="slow_response_time",
                                     message=f"🐌 *Slow Response Time Alert*\n\n"
-                                            f"*Endpoint:* {endpoint}\n"
-                                            f"*P95 Latency:* {p95:.2f}s\n"
-                                            f"*Threshold:* {self.thresholds['response_time_p95']}s\n\n"
-                                            f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                    f"*Endpoint:* {endpoint}\n"
+                                    f"*P95 Latency:* {p95:.2f}s\n"
+                                    f"*Threshold:* {self.thresholds['response_time_p95']}s\n\n"
+                                    f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                                 )
 
         except Exception as e:
@@ -181,12 +192,12 @@ class MonitoringAlerter:
                     await self._send_alert(
                         alert_type="high_db_connections",
                         message=f"🗄️ *Database Connection Pool Alert*\n\n"
-                                f"*Active Connections:* {active_connections:.0f}\n"
-                                f"*Pool Size:* {pool_size:.0f}\n"
-                                f"*Usage:* {usage_ratio:.1%}\n"
-                                f"*Threshold:* {self.thresholds['db_connections_high']:.0%}\n\n"
-                                f"*Action:* Consider increasing pool size or investigating connection leaks\n\n"
-                                f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                        f"*Active Connections:* {active_connections:.0f}\n"
+                        f"*Pool Size:* {pool_size:.0f}\n"
+                        f"*Usage:* {usage_ratio:.1%}\n"
+                        f"*Threshold:* {self.thresholds['db_connections_high']:.0%}\n\n"
+                        f"*Action:* Consider increasing pool size or investigating connection leaks\n\n"
+                        f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                     )
 
         except Exception as e:
@@ -196,7 +207,9 @@ class MonitoringAlerter:
         """Monitor health check status"""
         try:
             # Only alert for critical components (skip optional services)
-            CRITICAL_COMPONENTS = {"redis"}  # Database is optional, external APIs have natural rate limits
+            CRITICAL_COMPONENTS = {
+                "redis"
+            }  # Database is optional, external APIs have natural rate limits
 
             for metric in REGISTRY.collect():
                 if metric.name == "health_check_status":
@@ -209,19 +222,25 @@ class MonitoringAlerter:
                             self._health_failures[component] += 1
 
                             # Only send alerts for critical components
-                            if component in CRITICAL_COMPONENTS and self._health_failures[component] >= self.thresholds["health_check_failed"]:
+                            if (
+                                component in CRITICAL_COMPONENTS
+                                and self._health_failures[component]
+                                >= self.thresholds["health_check_failed"]
+                            ):
                                 await self._send_alert(
                                     alert_type=f"health_check_failed_{component}",
                                     message=f"❌ *Health Check Failed*\n\n"
-                                            f"*Component:* {component}\n"
-                                            f"*Status:* Unhealthy\n"
-                                            f"*Consecutive Failures:* {self._health_failures[component]}\n\n"
-                                            f"*Action:* Investigate {component} connectivity and configuration\n\n"
-                                            f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                    f"*Component:* {component}\n"
+                                    f"*Status:* Unhealthy\n"
+                                    f"*Consecutive Failures:* {self._health_failures[component]}\n\n"
+                                    f"*Action:* Investigate {component} connectivity and configuration\n\n"
+                                    f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                                 )
                             elif component not in CRITICAL_COMPONENTS:
                                 # Log non-critical failures but don't alert
-                                logger.debug(f"Non-critical health check failed: {component} (failures: {self._health_failures[component]})")
+                                logger.debug(
+                                    f"Non-critical health check failed: {component} (failures: {self._health_failures[component]})"
+                                )
                         else:
                             # Reset failure counter if healthy
                             if component in self._health_failures:
@@ -255,13 +274,13 @@ class MonitoringAlerter:
                                 await self._send_alert(
                                     alert_type=f"api_quota_low_{service}",
                                     message=f"📊 *API Quota Alert*\n\n"
-                                            f"*Service:* {service}\n"
-                                            f"*Used:* {used:.0f}\n"
-                                            f"*Limit:* {limit:.0f}\n"
-                                            f"*Usage:* {usage_ratio:.1%}\n"
-                                            f"*Remaining:* {limit - used:.0f}\n\n"
-                                            f"*Action:* Monitor usage or upgrade quota\n\n"
-                                            f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                    f"*Service:* {service}\n"
+                                    f"*Used:* {used:.0f}\n"
+                                    f"*Limit:* {limit:.0f}\n"
+                                    f"*Usage:* {usage_ratio:.1%}\n"
+                                    f"*Remaining:* {limit - used:.0f}\n\n"
+                                    f"*Action:* Monitor usage or upgrade quota\n\n"
+                                    f"*Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                                 )
 
         except Exception as e:

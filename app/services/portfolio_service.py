@@ -1,24 +1,29 @@
 import logging
-from typing import List, Optional, Dict, Tuple
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
 from sqlalchemy.orm import Session
+
 from app.models import Portfolio, Position, Ticker
 from app.services.market_data import get_current_price
 
 logger = logging.getLogger(__name__)
 
+
 class PortfolioService:
     def __init__(self, db: Session):
         self.db = db
 
-    async def create_portfolio(self, user_id: int, name: str, initial_capital: float) -> Portfolio:
+    async def create_portfolio(
+        self, user_id: int, name: str, initial_capital: float
+    ) -> Portfolio:
         """Create a new portfolio"""
         portfolio = Portfolio(
             user_id=user_id,
             name=name,
             initial_capital=initial_capital,
             cash_balance=initial_capital,
-            total_value=initial_capital
+            total_value=initial_capital,
         )
         self.db.add(portfolio)
         self.db.commit()
@@ -41,7 +46,7 @@ class PortfolioService:
         entry_price: float,
         stop_loss: Optional[float] = None,
         target_price: Optional[float] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> Position:
         """Add a new position to portfolio"""
         # Get or create ticker
@@ -56,11 +61,15 @@ class PortfolioService:
         total_cost = quantity * entry_price
 
         # Check existing position
-        existing_position = self.db.query(Position).filter(
-            Position.portfolio_id == portfolio_id,
-            Position.ticker_id == ticker.id,
-            Position.status == "open"
-        ).first()
+        existing_position = (
+            self.db.query(Position)
+            .filter(
+                Position.portfolio_id == portfolio_id,
+                Position.ticker_id == ticker.id,
+                Position.status == "open",
+            )
+            .first()
+        )
 
         if existing_position:
             # Average down/up
@@ -72,10 +81,13 @@ class PortfolioService:
             existing_position.total_cost = new_total_cost
             existing_position.avg_cost_basis = new_avg_cost
             existing_position.updated_at = datetime.utcnow()
-            
-            if stop_loss: existing_position.stop_loss = stop_loss
-            if target_price: existing_position.target_price = target_price
-            if notes: existing_position.notes = notes
+
+            if stop_loss:
+                existing_position.stop_loss = stop_loss
+            if target_price:
+                existing_position.target_price = target_price
+            if notes:
+                existing_position.notes = notes
 
             position = existing_position
         else:
@@ -89,7 +101,7 @@ class PortfolioService:
                 stop_loss=stop_loss,
                 target_price=target_price,
                 notes=notes,
-                status="open"
+                status="open",
             )
             self.db.add(position)
 
@@ -112,7 +124,7 @@ class PortfolioService:
         self,
         position_id: int,
         quantity: Optional[float] = None,
-        exit_price: Optional[float] = None
+        exit_price: Optional[float] = None,
     ) -> Tuple[Position, float]:
         """Remove or reduce a position (full or partial exit)"""
         position = self.db.query(Position).filter(Position.id == position_id).first()
@@ -121,19 +133,23 @@ class PortfolioService:
 
         # Use current market price if exit price not provided
         if not exit_price:
-            ticker = self.db.query(Ticker).filter(Ticker.id == position.ticker_id).first()
+            ticker = (
+                self.db.query(Ticker).filter(Ticker.id == position.ticker_id).first()
+            )
             exit_price = await get_current_price(ticker.symbol)
 
         # Full or partial exit
         exit_quantity = quantity if quantity else position.quantity
         if exit_quantity > position.quantity:
-            raise ValueError(f"Cannot exit {exit_quantity} shares, only {position.quantity} available")
+            raise ValueError(
+                f"Cannot exit {exit_quantity} shares, only {position.quantity} available"
+            )
 
         # Calculate realized P&L
         cost_basis_for_exit = position.avg_cost_basis * exit_quantity
         exit_value = exit_price * exit_quantity
         realized_pnl = exit_value - cost_basis_for_exit
-        realized_pnl_pct = (realized_pnl / cost_basis_for_exit) * 100
+        (realized_pnl / cost_basis_for_exit) * 100
 
         # Update portfolio cash balance
         portfolio = await self.get_portfolio(position.portfolio_id)
@@ -156,7 +172,9 @@ class PortfolioService:
         position.updated_at = datetime.utcnow()
         self.db.commit()
 
-        logger.info(f"Removed {exit_quantity} shares from position {position_id}, P&L: ${realized_pnl:.2f}")
+        logger.info(
+            f"Removed {exit_quantity} shares from position {position_id}, P&L: ${realized_pnl:.2f}"
+        )
         return position, realized_pnl
 
     async def update_position_pnl(self, position: Position) -> Position:
@@ -170,7 +188,11 @@ class PortfolioService:
             position.current_price = current_price
             position.current_value = current_price * position.quantity
             position.unrealized_pnl = position.current_value - position.total_cost
-            position.unrealized_pnl_pct = (position.unrealized_pnl / position.total_cost) * 100 if position.total_cost > 0 else 0
+            position.unrealized_pnl_pct = (
+                (position.unrealized_pnl / position.total_cost) * 100
+                if position.total_cost > 0
+                else 0
+            )
             position.updated_at = datetime.utcnow()
 
             self.db.commit()
@@ -179,7 +201,9 @@ class PortfolioService:
 
         return position
 
-    async def get_portfolio_positions(self, portfolio_id: int, status: str = "open") -> List[Position]:
+    async def get_portfolio_positions(
+        self, portfolio_id: int, status: str = "open"
+    ) -> List[Position]:
         """Get all positions for a portfolio"""
         query = self.db.query(Position).filter(Position.portfolio_id == portfolio_id)
         if status:
@@ -208,8 +232,12 @@ class PortfolioService:
 
         # Calculate metrics
         total_invested = sum(p.total_cost for p in positions if p.status == "open")
-        total_current_value = sum(p.current_value or 0 for p in positions if p.status == "open")
-        total_unrealized_pnl = sum(p.unrealized_pnl or 0 for p in positions if p.status == "open")
+        total_current_value = sum(
+            p.current_value or 0 for p in positions if p.status == "open"
+        )
+        total_unrealized_pnl = sum(
+            p.unrealized_pnl or 0 for p in positions if p.status == "open"
+        )
         total_portfolio_value = portfolio.cash_balance + total_current_value
 
         # Update portfolio total value
@@ -221,22 +249,36 @@ class PortfolioService:
         position_allocations = []
         for position in positions:
             if position.status == "open" and position.current_value:
-                ticker = self.db.query(Ticker).filter(Ticker.id == position.ticker_id).first()
-                allocation_pct = (position.current_value / total_portfolio_value) * 100 if total_portfolio_value > 0 else 0
+                ticker = (
+                    self.db.query(Ticker)
+                    .filter(Ticker.id == position.ticker_id)
+                    .first()
+                )
+                allocation_pct = (
+                    (position.current_value / total_portfolio_value) * 100
+                    if total_portfolio_value > 0
+                    else 0
+                )
                 position.position_size_pct = allocation_pct
 
-                position_allocations.append({
-                    "symbol": ticker.symbol,
-                    "value": position.current_value,
-                    "allocation_pct": allocation_pct,
-                    "pnl": position.unrealized_pnl,
-                    "pnl_pct": position.unrealized_pnl_pct
-                })
+                position_allocations.append(
+                    {
+                        "symbol": ticker.symbol,
+                        "value": position.current_value,
+                        "allocation_pct": allocation_pct,
+                        "pnl": position.unrealized_pnl,
+                        "pnl_pct": position.unrealized_pnl_pct,
+                    }
+                )
 
         self.db.commit()
 
         total_pnl = total_portfolio_value - portfolio.initial_capital
-        total_return_pct = (total_pnl / portfolio.initial_capital) * 100 if portfolio.initial_capital > 0 else 0
+        total_return_pct = (
+            (total_pnl / portfolio.initial_capital) * 100
+            if portfolio.initial_capital > 0
+            else 0
+        )
 
         return {
             "portfolio_id": portfolio_id,
@@ -248,7 +290,11 @@ class PortfolioService:
             "unrealized_pnl": total_unrealized_pnl,
             "num_positions": len([p for p in positions if p.status == "open"]),
             "allocations": position_allocations,
-            "cash_allocation_pct": (portfolio.cash_balance / total_portfolio_value) * 100 if total_portfolio_value > 0 else 0
+            "cash_allocation_pct": (
+                (portfolio.cash_balance / total_portfolio_value) * 100
+                if total_portfolio_value > 0
+                else 0
+            ),
         }
 
     async def get_allocation_data(self, portfolio_id: int) -> Dict:
@@ -259,7 +305,9 @@ class PortfolioService:
         pie_data = {
             "labels": [alloc["symbol"] for alloc in metrics["allocations"]],
             "values": [alloc["value"] for alloc in metrics["allocations"]],
-            "percentages": [alloc["allocation_pct"] for alloc in metrics["allocations"]]
+            "percentages": [
+                alloc["allocation_pct"] for alloc in metrics["allocations"]
+            ],
         }
 
         # Add cash if significant
