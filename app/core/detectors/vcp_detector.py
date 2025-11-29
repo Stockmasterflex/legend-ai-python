@@ -7,6 +7,7 @@ declines are SHRINKING in percentage terms, creating tighter and tighter
 pullbacks before an explosive breakout.
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -16,6 +17,8 @@ import pandas as pd
 from app.core.detector_base import (Detector, PatternResult, PatternType,
                                     StatsHelper)
 from app.core.detector_config import VCPConfig
+
+logger = logging.getLogger(__name__)
 
 
 class VCPDetector(Detector):

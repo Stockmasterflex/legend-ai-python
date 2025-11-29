@@ -9,6 +9,7 @@ Key features:
 - Breakout above cup rim with volume surge
 """
 
+import logging
 from datetime import datetime
 from typing import List, Optional
 
@@ -18,6 +19,8 @@ import pandas as pd
 from app.core.detector_base import (Detector, PatternResult, PatternType,
                                     StatsHelper)
 from app.core.detector_config import CupHandleConfig
+
+logger = logging.getLogger(__name__)
 
 
 class CupHandleDetector(Detector):

@@ -3,6 +3,7 @@ Double Top/Bottom Pattern Detector
 Implements double top (bearish) and double bottom (bullish) reversal patterns
 """
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -12,6 +13,8 @@ import pandas as pd
 from app.core.detector_base import (Detector, PatternResult, PatternType,
                                     StatsHelper)
 from app.core.detector_config import DoubleTopBottomConfig
+
+logger = logging.getLogger(__name__)
 
 
 class DoubleTopBottomDetector(Detector):

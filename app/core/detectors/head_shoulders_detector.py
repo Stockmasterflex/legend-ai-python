@@ -10,11 +10,11 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-logger = logging.getLogger(__name__)
-
 from app.core.detector_base import (Detector, GeometryHelper, PatternResult,
                                     PatternType, StatsHelper)
 from app.core.detector_config import HeadShouldersConfig
+
+logger = logging.getLogger(__name__)
 
 
 class HeadShouldersDetector(Detector):

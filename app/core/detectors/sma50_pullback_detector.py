@@ -3,6 +3,7 @@
 Detects bullish pullback opportunities near the 50-period SMA
 """
 
+import logging
 from datetime import datetime
 from typing import List
 
@@ -10,6 +11,8 @@ import numpy as np
 import pandas as pd
 
 from app.core.detector_base import Detector, PatternResult, PatternType
+
+logger = logging.getLogger(__name__)
 
 
 class SMA50PullbackDetector(Detector):

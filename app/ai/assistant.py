@@ -9,6 +9,11 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.detectors.advanced.patterns import AdvancedPatternDetector
+from app.services.market_data import MarketDataService
+from app.technicals.fibonacci import FibonacciCalculator
+from app.technicals.trendlines import AutoTrendlineDetector
+
 # Check if openai is available
 try:
     from openai import AsyncOpenAI
@@ -17,11 +22,6 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
     AsyncOpenAI = None
-
-from app.detectors.advanced.patterns import AdvancedPatternDetector
-from app.services.market_data import MarketDataService
-from app.technicals.fibonacci import FibonacciCalculator
-from app.technicals.trendlines import AutoTrendlineDetector
 
 logger = logging.getLogger(__name__)
 

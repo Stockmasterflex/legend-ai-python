@@ -362,36 +362,6 @@ class CacheService:
             logger.error(f"Cache clear error: {e}")
             return {"error": str(e)}
 
-    async def get(self, key: str) -> Optional[Any]:
-        """Generic get from cache (for market_data service)"""
-        try:
-            redis = await self._get_redis()
-            data = await redis.get(key)
-            if data:
-                try:
-                    return json.loads(data)
-                except (json.JSONDecodeError, TypeError) as e:
-                    logger.warning(f"Cache data not JSON for {key}, returning raw: {e}")
-                    return data
-            return None
-        except Exception as e:
-            logger.error(f"Cache get error for {key}: {e}")
-            return None
-
-    async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
-        """Generic set to cache (for market_data service)"""
-        try:
-            redis = await self._get_redis()
-            if isinstance(value, (dict, list)):
-                value = json.dumps(value)
-            elif isinstance(value, (int, float)):
-                value = str(value)
-            await redis.setex(key, ttl, value)
-            return True
-        except Exception as e:
-            logger.error(f"Cache set error for {key}: {e}")
-            return False
-
     async def health_check(self) -> Dict[str, Any]:
         """
         Check Redis connection health

@@ -483,7 +483,7 @@ class MultiTierCache:
                     # Deserialize value
                     try:
                         return json.loads(result[0])
-                    except:
+                    except Exception:
                         return result[0]
 
                 return None
@@ -602,7 +602,7 @@ class MultiTierCache:
                     value = result[0]
                     try:
                         value = json.loads(value)
-                    except:
+                    except Exception:
                         pass
 
                     ttl = self._calculate_hot_ttl(data_type)

@@ -123,7 +123,7 @@ class TestHeadShouldersValidation:
         # Check for uptrend at index 50 (after 50 bars of rising prices)
         has_uptrend = self.detector._has_prior_uptrend(df, pattern_start_idx=50)
 
-        assert has_uptrend == True, "Should detect prior uptrend"
+        assert has_uptrend, "Should detect prior uptrend"
 
     def test_has_prior_uptrend_rejects_flat_trend(self):
         """Test that _has_prior_uptrend rejects flat markets"""
@@ -131,7 +131,7 @@ class TestHeadShouldersValidation:
 
         has_uptrend = self.detector._has_prior_uptrend(df, pattern_start_idx=50)
 
-        assert has_uptrend == False, "Should reject flat trend"
+        assert not has_uptrend, "Should reject flat trend"
 
     def test_has_prior_downtrend_detects_downtrend(self):
         """Test that _has_prior_downtrend detects valid downtrends"""
@@ -140,7 +140,7 @@ class TestHeadShouldersValidation:
         # Check for downtrend at index 50
         has_downtrend = self.detector._has_prior_downtrend(df, pattern_start_idx=50)
 
-        assert has_downtrend == True, "Should detect prior downtrend"
+        assert has_downtrend, "Should detect prior downtrend"
 
     def test_has_prior_downtrend_rejects_uptrend(self):
         """Test that _has_prior_downtrend rejects uptrends"""
@@ -149,7 +149,7 @@ class TestHeadShouldersValidation:
         has_downtrend = self.detector._has_prior_downtrend(df, pattern_start_idx=50)
 
         assert (
-            has_downtrend == False
+            not has_downtrend
         ), "Should reject uptrend when looking for downtrend"
 
     # =========================================================================
@@ -166,7 +166,7 @@ class TestHeadShouldersValidation:
             df, start_idx=50, end_idx=95
         )
 
-        assert has_declining == True, "Should detect declining volume"
+        assert has_declining, "Should detect declining volume"
 
     def test_has_declining_volume_rejects_flat_volume(self):
         """Test that _has_declining_volume rejects flat volume"""
@@ -178,7 +178,7 @@ class TestHeadShouldersValidation:
             df, start_idx=50, end_idx=95
         )
 
-        assert has_declining == False, "Should reject flat volume"
+        assert not has_declining, "Should reject flat volume"
 
     # =========================================================================
     # Test 3: Neckline Position Validation
@@ -195,7 +195,7 @@ class TestHeadShouldersValidation:
             df, neckline_slope=0, neckline_intercept=119
         )
 
-        assert is_below == True, "Should detect price below neckline"
+        assert is_below, "Should detect price below neckline"
 
     def test_is_above_neckline_detects_breakout(self):
         """Test that _is_above_neckline detects bullish breakout"""
@@ -208,7 +208,7 @@ class TestHeadShouldersValidation:
             df, neckline_slope=0, neckline_intercept=119
         )
 
-        assert is_above == True, "Should detect price above neckline"
+        assert is_above, "Should detect price above neckline"
 
     # =========================================================================
     # Test 4: Full Pattern Detection with Validation

@@ -419,7 +419,7 @@ async def quick_scan(request: QuickScanRequest):
 
 
 @router.get("/sp500")
-async def get_sp500():
+async def sp500_tickers_endpoint():
     """Get S&P 500 ticker list"""
     try:
         tickers = await universe_service.get_sp500_tickers()

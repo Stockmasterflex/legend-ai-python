@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 import httpx
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class TwelveDataClient:

@@ -3,6 +3,7 @@ Triangle Pattern Detector
 Implements Ascending, Descending, and Symmetrical Triangle detection
 """
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -12,6 +13,8 @@ import pandas as pd
 from app.core.detector_base import (Detector, GeometryHelper, PatternResult,
                                     PatternType, StatsHelper)
 from app.core.detector_config import TriangleConfig
+
+logger = logging.getLogger(__name__)
 
 
 class TriangleDetector(Detector):
@@ -138,7 +141,7 @@ class TriangleDetector(Detector):
             return None
 
         # Check if lows form rising support
-        low_points = [(l["index"], l["price"]) for l in lows]
+        low_points = [(low["index"], low["price"]) for low in lows]
         low_line = GeometryHelper.fit_line_ransac(low_points)
 
         if not low_line:
@@ -178,8 +181,8 @@ class TriangleDetector(Detector):
 
         support_touches = sum(
             1
-            for l in lows
-            if abs(l["price"] - (slope * l["index"] + intercept)) < atr * 0.5
+            for low in lows
+            if abs(low["price"] - (slope * low["index"] + intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE
@@ -250,7 +253,7 @@ class TriangleDetector(Detector):
             return None
 
         # Check if lows form flat support
-        low_prices = [l["price"] for l in lows]
+        low_prices = [low["price"] for low in lows]
         low_mean = np.mean(low_prices)
         low_std = np.std(low_prices)
 
@@ -292,7 +295,7 @@ class TriangleDetector(Detector):
             return None
 
         # Count touches
-        support_touches = sum(1 for l in low_prices if abs(l - low_mean) < atr * 0.5)
+        support_touches = sum(1 for low_price in low_prices if abs(low_price - low_mean) < atr * 0.5)
 
         resistance_touches = sum(
             1
@@ -374,7 +377,7 @@ class TriangleDetector(Detector):
             return None
 
         # Fit support line (through lows)
-        low_points = [(l["index"], l["price"]) for l in lows]
+        low_points = [(low["index"], low["price"]) for low in lows]
         low_line = GeometryHelper.fit_line_ransac(low_points)
 
         if not low_line:
@@ -427,8 +430,8 @@ class TriangleDetector(Detector):
 
         support_touches = sum(
             1
-            for l in lows
-            if abs(l["price"] - (low_slope * l["index"] + low_intercept)) < atr * 0.5
+            for low in lows
+            if abs(low["price"] - (low_slope * low["index"] + low_intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE

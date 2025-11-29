@@ -3,6 +3,7 @@ Wedge Pattern Detector
 Implements Rising and Falling Wedge detection
 """
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -12,6 +13,8 @@ import pandas as pd
 from app.core.detector_base import (Detector, GeometryHelper, PatternResult,
                                     PatternType, StatsHelper)
 from app.core.detector_config import WedgeConfig
+
+logger = logging.getLogger(__name__)
 
 
 class WedgeDetector(Detector):
@@ -118,7 +121,7 @@ class WedgeDetector(Detector):
             return None
 
         # Fit support line (through lows)
-        low_points = [(l["index"], l["price"]) for l in lows]
+        low_points = [(low["index"], low["price"]) for low in lows]
         low_line = GeometryHelper.fit_line_ransac(low_points)
 
         if not low_line:
@@ -164,8 +167,8 @@ class WedgeDetector(Detector):
 
         support_touches = sum(
             1
-            for l in lows
-            if abs(l["price"] - (low_slope * l["index"] + low_intercept)) < atr * 0.5
+            for low in lows
+            if abs(low["price"] - (low_slope * low["index"] + low_intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE
@@ -295,8 +298,8 @@ class WedgeDetector(Detector):
 
         support_touches = sum(
             1
-            for l in lows
-            if abs(l["price"] - (low_slope * l["index"] + low_intercept)) < atr * 0.5
+            for low in lows
+            if abs(low["price"] - (low_slope * low["index"] + low_intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE

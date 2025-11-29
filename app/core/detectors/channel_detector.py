@@ -3,6 +3,7 @@ Channel Pattern Detector
 Implements parallel channel detection (up, down, sideways)
 """
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -12,6 +13,8 @@ import pandas as pd
 from app.core.detector_base import (Detector, GeometryHelper, PatternResult,
                                     PatternType, StatsHelper)
 from app.core.detector_config import ChannelConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ChannelDetector(Detector):
@@ -95,7 +98,7 @@ class ChannelDetector(Detector):
         if not high_line:
             return None
 
-        low_points = [(l["index"], l["price"]) for l in lows]
+        low_points = [(low["index"], low["price"]) for low in lows]
         low_line = GeometryHelper.fit_line_ransac(low_points)
 
         if not low_line:
@@ -116,7 +119,7 @@ class ChannelDetector(Detector):
         elif channel_type == "sideways":
             # Both slopes should be near zero
             avg_price = np.mean(
-                [h["price"] for h in highs] + [l["price"] for l in lows]
+                [h["price"] for h in highs] + [low["price"] for low in lows]
             )
             high_slope_pct = abs(high_slope) / avg_price * 100
             low_slope_pct = abs(low_slope) / avg_price * 100
@@ -154,8 +157,8 @@ class ChannelDetector(Detector):
 
         support_touches = sum(
             1
-            for l in lows
-            if abs(l["price"] - (low_slope * l["index"] + low_intercept)) < atr * 0.5
+            for low in lows
+            if abs(low["price"] - (low_slope * low["index"] + low_intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE
