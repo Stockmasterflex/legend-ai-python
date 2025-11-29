@@ -72,4 +72,9 @@ RAILWAY_ENV_CHECKLIST.md
 railway-env-*.txt
 *-api-keys.txt
 *-secrets.txt
+*.secret
+*_creds.json
+config.json
 credentials.json
+secrets.json
+.secrets/

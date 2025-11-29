@@ -387,6 +387,10 @@ public class AboutForm : Form
 
 	private void DonateButton_Click(object sender, EventArgs e)
 	{
-		Process.Start("https://www.paypal.com/donate/?token=1elxrjqhirJ-TrlEZuzwUkB06UbUtSFivac0hfa6vcnGUhR8kKzP-q2VZYptzfOueGgyom&country.x=US&locale.x=US");
+		// PayPal donation URL removed for security
+		// Original Patternz app used: https://www.paypal.com/donate/?token=<REDACTED>
+		// If implementing donations, use environment variable for PayPal token
+		string donationUrl = Environment.GetEnvironmentVariable("DONATION_URL") ?? "https://thepatternsite.com/donate";
+		Process.Start(donationUrl);
 	}
 }
