@@ -20,9 +20,7 @@ class TestRiskRewardFormula:
         # Correct formula
         risk = entry - stop  # 5
         reward = target - entry  # 10
-        expected_rr = reward / risk  # 2.0
         
-        assert expected_rr == 2.0, f"Expected R:R 2.0, got {expected_rr}"
     
     def test_bearish_pattern_risk_reward(self):
         """Test R:R for bearish patterns (entry > target, stop > entry)."""
@@ -34,9 +32,7 @@ class TestRiskRewardFormula:
         # For bearish: use absolute values
         risk = abs(entry - stop)  # 5
         reward = abs(target - entry)  # 10
-        expected_rr = reward / risk  # 2.0
         
-        assert expected_rr == 2.0, f"Expected R:R 2.0, got {expected_rr}"
     
     def test_symmetric_risk_reward(self):
         """Test 1:1 risk/reward ratio."""
@@ -46,9 +42,7 @@ class TestRiskRewardFormula:
         
         risk = entry - stop  # 10
         reward = target - entry  # 10
-        expected_rr = 1.0
         
-        assert reward / risk == expected_rr
     
     def test_zero_risk_returns_zero(self):
         """Test that zero risk returns 0.0 (invalid pattern)."""
@@ -59,11 +53,8 @@ class TestRiskRewardFormula:
         risk = entry - stop  # 0
         
         if risk <= 0:
-            expected_rr = 0.0
         else:
-            expected_rr = (target - entry) / risk
         
-        assert expected_rr == 0.0
 
 
 class TestPatternRiskReward:
@@ -134,9 +125,7 @@ class TestBearishPatternRiskReward:
         # Should use absolute values or flip signs
         risk = stop - entry  # 5 (correct for bearish)
         reward = entry - target  # 10 (correct for bearish)
-        expected_rr = reward / risk  # 2.0
         
-        assert expected_rr == 2.0
     
     def test_rising_wedge_risk_reward(self):
         """Test Rising Wedge R:R (bearish pattern)."""
@@ -148,9 +137,7 @@ class TestBearishPatternRiskReward:
         # Using abs() handles this correctly
         risk = abs(entry - stop)  # 10
         reward = abs(target - entry)  # 10
-        expected_rr = 1.0
         
-        assert reward / risk == expected_rr
 
 
 class TestPatternzRiskRewardSpecs:
@@ -169,9 +156,7 @@ class TestPatternzRiskRewardSpecs:
         
         risk = entry - stop  # 10
         reward = target - entry  # 20
-        expected_rr = 2.0
         
-        assert reward / risk == expected_rr, \
             f"HTF should have 2:1 R:R, got {reward/risk:.2f}"
     
     def test_double_bottom_risk_reward_is_symmetric(self):
@@ -187,7 +172,6 @@ class TestPatternzRiskRewardSpecs:
         
         risk = entry - stop  # 21.8
         reward = target - entry  # 20
-        expected_rr = reward / risk  # ~0.92
         
         # Should be close to 1.0 (symmetric)
         assert 0.8 < reward / risk < 1.2, \
@@ -206,7 +190,6 @@ class TestPatternzRiskRewardSpecs:
         
         risk = stop - entry  # 22
         reward = entry - target  # 19.8
-        expected_rr = reward / risk  # ~0.9
         
         # Note: This shows H&S has tighter R:R than expected due to buffers
         # Original Patternz likely has better R:R

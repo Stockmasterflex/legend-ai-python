@@ -209,7 +209,7 @@ def test_pattern_detector():
     detector = PatternDetector(strict=False)
     patterns = detector.detect_all_patterns(data_dict, ticker="TEST")
     
-    print(f"\n=== Pattern Detector Results ===")
+    print("\n=== Pattern Detector Results ===")
     print(f"Found {len(patterns)} total patterns")
     
     for i, pattern in enumerate(patterns):

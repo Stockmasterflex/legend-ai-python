@@ -12,11 +12,10 @@ Test Cases:
 4. Volume validation works correctly
 5. Neckline position validation works correctly
 """
-import asyncio
 import pytest
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
 from app.core.detector_base import PatternType
