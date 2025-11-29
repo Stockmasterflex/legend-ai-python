@@ -657,3 +657,18 @@ class MarketDataService:
 
 # Global instance
 market_data_service = MarketDataService()
+
+async def get_current_price(symbol: str) -> float:
+    """
+    Get current price for a symbol (helper for other services)
+    
+    Args:
+        symbol: Stock symbol
+        
+    Returns:
+        Current price or 0.0 if not found
+    """
+    quote = await market_data_service.get_quote(symbol)
+    if quote:
+        return float(quote.get("close", 0.0))
+    return 0.0

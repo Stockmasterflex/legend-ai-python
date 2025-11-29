@@ -540,3 +540,11 @@ def get_database_service() -> DatabaseService:
         _db_service = DatabaseService(settings.database_url)
         _db_service.init_db()
     return _db_service
+
+def get_db():
+    """Dependency for getting database session"""
+    db = get_database_service().get_db()
+    try:
+        yield db
+    finally:
+        db.close()
