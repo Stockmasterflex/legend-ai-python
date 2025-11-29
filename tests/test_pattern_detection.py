@@ -279,8 +279,10 @@ class TestPatternDetectionIntegration:
             outputsize=320
         )
 
-        if not price_data or not price_data.get("c"):
-            pytest.skip("Could not fetch MU price data")
+        # Validate that we have all required OHLCV keys
+        required_keys = ['o', 'h', 'l', 'c', 'v', 't']
+        if not price_data or not all(k in price_data and price_data[k] for k in required_keys):
+            pytest.skip("Could not fetch valid MU price data with all OHLCV keys")
 
         # Convert to DataFrame
         df = pd.DataFrame({
@@ -319,8 +321,10 @@ class TestPatternDetectionIntegration:
             outputsize=320
         )
 
-        if not price_data or not price_data.get("c"):
-            pytest.skip("Could not fetch WBD price data")
+        # Validate that we have all required OHLCV keys
+        required_keys = ['o', 'h', 'l', 'c', 'v', 't']
+        if not price_data or not all(k in price_data and price_data[k] for k in required_keys):
+            pytest.skip("Could not fetch valid WBD price data with all OHLCV keys")
 
         # Convert to DataFrame
         df = pd.DataFrame({

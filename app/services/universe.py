@@ -206,12 +206,18 @@ class UniverseService:
             cache_key = f"universe:scan:min{min_score}"
             cached = await self.cache._get_redis()
             cached_scan = await cached.get(cache_key)
-            
+
             if cached_scan:
                 import json
                 results = json.loads(cached_scan)
-                logger.info(f"✅ Loaded cached universe scan: {len(results)} results")
-                return results[:max_results]
+                # Don't use cached empty results - they might indicate a failed scan
+                if results and len(results) > 0:
+                    logger.info(f"✅ Loaded cached universe scan: {len(results)} results")
+                    return results[:max_results]
+                else:
+                    # Invalidate empty cache and run fresh scan
+                    logger.warning("⚠️ Cached scan was empty, running fresh scan...")
+                    await cached.delete(cache_key)
             
             logger.info("🔍 Starting universe scan... (this may take a while)")
 
@@ -297,13 +303,17 @@ class UniverseService:
             
             # Sort by score descending
             results.sort(key=lambda x: x["score"], reverse=True)
-            
+
             logger.info(f"✅ Universe scan complete: {len(results)} setups found (min score: {min_score})")
-            
-            # Cache results for 24 hours
-            import json
-            await cached.setex(cache_key, 24 * 3600, json.dumps(results))
-            
+
+            # Only cache non-empty results (avoid caching failed/empty scans)
+            if results and len(results) > 0:
+                import json
+                await cached.setex(cache_key, 24 * 3600, json.dumps(results))
+                logger.info(f"📦 Cached {len(results)} scan results for 24 hours")
+            else:
+                logger.warning("⚠️ No results to cache (no patterns found meeting criteria)")
+
             return results[:max_results]
             
         except Exception as e:
