@@ -90,6 +90,10 @@ class DatabaseService:
                 "future": True,  # Use SQLAlchemy 2.0 style
             }
 
+            if not self.database_url:
+                logger.warning("DATABASE_URL not set. Falling back to local SQLite database.")
+                self.database_url = "sqlite:///./legend_ai.db"
+
             if self.database_url.startswith("sqlite"):
                 connect_args["check_same_thread"] = False
                 engine_kwargs["connect_args"] = connect_args

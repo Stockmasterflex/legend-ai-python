@@ -3,246 +3,446 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legend AI - Market Dashboard</title>
+    <title>Legend AI - Trading Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-dark: #0b0e11;
+            --bg-card: #151924;
+            --bg-hover: #1e2330;
+            --text-primary: #e1e3e6;
+            --text-secondary: #8d92a0;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --border-color: #2a2f3a;
+            --glass-bg: rgba(21, 25, 36, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.05);
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #0f1117;
-            color: #e1e3e6;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
             line-height: 1.6;
+            overflow-x: hidden;
         }
+
+        /* Navigation */
+        nav {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 0 20px;
+        }
+
+        .nav-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span { color: var(--accent-blue); }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        /* Layout */
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
-        header {
-            background: #1a1d26;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            border: 1px solid #2a2f3a;
-        }
-        h1 {
-            color: #5b9cfd;
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #8d92a0;
-            font-size: 0.9rem;
-        }
+
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            grid-template-columns: repeat(12, 1fr);
             gap: 20px;
             margin-bottom: 20px;
         }
-        .widget-container {
-            background: #1a1d26;
-            border-radius: 10px;
-            padding: 15px;
-            border: 1px solid #2a2f3a;
-            min-height: 300px;
+
+        /* Widgets */
+        .widget {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        .widget-title {
-            color: #5b9cfd;
-            font-size: 1.1rem;
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
+        }
+
+        .widget-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .widget-icon { color: var(--accent-blue); }
+
+        /* Specific Grid Areas */
+        .full-width { grid-column: span 12; }
+        .half-width { grid-column: span 6; }
+        .third-width { grid-column: span 4; }
+        
+        /* Interactive Elements */
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            flex-grow: 1;
+        }
+
+        button {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            text-align: left;
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
             font-weight: 600;
         }
-        .full-width {
-            grid-column: 1 / -1;
+
+        .badge-green { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .badge-red { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        /* Analysis Result */
+        #analysis-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
         }
-        .ticker-tape {
-            min-height: 80px;
+
+        /* Mobile Responsiveness */
+        @media (max-width: 1024px) {
+            .half-width, .third-width { grid-column: span 12; }
         }
-        .market-overview {
-            min-height: 400px;
-        }
-        .sector-heatmap {
-            min-height: 500px;
-        }
-        .economic-calendar {
-            min-height: 400px;
-        }
-        .screener {
-            min-height: 500px;
-        }
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #8d92a0;
-            font-size: 0.9rem;
-            margin-top: 40px;
+
+        @media (max-width: 768px) {
+            .nav-content { padding: 0 10px; }
+            .nav-links { display: none; } /* Simple hide for now, could add hamburger */
+            .grid { display: flex; flex-direction: column; }
+            .widget { min-height: 300px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📊 Legend AI Market Dashboard</h1>
-            <p class="subtitle">Real-time market internals powered by TradingView</p>
-        </header>
+    <nav>
+        <div class="nav-content">
+            <div class="logo">
+                <span>⚡</span> Legend AI
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active">Dashboard</a>
+                <a href="/docs" class="nav-link" target="_blank">API Docs</a>
+                <a href="#" class="nav-link" onclick="alert('Coming soon!')">Settings</a>
+            </div>
+        </div>
+    </nav>
 
+    <div class="container">
         <!-- Ticker Tape -->
-        <div class="widget-container ticker-tape full-width">
-            <div class="widget-title">Market Ticker Tape</div>
-            <div class="tradingview-widget-container" style="height:100%;width:100%">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                {
-                  "symbols": [
-                    {"proName": "FOREXCOM:SPXUSD", "title": "S&P 500"},
-                    {"proName": "NASDAQ:QQQ", "title": "NASDAQ 100"},
-                    {"proName": "AMEX:IWM", "title": "Russell 2000"},
-                    {"proName": "AMEX:DIA", "title": "Dow Jones"},
-                    {"proName": "CBOE:VIX", "title": "VIX"},
-                    {"description": "NVDA", "proName": "NASDAQ:NVDA"},
-                    {"description": "AAPL", "proName": "NASDAQ:AAPL"},
-                    {"description": "MSFT", "proName": "NASDAQ:MSFT"},
-                    {"description": "TSLA", "proName": "NASDAQ:TSLA"},
-                    {"description": "META", "proName": "NASDAQ:META"}
-                  ],
-                  "showSymbolLogo": true,
-                  "isTransparent": false,
-                  "displayMode": "adaptive",
-                  "colorTheme": "dark",
-                  "locale": "en"
-                }
-                </script>
+        <div class="grid">
+            <div class="widget full-width" style="padding: 0; border: none; background: transparent; height: 72px;">
+                <div class="tradingview-widget-container">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                    {
+                    "symbols": [
+                        {"proName": "FOREXCOM:SPXUSD", "title": "S&P 500"},
+                        {"proName": "NASDAQ:QQQ", "title": "NASDAQ 100"},
+                        {"proName": "AMEX:IWM", "title": "Russell 2000"},
+                        {"proName": "CBOE:VIX", "title": "VIX"},
+                        {"description": "NVDA", "proName": "NASDAQ:NVDA"},
+                        {"description": "AAPL", "proName": "NASDAQ:AAPL"},
+                        {"description": "TSLA", "proName": "NASDAQ:TSLA"}
+                    ],
+                    "showSymbolLogo": true,
+                    "isTransparent": true,
+                    "displayMode": "adaptive",
+                    "colorTheme": "dark",
+                    "locale": "en"
+                    }
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Quick Analysis Tool -->
+            <div class="widget third-width">
+                <div class="widget-header">
+                    <div class="widget-title"><span class="widget-icon">🔍</span> Quick Analysis</div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g. NVDA)">
+                    <button onclick="runAnalysis()" id="analyze-btn">Analyze</button>
+                </div>
+                <div id="analysis-result"></div>
+            </div>
+
+            <!-- Recent Trades (Journal) -->
+            <div class="widget two-thirds-width" style="grid-column: span 8;">
+                <div class="widget-header">
+                    <div class="widget-title"><span class="widget-icon">📓</span> Recent Trades</div>
+                    <button onclick="loadTrades()" style="padding: 4px 12px; font-size: 0.8rem;">Refresh</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Pattern</th>
+                                <th>Entry</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <div class="grid">
             <!-- Market Overview -->
-            <div class="widget-container market-overview">
-                <div class="widget-title">Market Overview</div>
+            <div class="widget half-width" style="height: 500px;">
+                <div class="widget-header">
+                    <div class="widget-title">Market Overview</div>
+                </div>
                 <div class="tradingview-widget-container" style="height:100%;width:100%">
                     <div class="tradingview-widget-container__widget"></div>
                     <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
                     {
-                      "colorTheme": "dark",
-                      "dateRange": "12M",
-                      "showChart": true,
-                      "locale": "en",
-                      "width": "100%",
-                      "height": "100%",
-                      "largeChartUrl": "",
-                      "isTransparent": false,
-                      "showSymbolLogo": true,
-                      "showFloatingTooltip": false,
-                      "plotLineColorGrowing": "rgba(41, 98, 255, 1)",
-                      "plotLineColorFalling": "rgba(41, 98, 255, 1)",
-                      "gridLineColor": "rgba(42, 46, 57, 0)",
-                      "scaleFontColor": "rgba(134, 137, 147, 1)",
-                      "belowLineFillColorGrowing": "rgba(41, 98, 255, 0.12)",
-                      "belowLineFillColorFalling": "rgba(41, 98, 255, 0.12)",
-                      "belowLineFillColorGrowingBottom": "rgba(41, 98, 255, 0)",
-                      "belowLineFillColorFallingBottom": "rgba(41, 98, 255, 0)",
-                      "symbolActiveColor": "rgba(41, 98, 255, 0.12)",
-                      "tabs": [
+                    "colorTheme": "dark",
+                    "dateRange": "12M",
+                    "showChart": true,
+                    "locale": "en",
+                    "width": "100%",
+                    "height": "100%",
+                    "largeChartUrl": "",
+                    "isTransparent": true,
+                    "showSymbolLogo": true,
+                    "tabs": [
                         {
-                          "title": "Indices",
-                          "symbols": [
+                        "title": "Indices",
+                        "symbols": [
                             {"s": "FOREXCOM:SPXUSD", "d": "S&P 500"},
                             {"s": "NASDAQ:QQQ", "d": "NASDAQ 100"},
                             {"s": "AMEX:IWM", "d": "Russell 2000"},
-                            {"s": "FOREXCOM:DJI", "d": "Dow 30"},
                             {"s": "CBOE:VIX", "d": "VIX"}
-                          ],
-                          "originalTitle": "Indices"
-                        },
-                        {
-                          "title": "Top Movers",
-                          "symbols": [
-                            {"s": "NASDAQ:NVDA"},
-                            {"s": "NASDAQ:AAPL"},
-                            {"s": "NASDAQ:MSFT"},
-                            {"s": "NASDAQ:TSLA"},
-                            {"s": "NASDAQ:META"}
-                          ]
+                        ]
                         }
-                      ]
+                    ]
                     }
                     </script>
                 </div>
             </div>
 
-            <!-- Economic Calendar -->
-            <div class="widget-container economic-calendar">
-                <div class="widget-title">Economic Calendar</div>
+            <!-- Sector Heatmap -->
+            <div class="widget half-width" style="height: 500px;">
+                <div class="widget-header">
+                    <div class="widget-title">Sector Heatmap</div>
+                </div>
                 <div class="tradingview-widget-container" style="height:100%;width:100%">
                     <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
                     {
-                      "colorTheme": "dark",
-                      "isTransparent": false,
-                      "width": "100%",
-                      "height": "100%",
-                      "locale": "en",
-                      "importanceFilter": "0,1",
-                      "countryFilter": "us"
+                    "exchanges": [],
+                    "dataSource": "SPX500",
+                    "grouping": "sector",
+                    "blockSize": "market_cap_basic",
+                    "blockColor": "change",
+                    "locale": "en",
+                    "symbolUrl": "",
+                    "colorTheme": "dark",
+                    "hasTopBar": false,
+                    "isDataSetEnabled": false,
+                    "isZoomEnabled": true,
+                    "hasSymbolTooltip": true,
+                    "width": "100%",
+                    "height": "100%"
                     }
                     </script>
                 </div>
             </div>
         </div>
-
-        <!-- Sector Heatmap -->
-        <div class="widget-container sector-heatmap full-width">
-            <div class="widget-title">Sector Performance Heatmap</div>
-            <div class="tradingview-widget-container" style="height:100%;width:100%">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-                {
-                  "exchanges": [],
-                  "dataSource": "SPX500",
-                  "grouping": "sector",
-                  "blockSize": "market_cap_basic",
-                  "blockColor": "change",
-                  "locale": "en",
-                  "symbolUrl": "",
-                  "colorTheme": "dark",
-                  "hasTopBar": false,
-                  "isDataSetEnabled": false,
-                  "isZoomEnabled": true,
-                  "hasSymbolTooltip": true,
-                  "width": "100%",
-                  "height": "100%"
-                }
-                </script>
-            </div>
-        </div>
-
-        <!-- Stock Screener -->
-        <div class="widget-container screener full-width">
-            <div class="widget-title">Stock Screener</div>
-            <div class="tradingview-widget-container" style="height:100%;width:100%">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
-                {
-                  "width": "100%",
-                  "height": "100%",
-                  "defaultColumn": "overview",
-                  "defaultScreen": "most_capitalized",
-                  "market": "us",
-                  "showToolbar": true,
-                  "colorTheme": "dark",
-                  "locale": "en"
-                }
-                </script>
-            </div>
-        </div>
-
-        <footer>
-            <p>Legend AI © 2025 | Market data provided by TradingView</p>
-        </footer>
     </div>
+
+    <script>
+        // Quick Analysis Function
+        async function runAnalysis() {
+            const ticker = document.getElementById('ticker-input').value.trim();
+            const btn = document.getElementById('analyze-btn');
+            const resultDiv = document.getElementById('analysis-result');
+
+            if (!ticker) return;
+
+            btn.disabled = true;
+            btn.textContent = '...';
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Analyzing market data...';
+
+            try {
+                const response = await fetch(`/api/analyze?ticker=${ticker}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Format the output nicely
+                    const patterns = data.patterns || [];
+                    const patternText = patterns.length > 0 
+                        ? patterns.map(p => `• ${p.name} (${p.score}%)`).join('\n')
+                        : 'No clear patterns detected.';
+                    
+                    resultDiv.textContent = `✅ Analysis Complete for ${ticker.toUpperCase()}\n\nPatterns:\n${patternText}\n\nTrend: ${data.trend || 'Neutral'}`;
+                } else {
+                    resultDiv.textContent = `❌ Error: ${data.detail || 'Analysis failed'}`;
+                }
+            } catch (e) {
+                resultDiv.textContent = `❌ Network Error: ${e.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze';
+            }
+        }
+
+        // Load Recent Trades
+        async function loadTrades() {
+            const tbody = document.querySelector('#trades-table tbody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading...</td></tr>';
+
+            try {
+                const response = await fetch('/api/journal/trades');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // Handle graceful 503 from backend
+                    if (response.status === 503) {
+                        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">⚠️ ${data.detail}</td></tr>`;
+                        return;
+                    }
+                    throw new Error(data.detail || 'Failed to load trades');
+                }
+
+                const trades = data.trades || [];
+                if (trades.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No trades recorded yet.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = trades.map(t => `
+                    <tr>
+                        <td><strong>${t.ticker}</strong></td>
+                        <td>${t.pattern || '-'}</td>
+                        <td>$${t.entry_price}</td>
+                        <td><span class="badge ${t.status === 'Open' ? 'badge-green' : 'badge-red'}">${t.status}</span></td>
+                        <td>${new Date(t.created_at).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTrades();
+        });
+    </script>
 </body>
 </html>

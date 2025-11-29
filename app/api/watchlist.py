@@ -106,7 +106,8 @@ async def add_to_watchlist(item: WatchlistItem):
         from app.services.database import get_database_service
         dbs = get_database_service()
         tags_str = ",".join(item.tags) if item.tags else None
-        dbs.add_watchlist_symbol(item.ticker, item.reason, tags_str, item.status)
+        if not dbs.add_watchlist_symbol(item.ticker, item.reason, tags_str, item.status):
+            raise Exception("Database add failed")
         all_items = dbs.get_watchlist_items()
         await _sync_cache(all_items)
         return {"success": True, "ticker": item.ticker.upper()}
@@ -161,6 +162,8 @@ async def remove_from_watchlist(ticker: str):
             items = dbs.get_watchlist_items()
             await _sync_cache(items)
             return {"success": True, "message": f"{t} removed"}
+        else:
+            raise Exception("Database remove failed")
     except Exception:
         pass
     db = _load()
@@ -190,6 +193,8 @@ async def update_watchlist_item(ticker: str, payload: WatchlistUpdate):
             items = dbs.get_watchlist_items()
             await _sync_cache(items)
             return {"success": True}
+        else:
+            raise Exception("Database update failed")
     except Exception:
         updated = False
 
