@@ -185,8 +185,37 @@ async def get_latest_scan_result() -> Dict[str, Any]:
     """Return the latest cached EOD scan payload."""
     payload = await cache_service.get(SCAN_LATEST_KEY)
     if not payload:
-        raise HTTPException(status_code=404, detail="No scan results yet")
+        raise HTTPException(
+            status_code=404, 
+            detail="No scan results yet. EOD scan runs at 4:05 PM ET Mon-Fri. Use POST /api/scan/trigger to run manually."
+        )
     return payload
+
+
+@router.post("/scan/trigger")
+async def trigger_manual_scan() -> Dict[str, Any]:
+    """Manually trigger an EOD scan (for testing/admin use)"""
+    try:
+        from app.jobs.scan_universe import run_scan_job
+        logger.info("Manual scan triggered via API")
+        await run_scan_job()
+        
+        # Fetch and return the results
+        payload = await cache_service.get(SCAN_LATEST_KEY)
+        if not payload:
+            return {
+                "success": True,
+                "message": "Scan completed but no results cached. Check logs."
+            }
+        
+        return {
+            "success": True,
+            "message": f"Scan completed: {payload.get('patterns_found', 0)} patterns found",
+            "results": payload
+        }
+    except Exception as e:
+        logger.error(f"Manual scan failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Scan failed: {str(e)}")
 
 
 @router.get("/scan/date/{scan_date}")

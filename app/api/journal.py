@@ -73,6 +73,13 @@ async def log_trade(trade: TradeCreate):
     try:
         db = get_database_service()
         
+        # Ensure database is initialized
+        if db.engine is None:
+            raise HTTPException(
+                status_code=503, 
+                detail="Database not available. Please ensure DATABASE_URL is configured."
+            )
+        
         # Insert trade into database
         from sqlalchemy import text
         with db.engine.begin() as conn:
@@ -122,6 +129,13 @@ async def get_trades(
     """Get all trades with optional filters"""
     try:
         db = get_database_service()
+        
+        # Ensure database is initialized
+        if db.engine is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Database not available. Please ensure DATABASE_URL is configured."
+            )
         
         from sqlalchemy import text
         
@@ -182,6 +196,13 @@ async def update_trade(trade_id: int, update: TradeUpdate):
     """Update a trade (usually to close it)"""
     try:
         db = get_database_service()
+        
+        # Ensure database is initialized
+        if db.engine is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Database not available. Please ensure DATABASE_URL is configured."
+            )
         
         from sqlalchemy import text
         
@@ -261,6 +282,13 @@ async def get_stats():
     try:
         db = get_database_service()
         
+        # Ensure database is initialized
+        if db.engine is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Database not available. Please ensure DATABASE_URL is configured."
+            )
+        
         from sqlalchemy import text
         
         with db.engine.connect() as conn:
@@ -332,6 +360,13 @@ async def export_trades():
     """Export trades to CSV"""
     try:
         db = get_database_service()
+        
+        # Ensure database is initialized
+        if db.engine is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Database not available. Please ensure DATABASE_URL is configured."
+            )
         
         from sqlalchemy import text
         

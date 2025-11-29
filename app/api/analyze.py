@@ -64,6 +64,7 @@ async def analyze(
     ticker: str,
     tf: str = Query("daily", pattern="^(daily|weekly)$"),
     bars: int = Query(400, ge=100, le=5000),
+    multi_timeframe: bool = Query(False, description="Include multi-timeframe analysis"),
 ) -> Dict[str, Any]:
     """Analyze a ticker and return indicators, patterns, RS intel, and an ATR plan."""
     ticker_clean = ticker.upper().strip()
