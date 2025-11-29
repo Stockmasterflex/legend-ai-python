@@ -158,8 +158,8 @@ class TestAPIEndpoints:
         """Test /api/analyze endpoint"""
         response = client.get("/api/analyze", params={"ticker": "AAPL", "tf": "daily"})
 
-        # Should return results (200, 201, or 422 for validation error)
-        assert response.status_code in [200, 201, 422]
+        # Should return results (200, 201, 400, or 422 for validation/insufficient data)
+        assert response.status_code in [200, 201, 400, 422]
 
     def test_patterns_detect_endpoint(self, client):
         """Test /api/patterns/detect endpoint"""

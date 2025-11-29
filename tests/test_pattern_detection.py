@@ -313,6 +313,11 @@ class TestPatternDetectionIntegration:
         if not price_data or not price_data.get("c"):
             pytest.skip("Could not fetch MU price data")
 
+        # Check if we have all required keys
+        required_keys = ["o", "h", "l", "c", "v"]
+        if not all(key in price_data for key in required_keys):
+            pytest.skip("Price data missing required keys (o, h, l, c, v)")
+
         # Convert to DataFrame
         df = pd.DataFrame(
             {
@@ -355,6 +360,11 @@ class TestPatternDetectionIntegration:
 
         if not price_data or not price_data.get("c"):
             pytest.skip("Could not fetch WBD price data")
+
+        # Check if we have all required keys
+        required_keys = ["o", "h", "l", "c", "v"]
+        if not all(key in price_data for key in required_keys):
+            pytest.skip("Price data missing required keys (o, h, l, c, v)")
 
         # Convert to DataFrame
         df = pd.DataFrame(
