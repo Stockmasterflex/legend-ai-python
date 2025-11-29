@@ -3,7 +3,7 @@ Database models for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -42,6 +42,24 @@ class PatternScan(Base):
     chart_url = Column(Text, nullable=True)  # URL to generated chart
     rs_rating = Column(Float, nullable=True)  # Relative strength rating
     scanned_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class RSHistory(Base):
+    """Relative Strength rating history for tracking changes over time"""
+    __tablename__ = "rs_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id", ondelete="CASCADE"), index=True, nullable=False)
+    rs_rating = Column(Integer, nullable=False, index=True)  # 0-99 percentile rank
+    raw_score = Column(Float, nullable=True)  # Weighted performance score
+    q1_performance = Column(Float, nullable=True)  # Quarter 1 performance %
+    q2_performance = Column(Float, nullable=True)  # Quarter 2 performance %
+    q3_performance = Column(Float, nullable=True)  # Quarter 3 performance %
+    q4_performance = Column(Float, nullable=True)  # Quarter 4 (most recent) performance %
+    one_year_performance = Column(Float, nullable=True)  # Total 1-year performance %
+    percentile = Column(Float, nullable=True)  # Exact percentile (0-100)
+    universe_rank = Column(Integer, nullable=True)  # Rank within universe
+    universe_size = Column(Integer, nullable=True)  # Total stocks in universe
+    calculated_at = Column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
 
 class Watchlist(Base):
     """User watchlist with status tracking and alerts"""
@@ -89,6 +107,17 @@ class UniverseScan(Base):
     status = Column(String(20))  # "completed", "failed", "partial"
     error_message = Column(Text, nullable=True)
 
+
+class UniverseSymbol(Base):
+    """Authorized universe ticker list (S&P 500 + NASDAQ 100)."""
+    __tablename__ = "universe_symbols"
+
+    symbol = Column(String(10), primary_key=True, index=True)
+    name = Column(String(255))
+    sector = Column(String(100))
+    industry = Column(String(100))
+    market_cap = Column(BigInteger)
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 class AlertLog(Base):
     """Alert trigger history"""
     __tablename__ = "alert_logs"

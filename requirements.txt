@@ -11,6 +11,7 @@ python-multipart==0.0.18
 aiofiles==23.2.1
 python-dotenv==1.0.0
 prometheus-client>=0.20.0
+APScheduler==3.11.1
 
 # Database
 sqlalchemy==2.0.36
@@ -22,6 +23,8 @@ pandas==2.2.3
 numpy==1.26.4  # Stay on 1.x for stability (2.0 has breaking changes)
 scipy==1.14.1
 openpyxl==3.1.5
+html5lib==1.1
+lxml==4.9.3
 
 # AI/ML
 openai==1.59.7

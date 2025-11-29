@@ -11,6 +11,7 @@ import time
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from collections import defaultdict
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -31,9 +32,23 @@ from app.telemetry.metrics import (
     SCAN_REQUEST_DURATION_SECONDS,
 )
 from app.utils.build_info import resolve_build_sha
+from app.services.cache import get_cache_service
+from app.utils.pattern_groups import bucket_name
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["scan"])
+cache_service = get_cache_service()
+SCAN_LATEST_KEY = "scan:latest"
+SCAN_HISTORY_TEMPLATE = "scan:results:{date}"
+
+
+def _bucketize_entries(entries: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    buckets: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for entry in entries:
+        bucket = bucket_name(entry.get("pattern", ""))
+        if bucket:
+            buckets[bucket].append(entry)
+    return dict(buckets)
 
 
 def _disabled_payload() -> Dict[str, Any]:
@@ -165,6 +180,49 @@ async def get_top_setups(
         )
 
 
+@router.get("/scan/latest")
+async def get_latest_scan_result() -> Dict[str, Any]:
+    """Return the latest cached EOD scan payload."""
+    payload = await cache_service.get(SCAN_LATEST_KEY)
+    if not payload:
+        raise HTTPException(status_code=404, detail="No scan results yet")
+    return payload
+
+
+@router.get("/scan/date/{scan_date}")
+async def get_scan_by_date(scan_date: str) -> Dict[str, Any]:
+    """Return cached scan results for a specific date (YYYYMMDD)."""
+    key = SCAN_HISTORY_TEMPLATE.format(date=scan_date)
+    payload = await cache_service.get(key)
+    if not payload:
+        raise HTTPException(status_code=404, detail=f"No scan data for {scan_date}")
+    return payload
+
+
+@router.get("/scan/sector/{sector}")
+async def get_scan_by_sector(sector: str) -> Dict[str, Any]:
+    """Return latest scan data filtered by sector name."""
+    payload = await cache_service.get(SCAN_LATEST_KEY)
+    if not payload:
+        raise HTTPException(status_code=404, detail="No scan results yet")
+
+    sector_normalized = sector.strip().lower()
+    filtered = [
+        entry for entry in payload.get("results", [])
+        if (entry.get("sector") or "").strip().lower() == sector_normalized
+    ]
+    summary = {
+        "scan_date": payload.get("scan_date"),
+        "total_symbols": payload.get("total_symbols"),
+        "patterns_found": len(filtered),
+        "buckets": _bucketize_entries(filtered),
+        "top_setups": sorted(filtered, key=lambda item: item.get("score", 0), reverse=True)[:10],
+        "results": filtered,
+        "generated_at": payload.get("generated_at"),
+    }
+    return summary
+
+
 async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResult], bool]:
     """Fetch cached universe scan results or trigger a fresh run using multi-pattern scanner."""
 
@@ -173,6 +231,29 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
     results = []
 
     cache_key = f"top_setups:multi:min{min_score}"
+    latest_payload = await cache_service.get(SCAN_LATEST_KEY)
+    if latest_payload:
+        cached = True
+        results = [
+            {
+                "ticker": item.get("symbol") or item.get("ticker"),
+                "pattern": item.get("pattern"),
+                "score": item.get("score"),
+                "entry": item.get("entry"),
+                "stop": item.get("stop"),
+                "target": item.get("target"),
+                "risk_reward": item.get("risk_reward"),
+                "current_price": item.get("current_price"),
+                "source": item.get("sector") or "Legend AI",
+            }
+            for item in latest_payload.get("top_setups", [])
+            if item.get("score", 0) >= min_score
+        ]
+        logger.info("Using nightly scan data for top setups (%s entries)", len(results))
+        if results:
+            normalized = [_coerce_scan_result(item) for item in results[:limit]]
+            logger.info(f"Returning {len(normalized)} normalized top setups (cached={cached})")
+            return normalized, cached
 
     # Try Redis cache first to keep responses fast.
     try:

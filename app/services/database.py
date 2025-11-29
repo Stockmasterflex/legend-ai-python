@@ -485,6 +485,16 @@ class DatabaseService:
             logger.warning(f"remove_watchlist_symbol failed: {e}")
             return False
 
+    def get_universe_symbols(self, limit: Optional[int] = None) -> List["UniverseSymbol"]:
+        """Return symbols stored in the universe_symbols table."""
+        from app.models import UniverseSymbol
+
+        with self.get_db() as db:
+            query = db.query(UniverseSymbol)
+            if limit:
+                query = query.limit(limit)
+            return query.order_by(UniverseSymbol.symbol).all()
+
 # Global database service instance
 _db_service: Optional[DatabaseService] = None
 

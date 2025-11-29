@@ -141,6 +141,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         logger.warning("⚠️ Failed to start monitoring services (non-critical): %s", exc)
 
+    try:
+        from app.services.scheduler import start_scheduler
+
+        start_scheduler()
+        logger.info("🕒 Scheduler started for EOD tasks")
+    except Exception as exc:
+        logger.warning("⚠️ Scheduler failed to start: %s", exc)
+
     logger.info("✅ Bot started successfully!")
 
     yield
@@ -161,3 +169,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("✅ Monitoring services stopped")
     except Exception as exc:
         logger.warning("⚠️ Failed to stop monitoring services: %s", exc)
+
+    try:
+        from app.services.scheduler import shutdown_scheduler
+
+        shutdown_scheduler()
+        logger.info("🕒 Scheduler stopped")
+    except Exception as exc:
+        logger.warning("⚠️ Scheduler shutdown failed: %s", exc)
