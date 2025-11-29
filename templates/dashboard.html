@@ -72,6 +72,52 @@
             padding: 0 24px;
         }
 
+        .nav-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .nav-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-tab.active {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         /* ... */
 
         /* Layout */
@@ -304,6 +350,62 @@
 
         .tab-content.active {
             display: block;
+        }
+
+        /* Pattern Selection Grid */
+        .pattern-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .pattern-checkbox:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pattern-checkbox input {
+            display: none;
+        }
+
+        .pattern-checkbox .checkmark {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--text-secondary);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .pattern-checkbox input:checked+.checkmark {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .pattern-checkbox input:checked+.checkmark::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .pattern-checkbox input:checked~.label-text {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .pattern-checkbox .label-text {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
         }
 
         /* Cards Grid for Scanner */
@@ -652,15 +754,87 @@
                     </p>
 
                     <!-- Filters -->
-                    <div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="filter-trend" style="width: auto;">
-                            <span>Minervini Trend Template</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="filter-vcp" style="width: auto;">
-                            <span>VCP Pattern</span>
-                        </label>
+                    <!-- Pattern Selection -->
+                    <div style="margin-bottom: 24px;">
+                        <h3
+                            style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+                            Select Patterns to Scan</h3>
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
+                            <!-- Bullish Patterns -->
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="VCP" checked>
+                                <span class="checkmark"></span>
+                                <span class="label-text">VCP (Volatility Contraction)</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Cup & Handle">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Cup & Handle</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Double Bottom">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Double Bottom</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Ascending Triangle">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Ascending Triangle</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Bull Flag">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Bull Flag</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Falling Wedge">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Falling Wedge</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Inverse Head & Shoulders">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Inv. Head & Shoulders</span>
+                            </label>
+
+                            <!-- Bearish Patterns -->
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Double Top">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Double Top</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Descending Triangle">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Descending Triangle</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Bear Flag">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Bear Flag</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Rising Wedge">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Rising Wedge</span>
+                            </label>
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" value="Head & Shoulders">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Head & Shoulders</span>
+                            </label>
+                        </div>
+
+                        <!-- Additional Filters -->
+                        <div
+                            style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 20px;">
+                            <label class="pattern-checkbox">
+                                <input type="checkbox" id="filter-trend" checked>
+                                <span class="checkmark"></span>
+                                <span class="label-text">Minervini Trend Template (RS > 70)</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div id="scanner-results" class="card-grid">
@@ -1545,21 +1719,45 @@
 
             // Get Filter States
             const trendFilter = document.getElementById('filter-trend').checked;
-            const vcpFilter = document.getElementById('filter-vcp').checked;
+
+            // Get Selected Patterns
+            const checkedPatterns = Array.from(document.querySelectorAll('.pattern-checkbox input[type="checkbox"]:checked'))
+                .filter(cb => cb.value !== 'on' && cb.id !== 'filter-trend') // Exclude trend filter and non-value checkboxes
+                .map(cb => cb.value);
 
             btn.disabled = true;
             btn.textContent = 'Scanning...';
-            container.innerHTML = '<div style="grid-column: span 3; text-align: center;">Running market scan... this may take a moment.</div>';
+
+            let statusMsg = 'Running market scan...';
+            if (checkedPatterns.length > 0) {
+                statusMsg += ` looking for ${checkedPatterns.length} pattern types.`;
+            }
+            container.innerHTML = `<div style="grid-column: span 3; text-align: center;">${statusMsg}</div>`;
 
             try {
-                // Call GET endpoint with filters
-                const queryParams = new URLSearchParams({
-                    limit: 50,
-                    minervini_trend: trendFilter,
-                    vcp: vcpFilter
-                });
+                let url = '';
 
-                const response = await fetch(`/api/scan?${queryParams}`);
+                if (checkedPatterns.length > 0) {
+                    // Use new multi-pattern endpoint
+                    const params = new URLSearchParams({
+                        limit: 50,
+                        min_score: 6.0,
+                        patterns: checkedPatterns.join(',')
+                    });
+                    url = `/api/scan/patterns?${params}`;
+                } else if (trendFilter) {
+                    // Fallback to old endpoint for just Trend
+                    const params = new URLSearchParams({
+                        limit: 50,
+                        minervini_trend: true,
+                        vcp: false
+                    });
+                    url = `/api/scan?${params}`;
+                } else {
+                    throw new Error("Please select at least one pattern or filter.");
+                }
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (!response.ok) {
