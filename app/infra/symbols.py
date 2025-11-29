@@ -3,6 +3,7 @@
 Small, synchronous helpers only. Keep network checks optional elsewhere.
 """
 
+
 def to_chartimg_symbol(ticker: str) -> str:
     """Return a best-effort symbol string for Chart-IMG.
 
@@ -11,4 +12,3 @@ def to_chartimg_symbol(ticker: str) -> str:
     check on a symbol endpoint. For now, keep it deterministic and fast.
     """
     return (ticker or "").upper()
-

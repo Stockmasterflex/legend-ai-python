@@ -1,7 +1,5 @@
 import asyncio
 
-
-import asyncio
 import pytest
 
 pytest.importorskip("httpx")

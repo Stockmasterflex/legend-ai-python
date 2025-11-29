@@ -12,14 +12,14 @@ Test Cases:
 4. Volume validation works correctly
 5. Neckline position validation works correctly
 """
-import asyncio
-import pytest
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
+import numpy as np
+import pandas as pd
+import pytest
+
 from app.core.detector_base import PatternType
+from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
 
 
 class TestHeadShouldersValidation:
@@ -34,7 +34,7 @@ class TestHeadShouldersValidation:
         trend: str = "flat",
         add_hs_pattern: bool = False,
         declining_volume: bool = True,
-        price_below_neckline: bool = True
+        price_below_neckline: bool = True,
     ) -> pd.DataFrame:
         """
         Create synthetic price data for testing
@@ -49,7 +49,7 @@ class TestHeadShouldersValidation:
             DataFrame with OHLCV data
         """
         bars = 100
-        dates = pd.date_range(end=datetime.now(), periods=bars, freq='D')
+        dates = pd.date_range(end=datetime.now(), periods=bars, freq="D")
 
         # Create base trend
         if trend == "up":
@@ -87,14 +87,18 @@ class TestHeadShouldersValidation:
                 prices[95:100] = np.linspace(119, 121, 5)  # Above neckline
 
         # Create OHLCV data
-        df = pd.DataFrame({
-            'datetime': dates,
-            'open': prices,
-            'high': prices * 1.02,
-            'low': prices * 0.98,
-            'close': prices,
-            'volume': self._create_volume(bars, declining_volume if add_hs_pattern else False)
-        })
+        df = pd.DataFrame(
+            {
+                "datetime": dates,
+                "open": prices,
+                "high": prices * 1.02,
+                "low": prices * 0.98,
+                "close": prices,
+                "volume": self._create_volume(
+                    bars, declining_volume if add_hs_pattern else False
+                ),
+            }
+        )
 
         return df
 
@@ -144,7 +148,9 @@ class TestHeadShouldersValidation:
 
         has_downtrend = self.detector._has_prior_downtrend(df, pattern_start_idx=50)
 
-        assert has_downtrend == False, "Should reject uptrend when looking for downtrend"
+        assert (
+            has_downtrend == False
+        ), "Should reject uptrend when looking for downtrend"
 
     # =========================================================================
     # Test 2: Volume Validation
@@ -152,17 +158,25 @@ class TestHeadShouldersValidation:
 
     def test_has_declining_volume_detects_decline(self):
         """Test that _has_declining_volume detects declining volume"""
-        df = self.create_price_data(trend="up", add_hs_pattern=True, declining_volume=True)
+        df = self.create_price_data(
+            trend="up", add_hs_pattern=True, declining_volume=True
+        )
 
-        has_declining = self.detector._has_declining_volume(df, start_idx=50, end_idx=95)
+        has_declining = self.detector._has_declining_volume(
+            df, start_idx=50, end_idx=95
+        )
 
         assert has_declining == True, "Should detect declining volume"
 
     def test_has_declining_volume_rejects_flat_volume(self):
         """Test that _has_declining_volume rejects flat volume"""
-        df = self.create_price_data(trend="up", add_hs_pattern=True, declining_volume=False)
+        df = self.create_price_data(
+            trend="up", add_hs_pattern=True, declining_volume=False
+        )
 
-        has_declining = self.detector._has_declining_volume(df, start_idx=50, end_idx=95)
+        has_declining = self.detector._has_declining_volume(
+            df, start_idx=50, end_idx=95
+        )
 
         assert has_declining == False, "Should reject flat volume"
 
@@ -172,10 +186,14 @@ class TestHeadShouldersValidation:
 
     def test_is_below_neckline_detects_breakdown(self):
         """Test that _is_below_neckline detects bearish breakdown"""
-        df = self.create_price_data(trend="up", add_hs_pattern=True, price_below_neckline=True)
+        df = self.create_price_data(
+            trend="up", add_hs_pattern=True, price_below_neckline=True
+        )
 
         # Neckline at ~119 (horizontal)
-        is_below = self.detector._is_below_neckline(df, neckline_slope=0, neckline_intercept=119)
+        is_below = self.detector._is_below_neckline(
+            df, neckline_slope=0, neckline_intercept=119
+        )
 
         assert is_below == True, "Should detect price below neckline"
 
@@ -183,10 +201,12 @@ class TestHeadShouldersValidation:
         """Test that _is_above_neckline detects bullish breakout"""
         df = self.create_price_data(trend="down", add_hs_pattern=False)
         # Set current price above neckline
-        df.loc[df.index[-1], 'close'] = 125
+        df.loc[df.index[-1], "close"] = 125
 
         # Neckline at ~119
-        is_above = self.detector._is_above_neckline(df, neckline_slope=0, neckline_intercept=119)
+        is_above = self.detector._is_above_neckline(
+            df, neckline_slope=0, neckline_intercept=119
+        )
 
         assert is_above == True, "Should detect price above neckline"
 
@@ -206,9 +226,13 @@ class TestHeadShouldersValidation:
         patterns = self.detector.find(df, timeframe="1day", symbol="TEST_MU")
 
         # Should NOT detect bearish H&S in uptrend
-        hs_patterns = [p for p in patterns if p.pattern_type == PatternType.HEAD_SHOULDERS]
+        hs_patterns = [
+            p for p in patterns if p.pattern_type == PatternType.HEAD_SHOULDERS
+        ]
 
-        assert len(hs_patterns) == 0, "Should NOT detect bearish H&S in uptrending stock"
+        assert (
+            len(hs_patterns) == 0
+        ), "Should NOT detect bearish H&S in uptrending stock"
 
     def test_inverse_hs_detector_rejects_downtrending_stock(self):
         """
@@ -222,9 +246,13 @@ class TestHeadShouldersValidation:
         patterns = self.detector.find(df, timeframe="1day", symbol="TEST_WBD")
 
         # Should NOT detect bullish Inverse H&S in downtrend
-        ihs_patterns = [p for p in patterns if p.pattern_type == PatternType.INVERSE_HEAD_SHOULDERS]
+        ihs_patterns = [
+            p for p in patterns if p.pattern_type == PatternType.INVERSE_HEAD_SHOULDERS
+        ]
 
-        assert len(ihs_patterns) == 0, "Should NOT detect inverse H&S in downtrending stock"
+        assert (
+            len(ihs_patterns) == 0
+        ), "Should NOT detect inverse H&S in downtrending stock"
 
     def test_hs_detector_requires_all_validations(self):
         """
@@ -239,7 +267,7 @@ class TestHeadShouldersValidation:
             trend="up",
             add_hs_pattern=True,
             declining_volume=True,
-            price_below_neckline=True
+            price_below_neckline=True,
         )
 
         patterns = self.detector.find(df, timeframe="1day", symbol="TEST_VALID_HS")
@@ -247,19 +275,24 @@ class TestHeadShouldersValidation:
         # This might still not detect due to pivot finding complexity,
         # but at minimum should not crash and validations should execute
         # If detected, verify it has required evidence
-        hs_patterns = [p for p in patterns if p.pattern_type == PatternType.HEAD_SHOULDERS]
+        hs_patterns = [
+            p for p in patterns if p.pattern_type == PatternType.HEAD_SHOULDERS
+        ]
 
         if len(hs_patterns) > 0:
             pattern = hs_patterns[0]
             assert pattern.confidence > 0.4, "Valid H&S should have decent confidence"
             print(f"✓ Valid H&S detected with confidence {pattern.confidence:.2f}")
         else:
-            print("⚠ No H&S detected (may be due to pivot complexity - validation logic executed)")
+            print(
+                "⚠ No H&S detected (may be due to pivot complexity - validation logic executed)"
+            )
 
 
 # =============================================================================
 # Integration Tests with Real Market Data
 # =============================================================================
+
 
 @pytest.mark.asyncio
 class TestPatternDetectionIntegration:
@@ -274,36 +307,44 @@ class TestPatternDetectionIntegration:
 
         # Fetch MU data
         price_data = await market_data_service.get_time_series(
-            ticker="MU",
-            interval="1day",
-            outputsize=320
+            ticker="MU", interval="1day", outputsize=320
         )
 
         if not price_data or not price_data.get("c"):
             pytest.skip("Could not fetch MU price data")
 
+        # Check if we have all required keys
+        required_keys = ["o", "h", "l", "c", "v"]
+        if not all(key in price_data for key in required_keys):
+            pytest.skip("Price data missing required keys (o, h, l, c, v)")
+
         # Convert to DataFrame
-        df = pd.DataFrame({
-            'open': price_data['o'],
-            'high': price_data['h'],
-            'low': price_data['l'],
-            'close': price_data['c'],
-            'volume': price_data['v'],
-            'datetime': pd.to_datetime(price_data.get('t', []))
-        })
+        df = pd.DataFrame(
+            {
+                "open": price_data["o"],
+                "high": price_data["h"],
+                "low": price_data["l"],
+                "close": price_data["c"],
+                "volume": price_data["v"],
+                "datetime": pd.to_datetime(price_data.get("t", [])),
+            }
+        )
 
         # Detect patterns
         detector = HeadShouldersDetector()
         patterns = detector.find(df, timeframe="1day", symbol="MU")
 
         # Filter for H&S
-        hs_patterns = [p for p in patterns if p.pattern_type == PatternType.HEAD_SHOULDERS]
+        hs_patterns = [
+            p for p in patterns if p.pattern_type == PatternType.HEAD_SHOULDERS
+        ]
 
         print(f"MU: Found {len(hs_patterns)} H&S patterns")
 
         # MU should NOT have bearish H&S (it's in uptrend with pullback)
-        assert len(hs_patterns) == 0, \
-            f"MU should NOT show bearish H&S pattern (found {len(hs_patterns)})"
+        assert (
+            len(hs_patterns) == 0
+        ), f"MU should NOT show bearish H&S pattern (found {len(hs_patterns)})"
 
     async def test_wbd_should_not_show_inverse_hs(self):
         """
@@ -314,36 +355,44 @@ class TestPatternDetectionIntegration:
 
         # Fetch WBD data
         price_data = await market_data_service.get_time_series(
-            ticker="WBD",
-            interval="1day",
-            outputsize=320
+            ticker="WBD", interval="1day", outputsize=320
         )
 
         if not price_data or not price_data.get("c"):
             pytest.skip("Could not fetch WBD price data")
 
+        # Check if we have all required keys
+        required_keys = ["o", "h", "l", "c", "v"]
+        if not all(key in price_data for key in required_keys):
+            pytest.skip("Price data missing required keys (o, h, l, c, v)")
+
         # Convert to DataFrame
-        df = pd.DataFrame({
-            'open': price_data['o'],
-            'high': price_data['h'],
-            'low': price_data['l'],
-            'close': price_data['c'],
-            'volume': price_data['v'],
-            'datetime': pd.to_datetime(price_data.get('t', []))
-        })
+        df = pd.DataFrame(
+            {
+                "open": price_data["o"],
+                "high": price_data["h"],
+                "low": price_data["l"],
+                "close": price_data["c"],
+                "volume": price_data["v"],
+                "datetime": pd.to_datetime(price_data.get("t", [])),
+            }
+        )
 
         # Detect patterns
         detector = HeadShouldersDetector()
         patterns = detector.find(df, timeframe="1day", symbol="WBD")
 
         # Filter for Inverse H&S
-        ihs_patterns = [p for p in patterns if p.pattern_type == PatternType.INVERSE_HEAD_SHOULDERS]
+        ihs_patterns = [
+            p for p in patterns if p.pattern_type == PatternType.INVERSE_HEAD_SHOULDERS
+        ]
 
         print(f"WBD: Found {len(ihs_patterns)} Inverse H&S patterns")
 
         # WBD should NOT have bullish Inverse H&S (it's in downtrend/breakdown)
-        assert len(ihs_patterns) == 0, \
-            f"WBD should NOT show inverse H&S pattern (found {len(ihs_patterns)})"
+        assert (
+            len(ihs_patterns) == 0
+        ), f"WBD should NOT show inverse H&S pattern (found {len(ihs_patterns)})"
 
 
 if __name__ == "__main__":
@@ -402,4 +451,6 @@ if __name__ == "__main__":
     # Run integration tests
     print("\n📊 Integration Tests (Real Market Data)")
     print("-" * 80)
-    print("Run with: pytest tests/test_pattern_detection.py::TestPatternDetectionIntegration -v")
+    print(
+        "Run with: pytest tests/test_pattern_detection.py::TestPatternDetectionIntegration -v"
+    )

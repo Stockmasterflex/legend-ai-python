@@ -12,18 +12,17 @@ Features:
 - Hit rate monitoring and metrics
 """
 
-import asyncio
+import hashlib
 import json
 import logging
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Any, Dict, List, Tuple
-from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
-import hashlib
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, String, Text, Integer, DateTime, Float, Index, text
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 
 from app.config import get_settings
@@ -37,13 +36,15 @@ CacheBase = declarative_base()
 
 class CacheTier(Enum):
     """Cache tier definitions"""
-    HOT = "hot"      # Redis: 5-15min TTL, ultra-fast access
-    WARM = "warm"    # Database: 1 hour TTL, fast access
-    CDN = "cdn"      # Static files: 24 hour TTL, cached charts
+
+    HOT = "hot"  # Redis: 5-15min TTL, ultra-fast access
+    WARM = "warm"  # Database: 1 hour TTL, fast access
+    CDN = "cdn"  # Static files: 24 hour TTL, cached charts
 
 
 class CacheEntry(CacheBase):
     """Database model for warm cache tier"""
+
     __tablename__ = "cache_entries"
 
     cache_key = Column(String(512), primary_key=True, index=True)
@@ -56,14 +57,15 @@ class CacheEntry(CacheBase):
     data_type = Column(String(50), index=True)  # pattern, price, chart, etc.
 
     __table_args__ = (
-        Index('idx_tier_expires', 'cache_tier', 'expires_at'),
-        Index('idx_type_expires', 'data_type', 'expires_at'),
+        Index("idx_tier_expires", "cache_tier", "expires_at"),
+        Index("idx_type_expires", "data_type", "expires_at"),
     )
 
 
 @dataclass
 class CacheMetrics:
     """Cache performance metrics"""
+
     total_requests: int = 0
     hot_hits: int = 0
     warm_hits: int = 0
@@ -104,16 +106,18 @@ class MultiTierCache:
     """
 
     # TTL configurations (seconds)
-    TTL_HOT_MIN = 300      # 5 minutes
-    TTL_HOT_MAX = 900      # 15 minutes
-    TTL_WARM = 3600        # 1 hour
-    TTL_CDN = 86400        # 24 hours
+    TTL_HOT_MIN = 300  # 5 minutes
+    TTL_HOT_MAX = 900  # 15 minutes
+    TTL_WARM = 3600  # 1 hour
+    TTL_CDN = 86400  # 24 hours
 
     # Promotion thresholds
     PROMOTION_THRESHOLD = 3  # Access count to promote from warm to hot
     HOT_TIER_MAX_SIZE = 10000  # Max keys in hot tier before eviction
 
-    def __init__(self, cache_service: CacheService, db_service: Optional[DatabaseService] = None):
+    def __init__(
+        self, cache_service: CacheService, db_service: Optional[DatabaseService] = None
+    ):
         self.cache_service = cache_service
         self.db_service = db_service
         self.metrics = CacheMetrics()
@@ -161,7 +165,9 @@ class MultiTierCache:
             value = await self._get_cdn(key)
             if value is not None:
                 self.metrics.cdn_hits += 1
-                logger.debug(f"📦 CDN cache HIT: {key} ({time.time() - start_time:.3f}s)")
+                logger.debug(
+                    f"📦 CDN cache HIT: {key} ({time.time() - start_time:.3f}s)"
+                )
                 return value
 
         # Cache miss
@@ -174,7 +180,7 @@ class MultiTierCache:
         key: str,
         value: Any,
         data_type: str = "generic",
-        tier: Optional[CacheTier] = None
+        tier: Optional[CacheTier] = None,
     ) -> bool:
         """
         Set value in appropriate cache tier
@@ -264,7 +270,7 @@ class MultiTierCache:
                 sql_pattern = pattern.replace("*", "%")
                 result = db.execute(
                     text("DELETE FROM cache_entries WHERE cache_key LIKE :pattern"),
-                    {"pattern": sql_pattern}
+                    {"pattern": sql_pattern},
                 )
                 count += result.rowcount
                 db.commit()
@@ -294,7 +300,9 @@ class MultiTierCache:
 
                 # Warm both hot and warm tiers
                 hot_success = await self.set(key, value, data_type, tier=CacheTier.HOT)
-                warm_success = await self.set(key, value, data_type, tier=CacheTier.WARM)
+                warm_success = await self.set(
+                    key, value, data_type, tier=CacheTier.WARM
+                )
 
                 if hot_success:
                     stats["hot"] += 1
@@ -322,7 +330,7 @@ class MultiTierCache:
             with self.db_service.get_db() as db:
                 result = db.execute(
                     text("DELETE FROM cache_entries WHERE expires_at < :now"),
-                    {"now": datetime.utcnow()}
+                    {"now": datetime.utcnow()},
                 )
                 stats["warm"] = result.rowcount
                 db.commit()
@@ -372,28 +380,33 @@ class MultiTierCache:
             with self.db_service.get_db() as db:
                 # Count entries by tier
                 result = db.execute(
-                    text("SELECT cache_tier, COUNT(*) as count FROM cache_entries GROUP BY cache_tier")
+                    text(
+                        "SELECT cache_tier, COUNT(*) as count FROM cache_entries GROUP BY cache_tier"
+                    )
                 )
                 db_stats["entries_by_tier"] = {row[0]: row[1] for row in result}
 
                 # Count entries by type
                 result = db.execute(
-                    text("SELECT data_type, COUNT(*) as count FROM cache_entries GROUP BY data_type")
+                    text(
+                        "SELECT data_type, COUNT(*) as count FROM cache_entries GROUP BY data_type"
+                    )
                 )
                 db_stats["entries_by_type"] = {row[0]: row[1] for row in result}
 
                 # Get most accessed entries
                 result = db.execute(
-                    text("""
+                    text(
+                        """
                         SELECT cache_key, hit_count, data_type
                         FROM cache_entries
                         ORDER BY hit_count DESC
                         LIMIT 10
-                    """)
+                    """
+                    )
                 )
                 db_stats["top_accessed"] = [
-                    {"key": row[0], "hits": row[1], "type": row[2]}
-                    for row in result
+                    {"key": row[0], "hits": row[1], "type": row[2]} for row in result
                 ]
 
         return {
@@ -403,7 +416,7 @@ class MultiTierCache:
             "cdn": {
                 "path": str(self.cdn_path),
                 "files": len(list(self.cdn_path.glob("*"))),
-            }
+            },
         }
 
     # ==================== Private Helper Methods ====================
@@ -442,24 +455,28 @@ class MultiTierCache:
         try:
             with self.db_service.get_db() as db:
                 result = db.execute(
-                    text("""
+                    text(
+                        """
                         SELECT cache_value, hit_count
                         FROM cache_entries
                         WHERE cache_key = :key
                         AND expires_at > :now
-                    """),
-                    {"key": key, "now": datetime.utcnow()}
+                    """
+                    ),
+                    {"key": key, "now": datetime.utcnow()},
                 ).fetchone()
 
                 if result:
                     # Update hit count and last accessed time
                     db.execute(
-                        text("""
+                        text(
+                            """
                             UPDATE cache_entries
                             SET hit_count = hit_count + 1, last_accessed = :now
                             WHERE cache_key = :key
-                        """),
-                        {"key": key, "now": datetime.utcnow()}
+                        """
+                        ),
+                        {"key": key, "now": datetime.utcnow()},
                     )
                     db.commit()
 
@@ -492,7 +509,8 @@ class MultiTierCache:
 
                 # Upsert cache entry
                 db.execute(
-                    text("""
+                    text(
+                        """
                         INSERT INTO cache_entries
                         (cache_key, cache_value, cache_tier, data_type, expires_at, created_at, last_accessed, hit_count)
                         VALUES (:key, :value, 'warm', :data_type, :expires_at, :now, :now, 0)
@@ -501,14 +519,15 @@ class MultiTierCache:
                             cache_value = :value,
                             expires_at = :expires_at,
                             last_accessed = :now
-                    """),
+                    """
+                    ),
                     {
                         "key": key,
                         "value": value_str,
                         "data_type": data_type,
                         "expires_at": expires_at,
-                        "now": datetime.utcnow()
-                    }
+                        "now": datetime.utcnow(),
+                    },
                 )
                 db.commit()
                 return True
@@ -551,8 +570,7 @@ class MultiTierCache:
 
         with self.db_service.get_db() as db:
             result = db.execute(
-                text("DELETE FROM cache_entries WHERE cache_key = :key"),
-                {"key": key}
+                text("DELETE FROM cache_entries WHERE cache_key = :key"), {"key": key}
             )
             db.commit()
             return result.rowcount
@@ -573,8 +591,10 @@ class MultiTierCache:
         try:
             with self.db_service.get_db() as db:
                 result = db.execute(
-                    text("SELECT cache_value, hit_count FROM cache_entries WHERE cache_key = :key"),
-                    {"key": key}
+                    text(
+                        "SELECT cache_value, hit_count FROM cache_entries WHERE cache_key = :key"
+                    ),
+                    {"key": key},
                 ).fetchone()
 
                 if result and result[1] >= self.PROMOTION_THRESHOLD:

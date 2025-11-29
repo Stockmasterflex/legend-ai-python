@@ -7,13 +7,15 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-import yaml
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
+import yaml
 
 
 class SignalType(str, Enum):
     """Trading signal types"""
+
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
@@ -23,6 +25,7 @@ class SignalType(str, Enum):
 @dataclass
 class Signal:
     """Trading signal"""
+
     type: SignalType
     ticker: str
     timestamp: datetime
@@ -84,7 +87,6 @@ class Strategy(ABC):
         Returns:
             List of trading signals
         """
-        pass
 
     @abstractmethod
     async def calculate_position_size(
@@ -106,7 +108,6 @@ class Strategy(ABC):
         Returns:
             Number of shares to trade
         """
-        pass
 
     async def on_order_filled(
         self,
@@ -151,7 +152,6 @@ class Strategy(ABC):
             bar: OHLCV data for current bar
             timestamp: Bar timestamp
         """
-        pass
 
     def get_parameter(self, key: str, default: Any = None) -> Any:
         """Get strategy parameter with default"""
@@ -183,7 +183,9 @@ class YAMLStrategy(Strategy):
     Strategy defined using YAML configuration
     """
 
-    def __init__(self, name: str, yaml_config: str, parameters: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, name: str, yaml_config: str, parameters: Optional[Dict[str, Any]] = None
+    ):
         """
         Initialize YAML strategy
 
@@ -249,7 +251,9 @@ class YAMLStrategy(Strategy):
 
         return signals
 
-    def _evaluate_entry_rules(self, ticker: str, data: pd.DataFrame, timestamp: datetime) -> bool:
+    def _evaluate_entry_rules(
+        self, ticker: str, data: pd.DataFrame, timestamp: datetime
+    ) -> bool:
         """Evaluate entry rules from YAML config"""
         if not self.entry_rules:
             return False
@@ -271,7 +275,9 @@ class YAMLStrategy(Strategy):
         else:
             return False
 
-    def _evaluate_exit_rules(self, ticker: str, data: pd.DataFrame, timestamp: datetime) -> bool:
+    def _evaluate_exit_rules(
+        self, ticker: str, data: pd.DataFrame, timestamp: datetime
+    ) -> bool:
         """Evaluate exit rules from YAML config"""
         if not self.exit_rules:
             return False
@@ -291,7 +297,9 @@ class YAMLStrategy(Strategy):
         else:
             return False
 
-    def _evaluate_condition(self, condition: Dict[str, Any], ticker: str, data: pd.DataFrame) -> bool:
+    def _evaluate_condition(
+        self, condition: Dict[str, Any], ticker: str, data: pd.DataFrame
+    ) -> bool:
         """Evaluate a single condition"""
         indicator = condition.get("indicator")
         operator = condition.get("operator")
@@ -334,7 +342,9 @@ class YAMLStrategy(Strategy):
     ) -> int:
         """Calculate position size based on risk management rules"""
         risk_pct = self.risk_management.get("risk_per_trade", 0.02)  # Default 2%
-        max_position_pct = self.risk_management.get("max_position_size", 0.1)  # Default 10%
+        max_position_pct = self.risk_management.get(
+            "max_position_size", 0.1
+        )  # Default 10%
 
         # Calculate based on risk
         if signal.stop_loss:
@@ -368,11 +378,15 @@ class YAMLStrategy(Strategy):
 
             if ind_type == "SMA":
                 period = params.get("period", 20)
-                self.indicators[ticker][ind_name] = data["close"].rolling(window=period).mean()
+                self.indicators[ticker][ind_name] = (
+                    data["close"].rolling(window=period).mean()
+                )
 
             elif ind_type == "EMA":
                 period = params.get("period", 20)
-                self.indicators[ticker][ind_name] = data["close"].ewm(span=period, adjust=False).mean()
+                self.indicators[ticker][ind_name] = (
+                    data["close"].ewm(span=period, adjust=False).mean()
+                )
 
             elif ind_type == "RSI":
                 period = params.get("period", 14)
@@ -395,7 +409,9 @@ class PythonStrategy(Strategy):
     Executes user-provided Python code
     """
 
-    def __init__(self, name: str, python_code: str, parameters: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, name: str, python_code: str, parameters: Optional[Dict[str, Any]] = None
+    ):
         """
         Initialize Python strategy
 
@@ -440,7 +456,9 @@ class PythonStrategy(Strategy):
     ) -> List[Signal]:
         """Delegate to Python strategy instance"""
         if self._strategy_instance:
-            return await self._strategy_instance.on_data(ticker, data, timestamp, portfolio_value, cash)
+            return await self._strategy_instance.on_data(
+                ticker, data, timestamp, portfolio_value, cash
+            )
         return []
 
     async def calculate_position_size(
@@ -464,7 +482,12 @@ class VisualStrategy(Strategy):
     Uses a JSON configuration from the visual builder
     """
 
-    def __init__(self, name: str, visual_config: Dict[str, Any], parameters: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        name: str,
+        visual_config: Dict[str, Any],
+        parameters: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize visual strategy
 
@@ -557,7 +580,9 @@ class VisualStrategy(Strategy):
         # Default to AND logic
         return all(results)
 
-    def _evaluate_condition(self, condition: Dict[str, Any], ticker: str, data: pd.DataFrame) -> bool:
+    def _evaluate_condition(
+        self, condition: Dict[str, Any], ticker: str, data: pd.DataFrame
+    ) -> bool:
         """Evaluate a single visual condition"""
         # Similar to YAMLStrategy._evaluate_condition
         # Implement based on visual builder block structure
@@ -605,5 +630,7 @@ class VisualStrategy(Strategy):
                 # Calculate indicator (similar to YAML)
                 if ind_type == "SMA":
                     period = params.get("period", 20)
-                    self.indicators[ticker][ind_name] = data["close"].rolling(window=period).mean()
+                    self.indicators[ticker][ind_name] = (
+                        data["close"].rolling(window=period).mean()
+                    )
                 # ... other indicators

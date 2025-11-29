@@ -1,4 +1,4 @@
-from app.core.indicators import sma, ema, rsi, detect_rsi_divergences
+from app.core.indicators import detect_rsi_divergences, ema, rsi, sma
 
 
 def test_sma_basic():

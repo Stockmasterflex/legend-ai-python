@@ -1,5 +1,6 @@
 import asyncio
 import math
+
 import pytest
 
 pytest.importorskip("fastapi")
@@ -29,7 +30,9 @@ class _StubMarketData:
             "l": [45 + i for i in range(260)],
         }
 
-    async def get_time_series(self, ticker, interval="1day", outputsize=200, timeout=None):
+    async def get_time_series(
+        self, ticker, interval="1day", outputsize=200, timeout=None
+    ):
         return self.spy_series if ticker == "SPY" else self.other_series
 
     async def get_quote(self, ticker, timeout=5.0):
@@ -80,8 +83,16 @@ def test_calculate_market_breadth_counts(monkeypatch):
     up_closes = list(range(10, 60))  # 50 points trending up: [10, 11, ..., 59]
     down_closes = list(range(60, 10, -1))  # 50 points trending down: [60, 59, ..., 11]
 
-    up = {"c": up_closes, "h": [max(up_closes)] * len(up_closes), "l": [min(up_closes)] * len(up_closes)}
-    down = {"c": down_closes, "h": [max(down_closes)] * len(down_closes), "l": [min(down_closes)] * len(down_closes)}
+    up = {
+        "c": up_closes,
+        "h": [max(up_closes)] * len(up_closes),
+        "l": [min(up_closes)] * len(up_closes),
+    }
+    down = {
+        "c": down_closes,
+        "h": [max(down_closes)] * len(down_closes),
+        "l": [min(down_closes)] * len(down_closes),
+    }
 
     class _BreadthMarketData:
         async def get_time_series(self, ticker, *_args, **_kwargs):

@@ -3,22 +3,24 @@ Multi-Pattern Scanner Service
 
 Scans stocks using all available pattern detectors and returns the best setups.
 """
+
 import asyncio
 import logging
 import time
-from typing import List, Dict, Any, Optional
-import pandas as pd
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
-from app.core.detector_registry import get_all_detectors
+import pandas as pd
+
 from app.core.detector_base import PatternResult
+from app.core.detector_registry import get_all_detectors
 from app.core.pattern_engine.detector import get_pattern_detector
 from app.core.pattern_engine.filter import PatternFilter
-from app.core.pattern_engine.scoring import PatternScorer
 from app.core.pattern_engine.scanner import ScanConfig, UniverseScanner
+from app.core.pattern_engine.scoring import PatternScorer
+from app.services import universe_data
 from app.services.market_data import market_data_service
 from app.services.universe_store import universe_store
-from app.services import universe_data
 from app.utils.build_info import resolve_build_sha
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,7 @@ class PatternScannerService:
         self,
         symbol: str,
         timeframe: str = "1day",
-        pattern_filter: Optional[List[str]] = None
+        pattern_filter: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Scan a single symbol with all detectors
@@ -77,9 +79,7 @@ class PatternScannerService:
         try:
             # Fetch price data
             price_data = await market_data_service.get_time_series(
-                ticker=symbol,
-                interval=timeframe,
-                outputsize=self.output_bars
+                ticker=symbol, interval=timeframe, outputsize=self.output_bars
             )
 
             if not price_data or not price_data.get("c"):
@@ -107,7 +107,9 @@ class PatternScannerService:
                     patterns = detector.find(df, timeframe, symbol)
                     if patterns:
                         all_patterns.extend(patterns)
-                        logger.debug(f"Detector {detector.name} found {len(patterns)} patterns for {symbol}")
+                        logger.debug(
+                            f"Detector {detector.name} found {len(patterns)} patterns for {symbol}"
+                        )
                 except Exception as e:
                     logger.error(f"Detector {detector.name} failed for {symbol}: {e}")
 
@@ -115,19 +117,23 @@ class PatternScannerService:
 
             # Filter by confidence
             confident_patterns = [
-                p for p in all_patterns
-                if p.confidence >= self.min_confidence
+                p for p in all_patterns if p.confidence >= self.min_confidence
             ]
-            logger.debug(f"After confidence filter (>= {self.min_confidence}): {len(confident_patterns)} patterns")
+            logger.debug(
+                f"After confidence filter (>= {self.min_confidence}): {len(confident_patterns)} patterns"
+            )
 
             # Filter by pattern names if specified
             if pattern_filter:
                 pattern_filter_lower = [p.lower() for p in pattern_filter]
                 confident_patterns = [
-                    p for p in confident_patterns
+                    p
+                    for p in confident_patterns
                     if p.pattern_type.value.lower() in pattern_filter_lower
                 ]
-                logger.debug(f"After pattern filter {pattern_filter}: {len(confident_patterns)} patterns")
+                logger.debug(
+                    f"After pattern filter {pattern_filter}: {len(confident_patterns)} patterns"
+                )
 
             # Convert to dict format
             results = []
@@ -146,7 +152,7 @@ class PatternScannerService:
         universe: Optional[List[str]] = None,
         limit: int = 50,
         pattern_filter: Optional[List[str]] = None,
-        min_score: float = 7.0
+        min_score: float = 7.0,
     ) -> Dict[str, Any]:
         """
         Scan entire universe for patterns
@@ -168,17 +174,19 @@ class PatternScannerService:
             if not universe_meta:
                 fallback = universe_data.get_full_universe()
                 universe_meta = {symbol: {"symbol": symbol} for symbol in fallback}
-            symbols = list(universe_meta.keys())[:self.max_symbols]
+            symbols = list(universe_meta.keys())[: self.max_symbols]
             logger.info(f"Using universe from store: {len(symbols)} symbols")
         else:
-            symbols = universe[:self.max_symbols]
+            symbols = universe[: self.max_symbols]
             logger.info(f"Using provided universe: {len(symbols)} symbols")
 
         if not symbols:
             logger.warning("No symbols to scan - universe is empty")
             return self._response(started, 0, [])
 
-        logger.info(f"Starting scan of {len(symbols)} symbols with min_score={min_score}")
+        logger.info(
+            f"Starting scan of {len(symbols)} symbols with min_score={min_score}"
+        )
 
         # Scan symbols concurrently
         sem = asyncio.Semaphore(self.max_concurrency)
@@ -203,18 +211,19 @@ class PatternScannerService:
                 logger.error(f"Scan task failed: {result}")
                 error_count += 1
 
-        logger.info(f"Scan results: {success_count} symbols with patterns, {error_count} errors, {len(all_patterns)} total patterns")
+        logger.info(
+            f"Scan results: {success_count} symbols with patterns, {error_count} errors, {len(all_patterns)} total patterns"
+        )
 
         # Sort by score
         all_patterns.sort(key=lambda x: x.get("score", 0), reverse=True)
 
         # Filter by minimum score
-        filtered_patterns = [
-            p for p in all_patterns
-            if p.get("score", 0) >= min_score
-        ]
+        filtered_patterns = [p for p in all_patterns if p.get("score", 0) >= min_score]
 
-        logger.info(f"After filtering by min_score {min_score}: {len(filtered_patterns)} patterns remain")
+        logger.info(
+            f"After filtering by min_score {min_score}: {len(filtered_patterns)} patterns remain"
+        )
 
         # Limit results
         limited_results = filtered_patterns[:limit]
@@ -256,10 +265,7 @@ class PatternScannerService:
         return await self.engine_scanner.scan_universe(config)
 
     def _pattern_to_dict(
-        self,
-        pattern: PatternResult,
-        symbol: str,
-        timeframe: str
+        self, pattern: PatternResult, symbol: str, timeframe: str
     ) -> Dict[str, Any]:
         """Convert PatternResult to dictionary"""
         score = pattern.confidence * 10  # Convert 0-1 to 0-10 scale
@@ -273,15 +279,24 @@ class PatternScannerService:
             "entry": pattern.entry,
             "stop": pattern.stop,
             "target": pattern.target,
-            "risk_reward": round((pattern.target - pattern.entry) / (pattern.entry - pattern.stop), 2)
-            if pattern.entry and pattern.stop and pattern.target and pattern.entry > pattern.stop
-            else None,
+            "risk_reward": (
+                round(
+                    (pattern.target - pattern.entry) / (pattern.entry - pattern.stop), 2
+                )
+                if pattern.entry
+                and pattern.stop
+                and pattern.target
+                and pattern.entry > pattern.stop
+                else None
+            ),
             "window_start": pattern.window_start,
             "window_end": pattern.window_end,
             "description": pattern.description,
             "strong": pattern.strong,
             "evidence": pattern.evidence,
-            "detected_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "detected_at": datetime.now(timezone.utc)
+            .isoformat()
+            .replace("+00:00", "Z"),
         }
 
     @staticmethod
@@ -294,18 +309,22 @@ class PatternScannerService:
         volumes = payload.get("v", [0] * len(closes))
         dates = payload.get("t") or []
 
-        df = pd.DataFrame({
-            "open": opens,
-            "high": highs,
-            "low": lows,
-            "close": closes,
-            "volume": volumes,
-        })
+        df = pd.DataFrame(
+            {
+                "open": opens,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
 
         if dates:
             df["datetime"] = pd.to_datetime(dates, errors="coerce")
         else:
-            df["datetime"] = pd.date_range(end=datetime.now(), periods=len(df), freq="B")
+            df["datetime"] = pd.date_range(
+                end=datetime.now(), periods=len(df), freq="B"
+            )
 
         return df.dropna(subset=["close"]).reset_index(drop=True)
 
@@ -314,7 +333,7 @@ class PatternScannerService:
         started: float,
         universe_size: int,
         results: List[Dict[str, Any]],
-        total_hits: int = 0
+        total_hits: int = 0,
     ) -> Dict[str, Any]:
         """Build response payload"""
         duration_ms = (time.perf_counter() - started) * 1000

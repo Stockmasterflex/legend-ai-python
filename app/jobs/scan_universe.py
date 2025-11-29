@@ -1,8 +1,10 @@
 """
 Background job entry point for scheduled scans.
 """
-from app.services.eod_scanner import get_eod_scanner
+
 import logging
+
+from app.services.eod_scanner import get_eod_scanner
 
 logger = logging.getLogger("eod_scan_job")
 

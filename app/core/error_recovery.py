@@ -12,19 +12,14 @@ import asyncio
 import functools
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Any, Callable, Optional, Type, TypeVar, Union
 from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Optional, TypeVar
 
-from app.core.errors import (
-    ErrorCategory,
-    ExternalServiceError,
-    LegendAIError,
-    RateLimitError,
-    TimeoutError as LegendTimeoutError,
-)
+from app.core.errors import ExternalServiceError, RateLimitError
+from app.core.errors import TimeoutError as LegendTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +198,7 @@ def with_circuit_breaker(
         async def fetch_prices(ticker: str):
             return await api_call(ticker)
     """
+
     def decorator(func: F) -> F:
         circuit = get_circuit_breaker(name, config)
 
@@ -215,10 +211,14 @@ def with_circuit_breaker(
                     circuit.state.value,
                 )
                 if fallback:
-                    return await fallback(*args, **kwargs) if asyncio.iscoroutinefunction(fallback) else fallback(*args, **kwargs)
+                    return (
+                        await fallback(*args, **kwargs)
+                        if asyncio.iscoroutinefunction(fallback)
+                        else fallback(*args, **kwargs)
+                    )
                 raise ExternalServiceError(
                     f"Service '{name}' is temporarily unavailable",
-                    user_message=f"Service temporarily unavailable, please try again later",
+                    user_message="Service temporarily unavailable, please try again later",
                     recovery_hint=f"The service is experiencing issues. It will be retried automatically in {circuit.config.timeout}s",
                 )
 
@@ -229,7 +229,7 @@ def with_circuit_breaker(
                 result = await func(*args, **kwargs)
                 circuit.record_success()
                 return result
-            except Exception as e:
+            except Exception:
                 circuit.record_failure()
                 raise
 
@@ -245,7 +245,7 @@ def with_circuit_breaker(
                     return fallback(*args, **kwargs)
                 raise ExternalServiceError(
                     f"Service '{name}' is temporarily unavailable",
-                    user_message=f"Service temporarily unavailable, please try again later",
+                    user_message="Service temporarily unavailable, please try again later",
                 )
 
             if circuit.state == CircuitState.HALF_OPEN:
@@ -255,11 +255,12 @@ def with_circuit_breaker(
                 result = func(*args, **kwargs)
                 circuit.record_success()
                 return result
-            except Exception as e:
+            except Exception:
                 circuit.record_failure()
                 raise
 
         import inspect
+
         if inspect.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         else:
@@ -312,6 +313,7 @@ def with_retry(
                     # Add jitter to prevent thundering herd
                     if retry_config.jitter:
                         import random
+
                         delay = delay * (0.5 + random.random() * 0.5)
 
                     logger.warning(
@@ -357,6 +359,7 @@ def with_retry(
 
                     if retry_config.jitter:
                         import random
+
                         delay = delay * (0.5 + random.random() * 0.5)
 
                     logger.warning(
@@ -374,6 +377,7 @@ def with_retry(
                 raise last_exception
 
         import inspect
+
         if inspect.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         else:
@@ -412,7 +416,7 @@ async def with_timeout(
         )
         raise LegendTimeoutError(
             f"{op_name} timed out after {timeout_seconds}s",
-            user_message=f"Operation timed out",
+            user_message="Operation timed out",
             recovery_hint=f"The operation took longer than {timeout_seconds}s. Try again or contact support.",
         ) from e
 
@@ -426,6 +430,7 @@ def with_fallback(*fallback_funcs: Callable):
         async def fetch_data():
             return await primary_source()
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -490,7 +495,9 @@ def with_fallback(*fallback_funcs: Callable):
                 for i, fallback in enumerate(fallback_funcs, 1):
                     try:
                         result = fallback(*args, **kwargs)
-                        logger.info("fallback_success function=%s fallback=%d", func.__name__, i)
+                        logger.info(
+                            "fallback_success function=%s fallback=%d", func.__name__, i
+                        )
                         return result
                     except Exception:
                         continue
@@ -498,6 +505,7 @@ def with_fallback(*fallback_funcs: Callable):
                 raise primary_error
 
         import inspect
+
         if inspect.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         else:
