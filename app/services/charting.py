@@ -281,6 +281,7 @@ class ChartingService:
                 "showStats": True
             }
         }
+        return drawing
 
     def _resolve_overlays(self, preset: str) -> List[str]:
         """Return overlays for named preset"""

@@ -98,8 +98,8 @@ def find_double_bottoms(
                 data.highs, data.lows, bottom1_idx, bottom2_idx, slope_threshold=0.2
             )
             
-            if has_downtrend:
-                continue  # Skip if there's a strong downtrend (invalidates pattern)
+            if not has_downtrend:
+                continue  # Skip if NO strong downtrend (required for pattern)
             
             # Check confirmation (breakout above peak between bottoms)
             confirmation = helpers.check_confirmation(

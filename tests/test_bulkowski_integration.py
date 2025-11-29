@@ -1,5 +1,5 @@
 """
-Integration tests for Bulkowski pattern detection
+Integration tests for the Legend AI pattern engine
 
 Tests the complete pipeline:
 1. Data conversion
@@ -8,13 +8,13 @@ Tests the complete pipeline:
 """
 import numpy as np
 import pytest
-from app.core.bulkowski.helpers import PatternData, PatternHelpers
-from app.core.bulkowski.patterns import (
+from app.core.pattern_engine.helpers import PatternData, PatternHelpers
+from app.core.pattern_engine.patterns import (
     find_cup,
     find_double_bottoms,
     find_ascending_triangle
 )
-from app.core.bulkowski.detector import BulkowskiDetector
+from app.core.pattern_engine.detector import PatternDetector
 
 
 def create_test_data(bars: int = 200) -> dict:
@@ -202,14 +202,14 @@ def test_double_bottom_detection():
     assert isinstance(double_bottoms, list)
 
 
-def test_bulkowski_detector():
-    """Test full Bulkowski detector pipeline"""
+def test_pattern_detector():
+    """Test full Legend AI pattern detector pipeline"""
     data_dict = create_cup_data()
-    
-    detector = BulkowskiDetector(strict=False)
+
+    detector = PatternDetector(strict=False)
     patterns = detector.detect_all_patterns(data_dict, ticker="TEST")
     
-    print(f"\n=== Bulkowski Detector Results ===")
+    print(f"\n=== Pattern Detector Results ===")
     print(f"Found {len(patterns)} total patterns")
     
     for i, pattern in enumerate(patterns):
@@ -244,7 +244,7 @@ def test_data_conversion():
     """Test conversion from API format to PatternData"""
     data_dict = create_test_data(100)
     
-    detector = BulkowskiDetector()
+    detector = PatternDetector()
     pattern_data = detector._convert_to_pattern_data(data_dict)
     
     assert isinstance(pattern_data, PatternData)
@@ -253,7 +253,7 @@ def test_data_conversion():
 
 
 if __name__ == "__main__":
-    print("Running Bulkowski integration tests...\n")
+    print("Running pattern engine integration tests...\n")
     
     test_pattern_data_creation()
     print("✓ PatternData creation")
@@ -273,8 +273,8 @@ if __name__ == "__main__":
     test_double_bottom_detection()
     print("✓ Double Bottom detection")
     
-    test_bulkowski_detector()
-    print("✓ Full Bulkowski detector")
+    test_pattern_detector()
+    print("✓ Full pattern detector")
     
     test_data_conversion()
     print("✓ Data conversion")

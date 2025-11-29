@@ -5,7 +5,7 @@ This module provides the main interface to Bulkowski's pattern detection algorit
 ported from Patternz (C#/.NET).
 """
 from .helpers import PatternData, PatternHelpers, get_pattern_helpers
-from .detector import BulkowskiDetector, get_bulkowski_detector
+from .detector import PatternDetector, get_pattern_detector
 from .filter import PatternFilter
 from .patterns import (
     find_cup,
@@ -32,10 +32,10 @@ from .patterns import (
 __all__ = [
     'PatternData',
     'PatternHelpers',
-    'BulkowskiDetector',
+    'PatternDetector',
     'PatternFilter',
     'get_pattern_helpers',
-    'get_bulkowski_detector',
+    'get_pattern_detector',
     'find_cup',
     'find_double_bottoms',
     'find_ascending_triangle',

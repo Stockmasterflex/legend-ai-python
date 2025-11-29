@@ -49,7 +49,7 @@ async def test_scanner_service_preserves_missing_data(monkeypatch):
     monkeypatch.setattr(universe_store, "get_all", fake_get_all)
     monkeypatch.setattr(market_data_service, "get_time_series", _fake_spy_series)
 
-    async def stub_scan_symbol(self, symbol, metadata, spy_closes, sem, missing_symbols):
+    async def stub_scan_symbol(self, symbol, metadata, spy_closes, sem, missing_symbols, minervini_trend=False, vcp=False):
         if symbol == "MISS":
             missing_symbols.append(symbol)
             return None
@@ -80,7 +80,7 @@ async def test_scanner_service_filters_by_sector(monkeypatch):
     monkeypatch.setattr(universe_store, "get_all", fake_get_all)
     monkeypatch.setattr(market_data_service, "get_time_series", _fake_spy_series)
 
-    async def stub_scan_symbol(self, symbol, metadata, spy_closes, sem, missing_symbols):
+    async def stub_scan_symbol(self, symbol, metadata, spy_closes, sem, missing_symbols, minervini_trend=False, vcp=False):
         return _fake_detection(symbol, metadata)
 
     monkeypatch.setattr(ScannerService, "_scan_symbol", stub_scan_symbol)

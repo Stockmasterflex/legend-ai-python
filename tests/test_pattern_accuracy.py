@@ -32,9 +32,14 @@ class TestDoubleBottomAccuracy:
         volume = np.ones(100) * 1000
         
         # Create a double bottom: low at 90, peak at 110, low at 91
+        # Create a double bottom: low at 90, peak at 110, low at 90.2
         lows[20] = 90.0  # First bottom
-        lows[40] = 91.0  # Second bottom (similar level)
+        lows[40] = 90.2  # Second bottom (within 0.5%)
         highs[30] = 110.0  # Peak between bottoms
+        
+        # Add downtrend (required for DB)
+        # Highs at start (idx 0) should be > 20% higher than at bottom1 (idx 20)
+        highs[0] = 135.0  # 135 -> 105 is > 20% decline
         
         data = PatternData(
             opens=opens,
