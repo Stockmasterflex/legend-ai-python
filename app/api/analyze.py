@@ -20,6 +20,7 @@ from app.core.metrics import (
 from app.services.cache import get_cache_service
 from app.infra.chartimg import build_analyze_chart
 from app.services.universe_store import universe_store
+from app.services.multitimeframe import MultiTimeframeConfirmation
 from app.telemetry.metrics import (
     ANALYZE_REQUEST_DURATION_SECONDS,
     CACHE_HITS_TOTAL,
@@ -273,6 +274,45 @@ async def analyze(
             },
             "cache": {"hit": False, "ttl": 3600},
         }
+        
+        # Add multi-timeframe analysis if requested
+        if multi_timeframe:
+            try:
+                mtf_service = MultiTimeframeConfirmation()
+                mtf_result = await mtf_service.analyze_multi_timeframe(ticker_clean)
+                result["multi_timeframe"] = {
+                    "overall_confluence": round(mtf_result.overall_confluence, 2),
+                    "signal_quality": mtf_result.signal_quality,
+                    "strong_signal": mtf_result.strong_signal,
+                    "timeframes": {
+                        "weekly": {
+                            "pattern": mtf_result.weekly_1w.pattern_type,
+                            "confidence": round(mtf_result.weekly_1w.confidence, 2),
+                            "detected": mtf_result.weekly_1w.pattern_detected
+                        },
+                        "daily": {
+                            "pattern": mtf_result.daily_1d.pattern_type,
+                            "confidence": round(mtf_result.daily_1d.confidence, 2),
+                            "detected": mtf_result.daily_1d.pattern_detected
+                        },
+                        "4h": {
+                            "pattern": mtf_result.four_hour_4h.pattern_type,
+                            "confidence": round(mtf_result.four_hour_4h.confidence, 2),
+                            "detected": mtf_result.four_hour_4h.pattern_detected
+                        },
+                        "1h": {
+                            "pattern": mtf_result.one_hour_1h.pattern_type,
+                            "confidence": round(mtf_result.one_hour_1h.confidence, 2),
+                            "detected": mtf_result.one_hour_1h.pattern_detected
+                        }
+                    },
+                    "alignment": mtf_result.alignment_details,
+                    "recommendations": mtf_result.recommendations
+                }
+                logger.info(f"✅ Multi-timeframe analysis added for {ticker_clean}: {mtf_result.signal_quality}")
+            except Exception as e:
+                logger.warning(f"Multi-timeframe analysis failed for {ticker_clean}: {e}")
+                result["multi_timeframe"] = None
 
         try:
             await cache.set(cache_key, result, ttl=3600)

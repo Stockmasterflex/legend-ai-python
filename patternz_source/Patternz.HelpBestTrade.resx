@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>1.3</value></resheader><resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader><data name="Label1.Text" xml:space="preserve"><value>Use this form on one or several securities to see how price behaves over time. 
+
+Shown is a run using Apple stock. I wanted to know the best time of the year where price is most likely to rise at least 100% in 261 price bars (5 bars = 1 week, 261 bars = 1 year, including holidays).
+
+Green shaded cells have the highest number of outliers (unusally high number of matches). Red shaded cells have unusually low number of matches. The Outlier Totals at table bottom shows a count of green outliers.
+
+1. Results are shown in the grid.
+2. Enter a number from 1 to 1000 (in percent).
+3. Enter a number from 1 to 261 (1 year) in price bars.
+4. Select a close-to-close or low to high price measure to calculate the percentage rise.
+5. If you wish to use selected dates, then check this box and change the From and To dates accordingly.
+
+Click Start to begin the analysis, Stop to interrupt a run, and Clipboard to copy all grid cells to the clipboard.</value></data>
+  </root>

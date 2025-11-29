@@ -446,6 +446,36 @@ class DatabaseService:
             logger.warning(f"add_watchlist_symbol failed: {e}")
             return False
 
+    def log_alert(
+        self, ticker: str, alert_type: str, message: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Log alert to database"""
+        try:
+            if not self.engine:
+                return False
+            from datetime import datetime
+            import json
+            
+            with self.engine.connect() as conn:
+                conn.execute(
+                    text("""
+                        INSERT INTO alert_logs (ticker, alert_type, message, metadata, created_at)
+                        VALUES (:ticker, :alert_type, :message, :metadata, :created_at)
+                    """),
+                    {
+                        "ticker": ticker,
+                        "alert_type": alert_type,
+                        "message": message,
+                        "metadata": json.dumps(metadata) if metadata else None,
+                        "created_at": datetime.utcnow()
+                    }
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to log alert for {ticker}: {e}")
+            return False
+    
     def update_watchlist_symbol(self, symbol: str, reason: Optional[str] = None, tags: Optional[str] = None, status: Optional[str] = None) -> bool:
         try:
             if not self.engine:

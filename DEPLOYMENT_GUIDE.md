@@ -1,441 +1,374 @@
-# 🚀 Legend AI - Complete Deployment & Testing Guide
+# Legend AI Deployment Guide
 
-**Last Updated:** November 6, 2025
-**Status:** ✅ PRODUCTION READY
-**Railway Branch:** `claude/initial-repo-review-011CUsBeQ3RGbnNF3EMZgqJ2`
+## Prerequisites
 
----
+- Python 3.11+
+- PostgreSQL 14+
+- Redis 7+
+- Railway account (optional, for managed deployment)
 
-## ✅ COMPLETED FEATURES
+## Local Development
 
-### 1. Smart Multi-Source Market Data Service ⭐
-**File:** `app/services/market_data.py`
-
-- Automatic fallback across 4 data sources
-- Redis caching (85% performance improvement)
-- Rate limit tracking and management
-- Never fails to get data
-
-**Sources:** Cache → TwelveData → Finnhub → Alpha Vantage → Yahoo
-
-### 2. Enhanced Telegram Bot 🤖
-**File:** `app/api/telegram_enhanced.py`
-
-**All Commands Implemented:**
-- `/start` - Welcome message with full command list
-- `/help` - Command reference
-- `/pattern TICKER` - Pattern analysis with score
-- `/scan` - Quick universe scan (30 stocks)
-- `/chart TICKER` - Annotated chart generation
-- `/watchlist` - View watchlist
-- `/add TICKER reason` - Add to watchlist
-- `/remove TICKER` - Remove from watchlist
-- `/plan TICKER` - Trading plan with position sizing
-- `/market` - Market internals (SPY analysis)
-- `/usage` - API usage statistics
-
-**Features:**
-- Beautiful Markdown formatting
-- Score-based emojis (🔥 8+, ⭐ 7+, 📊 <7)
-- Comprehensive error handling
-- Typing indicators
-- Photo support for charts
-
-### 3. Professional Dashboard 🎨
-**File:** `dashboard_pro.py`
-
-**Features:**
-- TradingView advanced chart widgets
-- Market overview with indices
-- Beautiful gradient UI design
-- Score-based recommendations
-- Real-time pattern analysis
-- Professional color scheme
-- Responsive layout
-
-### 4. Pattern Detection API
-**File:** `app/api/patterns.py`
-
-- Uses smart market data service
-- Automatic fallback across all sources
-- Returns source used in response
-- Redis caching (1-hour TTL)
-
-### 5. Universe Scanner
-**Files:** `app/services/universe.py`, `app/services/universe_data.py`
-
-- S&P 500 + NASDAQ 100 coverage
-- Quick scan (30 high-growth stocks)
-- Full scan (100 stocks with batching)
-- 24-hour result caching
-- Smart rate limiting
-
-### 6. Chart Generator
-**File:** `app/core/chart_generator.py`
-
-- Chart-IMG PRO integration
-- Supports 5 indicators
-- Entry/stop/target annotations
-- Multiple timeframes
-- 500 charts/day limit
-
----
-
-## 🚨 CRITICAL: Telegram Bot Setup
-
-### Step 1: Set Webhook (REQUIRED)
-
-Run this command to connect your Telegram bot:
+### 1. Clone Repository
 
 ```bash
-curl -X POST "https://api.telegram.org/bot8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4/setWebhook" \
--H "Content-Type: application/json" \
--d '{"url": "https://legend-ai-python-production.up.railway.app/api/webhook/telegram"}'
+git clone https://github.com/your-org/legend-ai-python.git
+cd legend-ai-python
 ```
 
-**Expected Response:**
-```json
-{
-  "ok": true,
-  "result": true,
-  "description": "Webhook was set"
+### 2. Create Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or
+venv\Scripts\activate  # Windows
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Setup PostgreSQL
+
+```bash
+# Create database
+createdb legend_ai
+
+# Run migrations
+alembic upgrade head
+```
+
+### 5. Setup Redis
+
+```bash
+# Start Redis
+redis-server
+
+# Verify
+redis-cli ping  # Should return PONG
+```
+
+### 6. Configure Environment
+
+Create `.env`:
+
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/legend_ai
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# API Keys
+TWELVEDATA_API_KEY=your_key
+FINNHUB_API_KEY=your_key
+ALPHA_VANTAGE_KEY=your_key
+CHART_IMG_API_KEY=your_key
+
+# Telegram (Optional)
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+# App Settings
+LOG_LEVEL=INFO
+ENVIRONMENT=development
+```
+
+### 7. Run Development Server
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Visit: http://localhost:8000/docs
+
+## Railway Deployment
+
+### 1. Install Railway CLI
+
+```bash
+npm install -g @railway/cli
+```
+
+### 2. Login to Railway
+
+```bash
+railway login
+```
+
+### 3. Initialize Project
+
+```bash
+railway init
+```
+
+### 4. Add PostgreSQL
+
+```bash
+railway add postgresql
+```
+
+### 5. Add Redis
+
+```bash
+railway add redis
+```
+
+### 6. Set Environment Variables
+
+```bash
+railway variables set TWELVEDATA_API_KEY=your_key
+railway variables set FINNHUB_API_KEY=your_key
+railway variables set CHART_IMG_API_KEY=your_key
+railway variables set TELEGRAM_BOT_TOKEN=your_token
+railway variables set TELEGRAM_CHAT_ID=your_id
+```
+
+### 7. Deploy
+
+```bash
+railway up
+```
+
+### 8. Run Migrations
+
+```bash
+railway run alembic upgrade head
+```
+
+### 9. Check Status
+
+```bash
+railway status
+railway logs
+```
+
+## Docker Deployment
+
+### 1. Create Dockerfile
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### 2. Create docker-compose.yml
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://legend:legend@db:5432/legend_ai
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./data:/app/data
+
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: legend
+      POSTGRES_PASSWORD: legend
+      POSTGRES_DB: legend_ai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+### 3. Build and Run
+
+```bash
+docker-compose up -d
+```
+
+### 4. Run Migrations
+
+```bash
+docker-compose exec app alembic upgrade head
+```
+
+## Production Checklist
+
+### Security
+- [ ] Change default database passwords
+- [ ] Use environment variables for secrets
+- [ ] Enable HTTPS/TLS
+- [ ] Configure CORS properly
+- [ ] Rate limit API endpoints
+- [ ] Setup firewall rules
+
+### Monitoring
+- [ ] Configure logging (Sentry, LogDNA)
+- [ ] Setup health checks (`/health`)
+- [ ] Monitor error rates
+- [ ] Track API response times
+- [ ] Alert on high CPU/memory usage
+
+### Performance
+- [ ] Enable Redis caching
+- [ ] Configure connection pooling
+- [ ] Optimize database queries
+- [ ] Add database indices
+- [ ] Use CDN for static assets
+
+### Reliability
+- [ ] Setup database backups (daily)
+- [ ] Configure auto-scaling
+- [ ] Test disaster recovery
+- [ ] Document rollback procedure
+- [ ] Setup CI/CD pipeline
+
+### Scheduled Jobs
+- [ ] Verify EOD scanner runs (4:05 PM ET)
+- [ ] Verify watchlist monitor (5-min intervals)
+- [ ] Verify universe refresh (Sunday 8 PM)
+- [ ] Monitor job failures
+
+## Maintenance
+
+### Database Backups
+
+```bash
+# Backup
+pg_dump legend_ai > backup_$(date +%Y%m%d).sql
+
+# Restore
+psql legend_ai < backup_20251129.sql
+```
+
+### Log Rotation
+
+Configure in `/etc/logrotate.d/legend-ai`:
+
+```
+/var/log/legend-ai/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    sharedscripts
 }
 ```
 
-### Step 2: Verify Webhook
+### Database Migrations
 
 ```bash
-curl -s "https://api.telegram.org/bot8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4/getWebhookInfo" | python -m json.tool
+# Create new migration
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback
+alembic downgrade -1
 ```
 
-Should show:
-```json
-{
-  "url": "https://legend-ai-python-production.up.railway.app/api/webhook/telegram",
-  "has_custom_certificate": false,
-  "pending_update_count": 0,
-  "last_error_date": null
-}
+### Health Checks
+
+```bash
+# Check API
+curl http://localhost:8000/health
+
+# Check database
+psql -c "SELECT 1"
+
+# Check Redis
+redis-cli ping
+
+# Check scheduler
+curl http://localhost:8000/api/scan/latest
 ```
+
+## Troubleshooting
+
+### App Won't Start
+```bash
+# Check logs
+railway logs
+# or
+docker-compose logs app
+
+# Verify environment variables
+railway variables
+```
+
+### Database Connection Errors
+```bash
+# Test connection
+psql $DATABASE_URL
+
+# Check credentials in .env
+cat .env | grep DATABASE_URL
+```
+
+### Redis Connection Errors
+```bash
+# Test Redis
+redis-cli -h $REDIS_HOST -p $REDIS_PORT ping
+
+# Check if Redis is running
+ps aux | grep redis
+```
+
+### Scheduler Not Running
+```bash
+# Check logs for scheduler errors
+grep "scheduler" logs/app.log
+
+# Verify timezone
+TZ=America/New_York date
+```
+
+### High Memory Usage
+```bash
+# Check memory
+free -h
+
+# Restart app
+railway restart
+# or
+docker-compose restart app
+```
+
+## Support
+
+- **Documentation:** `/docs`
+- **Health:** `/health`
+- **Version:** `/version`
+- **Logs:** `railway logs` or `docker-compose logs`
 
 ---
 
-## 📋 TESTING CHECKLIST
-
-### ✅ Railway Deployment
-
-```bash
-# 1. Check Railway is running
-curl https://legend-ai-python-production.up.railway.app/health
-
-# Expected: {"status": "healthy", "telegram": "connected", ...}
-```
-
-### ✅ Pattern Detection
-
-```bash
-# 2. Test pattern detection with real data
-curl -X POST https://legend-ai-python-production.up.railway.app/api/patterns/detect \
-  -H "Content-Type: application/json" \
-  -d '{"ticker": "NVDA"}'
-
-# Should return: pattern analysis with score, entry, stop, target
-```
-
-### ✅ Universe Scanner
-
-```bash
-# 3. Test quick universe scan
-curl -X POST https://legend-ai-python-production.up.railway.app/api/universe/scan/quick
-
-# Should return: top 10-20 setups sorted by score
-```
-
-### ✅ API Usage Stats
-
-```bash
-# 4. Check API usage
-curl https://legend-ai-python-production.up.railway.app/api/market/usage
-
-# Should show: usage for TwelveData, Finnhub, Alpha Vantage
-```
-
-### ✅ Telegram Bot
-
-**Test all commands in Telegram (@Legend_Trading_AI_bot):**
-
-1. Send: `/start`
-   - Should get: Welcome message with command list
-
-2. Send: `/pattern NVDA`
-   - Should get: Pattern analysis with score, levels, emojis
-
-3. Send: `/scan`
-   - Should get: "Scanning 30 stocks..." then results
-
-4. Send: `/chart AAPL`
-   - Should get: Chart image with caption
-
-5. Send: `/watchlist`
-   - Should get: Watchlist (empty initially)
-
-6. Send: `/add TSLA VCP setup`
-   - Should get: "Added TSLA to watchlist"
-
-7. Send: `/watchlist`
-   - Should now show: TSLA in watchlist
-
-8. Send: `/remove TSLA`
-   - Should get: "Removed TSLA from watchlist"
-
-9. Send: `/plan NVDA`
-   - Should get: Trading plan with position sizing
-
-10. Send: `/market`
-    - Should get: SPY analysis with regime
-
-11. Send: `/usage`
-    - Should get: API usage statistics
-
-### ✅ Dashboard
-
-```bash
-# Run dashboard locally pointing to production
-export API_BASE=https://legend-ai-python-production.up.railway.app
-python dashboard_pro.py
-
-# Open: http://localhost:7860
-```
-
-**Test in dashboard:**
-1. Enter "NVDA" in Pattern Scanner → Click Analyze
-2. Check TradingView chart appears
-3. Click "Run Quick Scan" in Universe Scanner
-4. Verify API health in System Status tab
-
----
-
-## 🎯 API ENDPOINTS
-
-### Core Endpoints
-
-```
-GET  /health                          # Health check
-GET  /                                # Root endpoint
-
-POST /api/patterns/detect             # Pattern detection
-POST /api/universe/scan               # Full universe scan
-POST /api/universe/scan/quick         # Quick scan
-GET  /api/universe/tickers            # Get ticker list
-
-POST /api/webhook/telegram            # Telegram webhook
-GET  /api/watchlist                   # Get watchlist
-POST /api/watchlist/add               # Add to watchlist
-DELETE /api/watchlist/{ticker}        # Remove from watchlist
-
-POST /api/trade/plan                  # Trading plan
-GET  /api/market/internals            # Market internals
-GET  /api/market/usage                # API usage stats
-
-POST /api/charts/generate             # Generate chart
-```
-
-### Example Requests
-
-**Pattern Detection:**
-```bash
-curl -X POST https://legend-ai-python-production.up.railway.app/api/patterns/detect \
-  -H "Content-Type: application/json" \
-  -d '{"ticker": "AAPL", "interval": "1day"}'
-```
-
-**Quick Scan:**
-```bash
-curl -X POST https://legend-ai-python-production.up.railway.app/api/universe/scan/quick
-```
-
-**Add to Watchlist:**
-```bash
-curl -X POST https://legend-ai-python-production.up.railway.app/api/watchlist/add \
-  -H "Content-Type: application/json" \
-  -d '{"ticker": "NVDA", "reason": "VCP setup"}'
-```
-
----
-
-## 📊 Performance Expectations
-
-### Response Times
-- **Pattern Detection (cached):** <0.1s
-- **Pattern Detection (fresh):** 1-3s
-- **Universe Quick Scan:** 10-30s (30 stocks)
-- **Universe Full Scan:** 60-120s (100 stocks)
-- **Chart Generation:** 1-2s
-
-### API Limits (Daily)
-- **TwelveData:** 800 calls
-- **Finnhub:** 60 calls
-- **Alpha Vantage:** 500 calls
-- **Chart-IMG:** 500 charts
-- **Total:** ~1,360 data calls/day
-
-### Cache Hit Rates
-- **After warmup:** 70-85%
-- **Pattern cache TTL:** 1 hour
-- **Price data TTL:** 15 minutes
-- **Universe scan TTL:** 24 hours
-
----
-
-## 🔧 Troubleshooting
-
-### Issue: Telegram bot not responding
-
-**Solution:**
-1. Check webhook is set: `curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"`
-2. Check Railway logs for errors
-3. Verify `TELEGRAM_BOT_TOKEN` is set in Railway
-4. Re-set webhook using command above
-
-### Issue: "Access denied" from Railway
-
-**Solution:**
-1. Wait 2-3 minutes for deployment to complete
-2. Check Railway dashboard for build status
-3. Check Railway logs for startup errors
-4. Verify all environment variables are set
-
-### Issue: Pattern detection returns "No data"
-
-**Solution:**
-1. Check API usage stats: `/api/market/usage`
-2. If limits reached, wait until next day (midnight UTC)
-3. Data will automatically fall back to next source
-4. Check Railway logs for specific API errors
-
-### Issue: Charts not generating
-
-**Solution:**
-1. Verify `CHARTIMG_API_KEY` is set
-2. Check Chart-IMG usage (500/day limit)
-3. Check Railway logs for Chart-IMG API errors
-4. Simplify request (fewer indicators)
-
----
-
-## 🎉 SUCCESS INDICATORS
-
-You know everything is working when:
-
-✅ `/health` endpoint returns `{"status": "healthy"}`
-✅ Telegram `/start` command shows welcome message
-✅ `/pattern NVDA` returns analysis with score
-✅ `/scan` returns list of stocks
-✅ Dashboard loads and shows TradingView charts
-✅ API usage stats show realistic numbers
-✅ Cache hit rate increases over time
-
----
-
-## 📈 What's Working vs What's Next
-
-### ✅ Fully Working & Tested
-- Multi-source market data service
-- Smart API fallback chain
-- Rate limit management
-- Pattern detection
-- Universe scanner
-- API usage tracking
-- Redis caching
-- Enhanced Telegram bot (code complete)
-- Professional dashboard (code complete)
-
-### ⏳ Needs Testing/Verification
-- Telegram webhook (needs webhook setup)
-- Chart generation (needs testing with real data)
-- Google Sheets integration (code exists, not activated)
-- Performance tracking (code exists, not activated)
-
-### 🔮 Future Enhancements (Optional)
-- Real-time watchlist alerts
-- Scheduled daily scans
-- Email notifications
-- Mobile app
-- More technical indicators
-- Backtesting features
-- Portfolio tracking
-
----
-
-## 💡 Pro Tips
-
-1. **Conserve API Calls:**
-   - Let cache warm up (first scan is expensive)
-   - Use quick scan (30 stocks) instead of full scan
-   - Pattern results are cached for 1 hour
-
-2. **Monitor Usage:**
-   - Check `/usage` command regularly
-   - Usage resets at midnight UTC
-   - Plan scans accordingly
-
-3. **Best Times to Scan:**
-   - After market close (4:05 PM ET) for daily setups
-   - Sunday evenings for week ahead
-   - Avoid scanning during market hours
-
-4. **Telegram Tips:**
-   - Use `/pattern` for individual stocks
-   - Use `/scan` for quick overview
-   - Use `/plan` for position sizing
-   - Use `/watchlist` to track favorites
-
----
-
-## 🚀 Next Steps
-
-1. **Set Telegram Webhook** (5 minutes)
-   - Run webhook command above
-   - Verify with getWebhookInfo
-
-2. **Test Telegram Bot** (10 minutes)
-   - Send all commands
-   - Verify responses
-   - Check Railway logs
-
-3. **Test Production API** (5 minutes)
-   - Run curl commands above
-   - Verify all endpoints work
-
-4. **Run Dashboard** (5 minutes)
-   - Start dashboard locally
-   - Point to production API
-   - Test all features
-
-5. **Monitor & Optimize** (ongoing)
-   - Check API usage daily
-   - Monitor cache hit rates
-   - Adjust TTLs as needed
-
----
-
-## 📞 Support
-
-**Railway Logs:**
-```bash
-railway logs --service legend-ai-python
-```
-
-**Health Check:**
-```bash
-curl https://legend-ai-python-production.up.railway.app/health
-```
-
-**Webhook Status:**
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
-```
-
----
-
-**You're all set! 🎉 Start with the Telegram webhook setup and testing!**
+**Deploy with confidence! 🚀**

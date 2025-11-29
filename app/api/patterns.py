@@ -310,7 +310,8 @@ async def detect_pattern(request: PatternRequest):
                     stop=result.stop,
                     target=result.target,
                     support=result.support_start,
-                    resistance=None  # Could add support_end or resistance level
+                    resistance=None,
+                    pattern_name=f"{result.pattern} Entry"
                 )
                 if chart_url:
                     result.chart_url = chart_url
@@ -424,7 +425,8 @@ async def detect_pattern(request: PatternRequest):
                 stop=result.stop,
                 target=result.target,
                 support=result.support_start,
-                resistance=None  # Could add support_end or resistance level
+                resistance=None,
+                pattern_name=f"{result.pattern} Entry"
             )
             if chart_url:
                 result.chart_url = chart_url

@@ -181,7 +181,8 @@ class ChartingService:
         target: Optional[float] = None,
         support: Optional[float] = None,
         resistance: Optional[float] = None,
-        overlays: Optional[List[str]] = None
+        overlays: Optional[List[str]] = None,
+        pattern_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Build Chart-IMG request payload with smart parameter management
@@ -207,7 +208,7 @@ class ChartingService:
         # Add long position drawing if we have space (reserves 1 parameter slot)
         if entry and stop and target and parameter_count < self.MAX_PARAMETERS:
             drawings.append(
-                self._build_long_position_drawing(entry, stop, target)
+                self._build_long_position_drawing(entry, stop, target, pattern_name)
             )
             parameter_count += 1
 
@@ -263,10 +264,10 @@ class ChartingService:
         return studies
 
     def _build_long_position_drawing(
-        self, entry: float, stop: float, target: float
+        self, entry: float, stop: float, target: float, pattern_name: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Build a long position drawing annotation"""
-        return {
+        """Build a long position drawing annotation with optional pattern label"""
+        drawing = {
             "name": "Long Position",
             "input": {
                 "startDatetime": datetime.now().isoformat() + "Z",
@@ -357,7 +358,8 @@ class ChartingService:
         support: Optional[float] = None,
         resistance: Optional[float] = None,
         overlays: Optional[List[str]] = None,
-        preset: str = "breakout"
+        preset: str = "breakout",
+        pattern_name: Optional[str] = None
     ) -> Optional[str]:
         """
         Generate a chart with indicators and drawings using Chart-IMG API
@@ -385,6 +387,17 @@ class ChartingService:
             logger.error(f"❌ Chart-IMG API key not configured for {ticker}")
             raise ValueError("Chart-IMG API key not configured. Please set the CHART_IMG_API_KEY environment variable.")
 
+        # Check cache first (24h TTL)
+        if self.redis:
+            try:
+                cache_key = f"chartimg:{ticker}:{timeframe}:{entry}:{stop}:{target}"
+                cached_url = await self.redis.get(cache_key)
+                if cached_url:
+                    logger.info(f"💾 Chart cache HIT for {ticker}")
+                    return cached_url.decode() if isinstance(cached_url, bytes) else cached_url
+            except Exception as e:
+                logger.warning(f"Cache lookup failed: {e}")
+        
         try:
             # Check rate limiting
             rate_limit_ok = await self._check_rate_limit()
@@ -400,21 +413,56 @@ class ChartingService:
             payload = self._build_chart_payload(
                 ticker, timeframe, width, height,
                 entry, stop, target, support, resistance,
-                overlays or self._resolve_overlays(preset)
+                overlays or self._resolve_overlays(preset),
+                pattern_name
             )
 
-            # Make API request
+            # Make API request with exponential backoff (max 4 retries)
             logger.info(f"📡 Making Chart-IMG API request for {ticker} with API key present: {bool(self.api_key)}")
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    self.BASE_URL,
-                    json=payload,
-                    headers={
-                        "x-api-key": self.api_key,
-                        "Content-Type": "application/json"
-                    }
-                )
-            logger.info(f"📡 Chart-IMG response status: {response.status_code} for {ticker}")
+            max_retries = 4
+            retry_delay = 1.0  # Start with 1 second
+            
+            for attempt in range(max_retries):
+                try:
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        start_time = datetime.now()
+                        response = await client.post(
+                            self.BASE_URL,
+                            json=payload,
+                            headers={
+                                "x-api-key": self.api_key,
+                                "Content-Type": "application/json"
+                            }
+                        )
+                        duration = (datetime.now() - start_time).total_seconds()
+                    
+                    logger.info(f"📡 Chart-IMG response status: {response.status_code} for {ticker} (attempt {attempt + 1}/{max_retries}, {duration:.2f}s)")
+                    
+                    if response.status_code == 200:
+                        break  # Success, exit retry loop
+                    elif response.status_code == 429:  # Rate limit
+                        if attempt < max_retries - 1:
+                            logger.warning(f"⏳ Rate limited, retrying in {retry_delay}s...")
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2  # Exponential backoff
+                            continue
+                    elif response.status_code >= 500:  # Server error
+                        if attempt < max_retries - 1:
+                            logger.warning(f"⏳ Server error, retrying in {retry_delay}s...")
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2
+                            continue
+                    else:
+                        break  # Client error, don't retry
+                
+                except (httpx.TimeoutException, httpx.NetworkError) as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"⏳ Network error, retrying in {retry_delay}s: {e}")
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                    else:
+                        raise
 
             if response.status_code == 200:
                 data = response.json()
@@ -434,6 +482,16 @@ class ChartingService:
 
                 if chart_url:
                     logger.info(f"✅ Chart generated for {ticker} ({timeframe}): {chart_url[:60]}... (expires: {expires_at})")
+                    
+                    # Cache for 24h (86400 seconds)
+                    if self.redis:
+                        try:
+                            cache_key = f"chartimg:{ticker}:{timeframe}:{entry}:{stop}:{target}"
+                            await self.redis.setex(cache_key, 86400, chart_url)
+                            logger.debug(f"💾 Cached chart URL for {ticker} (24h TTL)")
+                        except Exception as e:
+                            logger.warning(f"Failed to cache chart URL: {e}")
+                    
                     return chart_url
                 else:
                     logger.warning(f"⚠️ Chart-IMG response missing URL for {ticker}: {data}")

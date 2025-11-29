@@ -118,6 +118,27 @@ class UniverseSymbol(Base):
     industry = Column(String(100))
     market_cap = Column(BigInteger)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+class Trade(Base):
+    """Trade journal entries"""
+    __tablename__ = "trades"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String(10), index=True, nullable=False)
+    pattern = Column(String(50))
+    entry_date = Column(DateTime(timezone=True), index=True)
+    entry_price = Column(Float, nullable=False)
+    stop_price = Column(Float, nullable=False)
+    target_price = Column(Float)
+    exit_date = Column(DateTime(timezone=True), nullable=True, index=True)
+    exit_price = Column(Float, nullable=True)
+    shares = Column(Integer, nullable=False)
+    profit_loss = Column(Float, nullable=True)  # Dollar P&L
+    r_multiple = Column(Float, nullable=True)  # R achieved
+    status = Column(String(20), default="Open", index=True)  # Open, Closed, Stopped
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
 class AlertLog(Base):
     """Alert trigger history"""
     __tablename__ = "alert_logs"

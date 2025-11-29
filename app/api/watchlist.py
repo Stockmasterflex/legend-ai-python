@@ -207,3 +207,29 @@ async def update_watchlist_item(ticker: str, payload: WatchlistUpdate):
     _save(db)
     await _sync_cache(list(db.values()))
     return {"success": True}
+
+
+@router.post("/check")
+async def manual_watchlist_check():
+    """Manually trigger watchlist monitoring check"""
+    try:
+        from app.jobs.watchlist_monitor import run_watchlist_check
+        from app.services.telegram_bot import get_telegram_bot
+        
+        logger.info("Manual watchlist check triggered")
+        alerts = await run_watchlist_check()
+        
+        # Send Telegram alerts if any
+        if alerts:
+            bot = get_telegram_bot()
+            for alert in alerts:
+                await bot.send_alert(alert)
+        
+        return {
+            "success": True,
+            "alerts_triggered": len(alerts),
+            "alerts": alerts
+        }
+    except Exception as e:
+        logger.error(f"Manual watchlist check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Watchlist check failed: {str(e)}")

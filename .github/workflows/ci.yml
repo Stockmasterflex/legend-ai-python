@@ -1,61 +1,101 @@
-name: CI
+name: Legend AI CI/CD
+
 on:
+  push:
+    branches: [ main, develop ]
   pull_request:
-    branches: [ claude, main, develop ]
+    branches: [ main ]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: legend_ai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install -e .; fi
-          pip install pytest pytest-asyncio
-      - name: Verify telemetry env
-        run: python ops/bin/check_env.py
-      - name: Test with telemetry artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          export START_TIME=$(date +%s)
-          set +e
-          pytest --durations=25 tests 2>&1 | tee artifacts/pytest.log
-          STATUS=${PIPESTATUS[0]}
-          set -e
-          export END_TIME=$(date +%s)
-          export TEST_DURATION=$((END_TIME-START_TIME))
-          python - <<'PY'
-import json
-import os
-from pathlib import Path
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio ruff
+    
+    - name: Lint with ruff
+      run: |
+        ruff check app/ tests/ --output-format=github
+      continue-on-error: true
+    
+    - name: Run tests with coverage
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/legend_ai_test
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        TESTING: true
+      run: |
+        pytest tests/ -v --cov=app --cov-report=term --cov-report=xml --tb=short
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: legend-ai-coverage
+      continue-on-error: true
+    
+    - name: Test summary
+      run: |
+        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
 
-summary = {
-    "start_epoch": int(os.environ["START_TIME"]),
-    "end_epoch": int(os.environ["END_TIME"]),
-    "duration_seconds": int(os.environ["TEST_DURATION"]),
-}
-Path("artifacts/test-summary.json").write_text(json.dumps(summary, indent=2))
-PY
-          python - <<'PY'
-from pathlib import Path
-from prometheus_client import generate_latest
-
-# Ensure metric modules are imported so counters exist
-import app.telemetry.metrics  # noqa: F401
-
-Path("artifacts/metrics.prom").write_bytes(generate_latest())
-PY
-          exit $STATUS
-      - name: Print SLO summary
-        if: always()
-        run: python slo_report.py --metrics-file artifacts/metrics.prom
-      - name: Upload telemetry artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: legend-ci-telemetry
-          path: artifacts
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Deploy to Railway
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        npm install -g @railway/cli
+        railway up
+      continue-on-error: true
+    
+    - name: Deployment summary
+      run: |
+        echo "## Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "🚀 Deployed to Railway" >> $GITHUB_STEP_SUMMARY

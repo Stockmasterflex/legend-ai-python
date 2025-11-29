@@ -25,6 +25,9 @@ from app.api.risk import router as risk_router
 from app.api.trades import router as trades_router
 from app.api import analyze as analyze_pkg, watchlist as watchlist_pkg
 from app.api.version import router as version_router
+from app.api.trade_planner import router as trade_planner_router
+from app.api.journal import router as journal_router
+from app.api.dashboard_view import router as dashboard_view_router
 from app.api.metrics import router as metrics_router
 from app.api.scan import router as scan_router
 from app.api.tv import router as tv_router
@@ -113,6 +116,9 @@ app.include_router(trades_router)
 app.include_router(dashboard_router, tags=["dashboard"])
 app.include_router(analyze_router)
 app.include_router(version_router)
+app.include_router(trade_planner_router)
+app.include_router(journal_router)
+app.include_router(dashboard_view_router)
 app.include_router(metrics_router)
 app.include_router(scan_router)
 app.include_router(tv_router)

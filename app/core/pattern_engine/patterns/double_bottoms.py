@@ -122,6 +122,10 @@ def find_double_bottoms(
             depth = peak_high - min(bottom1_low, bottom2_low)
             target = peak_high + depth
             
+            # Calculate entry and stop (matching Patternz)
+            entry = peak_high  # Entry at breakout above peak
+            stop = min(bottom1_low, bottom2_low) * 0.98  # Stop 2% below lower bottom
+            
             # Classify Adam/Eve if requested
             pattern_name = "DB"
             variant = None
@@ -158,6 +162,11 @@ def find_double_bottoms(
             if confirmation == 0:
                 pattern_name += "?"  # Pending
             
+            # Calculate risk/reward
+            risk = entry - stop
+            reward = target - entry
+            risk_reward = round(reward / risk, 2) if risk > 0 else 0.0
+            
             patterns.append({
                 'pattern': pattern_name,
                 'start_idx': bottom1_idx,
@@ -166,9 +175,12 @@ def find_double_bottoms(
                 'bottom1': bottom1_low,
                 'bottom2': bottom2_low,
                 'peak': peak_high,
+                'entry': round(entry, 2),
+                'stop': round(stop, 2),
+                'target': round(target, 2),
+                'risk_reward': risk_reward,
                 'depth': depth,
                 'width': bottom_distance,
-                'target': target,
                 'confirmed': confirmation == 1,
                 'pending': confirmation == 0,
                 'variant': variant,

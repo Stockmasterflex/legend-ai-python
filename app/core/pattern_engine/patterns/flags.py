@@ -127,14 +127,17 @@ def find_ht_flag(
             pattern_height = float(high[highest_idx] - low[lowest_idx])
             current_price = float(close[-1])
             
-            # Entry: at highest high (breakout point)
+            # Entry: at highest high (breakout point) - NO BUFFER
+            # Patternz: Entry = high[highest_idx] exactly
             entry = float(high[highest_idx])
             
             # Stop: Below midpoint of flag (50% retracement)
+            # Patternz: Stop = low + (height * 0.5)
             midpoint = low[lowest_idx] + pattern_height * 0.5
             stop = float(midpoint)
             
             # Target: Measure move (100% extension)
+            # Patternz: Target = entry + height
             target = entry + pattern_height
             
             # Risk/Reward
