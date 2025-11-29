@@ -156,6 +156,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # === SHUTDOWN ===
     logger.info("Shutting down...")
 
+    # Close news service aiohttp session
+    try:
+        from app.services.news import news_service
+        await news_service.close()
+        logger.info("✅ News service closed")
+    except Exception as exc:
+        logger.warning("⚠️ Failed to close news service: %s", exc)
+
     # Stop monitoring and alerting services
     try:
         from app.telemetry.monitoring import get_monitoring_service
@@ -177,3 +185,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("🕒 Scheduler stopped")
     except Exception as exc:
         logger.warning("⚠️ Scheduler shutdown failed: %s", exc)
+
+    logger.info("✅ Shutdown complete")
