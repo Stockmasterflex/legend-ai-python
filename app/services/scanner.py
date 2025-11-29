@@ -63,6 +63,8 @@ class ScannerService:
         universe: Optional[List[str]] = None,
         limit: int = 50,
         sector: Optional[str] = None,
+        minervini_trend: bool = False,
+        vcp: bool = True,
     ) -> Dict[str, Any]:
         """Scan the universe for VCP patterns."""
         started = time.perf_counter()
@@ -101,6 +103,8 @@ class ScannerService:
                 spy_closes,
                 sem,
                 missing_data_symbols,
+                minervini_trend=minervini_trend,
+                vcp=vcp,
             )
             for symbol in symbols
         ]
@@ -129,6 +133,8 @@ class ScannerService:
         spy_closes: List[float],
         sem: asyncio.Semaphore,
         missing_symbols: List[str],
+        minervini_trend: bool = False,
+        vcp: bool = True,
     ) -> Optional[Dict[str, Any]]:
         async with sem:
             price_data = await market_data_service.get_time_series(
@@ -142,16 +148,52 @@ class ScannerService:
                 return None
 
             df = self._to_dataframe(price_data)
-            with DETECTOR_RUNTIME_SECONDS.labels(pattern="VCP").time():
-                detections = self.detector.find(df, "1D", symbol)
-            if not detections:
-                return None
+            
+            # 1. Check Trend Template first (faster than VCP detection)
+            trend_pass = False
+            if minervini_trend:
+                closes = df["close"].tolist()
+                trend_res = minervini_trend_template(closes)
+                trend_pass = bool(trend_res.get("pass"))
+                if not trend_pass:
+                    return None
 
-            best = max(detections, key=lambda d: d.confidence)
-            if best.confidence < self.min_confidence:
-                return None
+            # 2. Check VCP Pattern
+            detection = None
+            if vcp:
+                with DETECTOR_RUNTIME_SECONDS.labels(pattern="VCP").time():
+                    detections = self.detector.find(df, "1D", symbol)
+                if not detections:
+                    return None
 
-            payload = self._build_result(symbol, df, best, spy_closes)
+                best = max(detections, key=lambda d: d.confidence)
+                if best.confidence < self.min_confidence:
+                    return None
+                detection = best
+            else:
+                # If VCP is disabled, we need a dummy detection to proceed or handle it differently.
+                # For now, assuming VCP is the primary purpose, but if disabled, we might just return trend data.
+                # To keep it simple and compatible with _build_result, we'll skip if VCP is required but disabled.
+                # If the user wants ONLY trend, we'd need to mock a detection or change _build_result.
+                # Given the "Scanner" context, let's assume VCP is always desired unless we switch to a "Screening" mode.
+                # But if the user UNCHECKS VCP, they might just want Trend Template.
+                # Let's create a dummy detection if VCP is off but Trend is on.
+                if minervini_trend:
+                     # Create a dummy result for trend-only scan
+                     from app.core.detector_base import PatternResult
+                     detection = PatternResult(
+                         pattern_name="Trend Template",
+                         symbol=symbol,
+                         timeframe="1D",
+                         confidence=1.0, 
+                         window_start=df["datetime"].iloc[0],
+                         window_end=df["datetime"].iloc[-1],
+                         candles=df.to_dict("records")
+                     )
+                else:
+                    return None
+
+            payload = self._build_result(symbol, df, detection, spy_closes)
             return payload
 
     def _build_result(

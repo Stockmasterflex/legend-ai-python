@@ -90,9 +90,12 @@ class MultiTimeframeConfirmation:
 
         for tf in self.timeframes:
             try:
-                if data_by_timeframe[tf]:
+                if data_by_timeframe[tf] is not None and not data_by_timeframe[tf].empty:
+                    # Only use SPY data for daily timeframe to avoid mismatch
+                    tf_spy_data = spy_data if tf == "1day" else None
+                    
                     analysis = await self.detector.analyze_ticker(
-                        ticker, data_by_timeframe[tf], spy_data
+                        ticker, data_by_timeframe[tf], tf_spy_data
                     )
 
                     if analysis:

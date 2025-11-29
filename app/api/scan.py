@@ -77,6 +77,8 @@ async def scan_endpoint(
     request: Request,
     limit: int = Query(50, ge=1, le=200),
     sector: Optional[str] = Query(None),
+    minervini_trend: bool = Query(False),
+    vcp: bool = Query(True),
 ) -> Dict[str, Any]:
     """GET endpoint for flag-gated VCP scanner with telemetry."""
     started = time.perf_counter()
@@ -98,7 +100,12 @@ async def scan_endpoint(
 
     try:
         telemetry["status"] = "running"
-        payload = await scan_service.run_daily_vcp_scan(limit=limit, sector=sector_filter)
+        payload = await scan_service.run_daily_vcp_scan(
+            limit=limit, 
+            sector=sector_filter,
+            minervini_trend=minervini_trend,
+            vcp=vcp
+        )
         telemetry.update(
             {
                 "status": "ok",
@@ -142,8 +149,8 @@ async def get_top_setups(
     """Return the latest top setups for the dashboard tab with timeout protection."""
 
     try:
-        # Add timeout protection (max 15 seconds)
-        async with asyncio.timeout(15.0):
+        # Add timeout protection (max 30 seconds)
+        async with asyncio.timeout(30.0):
             results, cached = await _load_top_setups(min_score, limit)
 
         return TopSetupsResponse(
