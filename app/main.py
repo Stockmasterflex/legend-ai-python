@@ -43,6 +43,7 @@ from app.api.backtesting import router as backtesting_router
 from app.middleware.structured_logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.utils.build_info import resolve_build_sha
+from app.services.universe_store import universe_store
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
