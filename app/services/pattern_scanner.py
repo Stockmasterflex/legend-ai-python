@@ -8,6 +8,7 @@ import logging
 import time
 from typing import List, Dict, Any, Optional
 import pandas as pd
+import numpy as np
 from datetime import datetime, timezone
 
 from app.core.detector_registry import get_all_detectors
@@ -35,22 +36,12 @@ class PatternScannerService:
         max_symbols: int = 600,
         bars: int = 320,
         max_concurrency: int = 8,
-        min_confidence: float = 0.4,  # Temporarily lowered to debug
+        min_confidence: float = 0.4,
     ):
-        """
-        Initialize the pattern scanner
-
-        Args:
-            max_symbols: Maximum number of symbols to scan
-            bars: Number of bars to fetch for analysis
-            max_concurrency: Maximum concurrent scans
-            min_confidence: Minimum confidence threshold (0-1)
-        """
         self.max_symbols = max_symbols
         self.output_bars = bars
         self.max_concurrency = max_concurrency
         self.min_confidence = min_confidence
-        # New pattern-engine powered scanner for targeted API endpoints
         self.engine_scanner = UniverseScanner(
             detector=get_pattern_detector(),
             filter_system=PatternFilter(),
@@ -63,19 +54,7 @@ class PatternScannerService:
         timeframe: str = "1day",
         pattern_filter: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
-        """
-        Scan a single symbol with all detectors
-
-        Args:
-            symbol: Stock symbol to scan
-            timeframe: Timeframe to scan (1day, 1week, etc.)
-            pattern_filter: Optional list of pattern names to filter by
-
-        Returns:
-            List of detected patterns with metadata
-        """
         try:
-            # Fetch price data
             price_data = await market_data_service.get_time_series(
                 ticker=symbol,
                 interval=timeframe,
@@ -83,58 +62,39 @@ class PatternScannerService:
             )
 
             if not price_data or not price_data.get("c"):
-                logger.debug(f"No price data for {symbol}")
                 return []
 
-            data_points = len(price_data.get("c", []))
-            logger.debug(f"Fetched {data_points} data points for {symbol}")
-
-            # Convert to DataFrame
             df = self._to_dataframe(price_data)
 
             if len(df) < 60:
-                logger.debug(f"Insufficient data for {symbol}: {len(df)} bars")
                 return []
 
-            # Get all detectors
             detectors = get_all_detectors()
-            logger.debug(f"Running {len(detectors)} detectors on {symbol}")
-
-            # Run all detectors
             all_patterns: List[PatternResult] = []
             for detector in detectors:
                 try:
                     patterns = detector.find(df, timeframe, symbol)
                     if patterns:
                         all_patterns.extend(patterns)
-                        logger.debug(f"Detector {detector.name} found {len(patterns)} patterns for {symbol}")
                 except Exception as e:
                     logger.error(f"Detector {detector.name} failed for {symbol}: {e}")
 
-            logger.debug(f"Total patterns found for {symbol}: {len(all_patterns)}")
-
-            # Filter by confidence
             confident_patterns = [
                 p for p in all_patterns
                 if p.confidence >= self.min_confidence
             ]
-            logger.debug(f"After confidence filter (>= {self.min_confidence}): {len(confident_patterns)} patterns")
 
-            # Filter by pattern names if specified
             if pattern_filter:
                 pattern_filter_lower = [p.lower() for p in pattern_filter]
                 confident_patterns = [
                     p for p in confident_patterns
                     if p.pattern_type.value.lower() in pattern_filter_lower
                 ]
-                logger.debug(f"After pattern filter {pattern_filter}: {len(confident_patterns)} patterns")
 
-            # Convert to dict format
             results = []
             for pattern in confident_patterns:
                 results.append(self._pattern_to_dict(pattern, symbol, timeframe))
 
-            logger.debug(f"Returning {len(results)} patterns for {symbol}")
             return results
 
         except Exception as e:
@@ -148,39 +108,22 @@ class PatternScannerService:
         pattern_filter: Optional[List[str]] = None,
         min_score: float = 7.0
     ) -> Dict[str, Any]:
-        """
-        Scan entire universe for patterns
-
-        Args:
-            universe: List of symbols to scan (None = use default universe)
-            limit: Maximum number of results to return
-            pattern_filter: Optional list of pattern names to filter by
-            min_score: Minimum score (0-10) to include in results
-
-        Returns:
-            Scan results with metadata
-        """
         started = time.perf_counter()
 
-        # Get universe
         if universe is None:
             universe_meta = await universe_store.get_all()
             if not universe_meta:
                 fallback = universe_data.get_full_universe()
                 universe_meta = {symbol: {"symbol": symbol} for symbol in fallback}
             symbols = list(universe_meta.keys())[:self.max_symbols]
-            logger.info(f"Using universe from store: {len(symbols)} symbols")
         else:
             symbols = universe[:self.max_symbols]
-            logger.info(f"Using provided universe: {len(symbols)} symbols")
 
         if not symbols:
-            logger.warning("No symbols to scan - universe is empty")
             return self._response(started, 0, [])
 
-        logger.info(f"Starting scan of {len(symbols)} symbols with min_score={min_score}")
+        logger.info(f"Starting scan of {len(symbols)} symbols")
 
-        # Scan symbols concurrently
         sem = asyncio.Semaphore(self.max_concurrency)
 
         async def scan_with_semaphore(symbol: str):
@@ -190,43 +133,19 @@ class PatternScannerService:
         tasks = [scan_with_semaphore(symbol) for symbol in symbols]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Flatten results (each symbol can have multiple patterns)
         all_patterns = []
-        success_count = 0
-        error_count = 0
         for result in raw_results:
             if isinstance(result, list):
                 all_patterns.extend(result)
-                if result:  # Only count if patterns were found
-                    success_count += 1
-            elif isinstance(result, Exception):
-                logger.error(f"Scan task failed: {result}")
-                error_count += 1
 
-        logger.info(f"Scan results: {success_count} symbols with patterns, {error_count} errors, {len(all_patterns)} total patterns")
-
-        # Sort by score
         all_patterns.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-        # Filter by minimum score
         filtered_patterns = [
             p for p in all_patterns
             if p.get("score", 0) >= min_score
         ]
 
-        logger.info(f"After filtering by min_score {min_score}: {len(filtered_patterns)} patterns remain")
-
-        # Limit results
         limited_results = filtered_patterns[:limit]
-
-        duration = time.perf_counter() - started
-        logger.info(
-            f"✅ Multi-pattern scan complete: {len(symbols)} symbols scanned, "
-            f"{len(all_patterns)} patterns found, "
-            f"{len(filtered_patterns)} above {min_score}/10, "
-            f"{len(limited_results)} returned, "
-            f"{duration:.2f}s"
-        )
 
         return self._response(started, len(symbols), limited_results, len(all_patterns))
 
@@ -238,9 +157,6 @@ class PatternScannerService:
         min_score: float = 6.0,
         filter_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """
-        Scan a provided list of tickers using the pattern engine + scoring pipeline.
-        """
         if not tickers:
             return self._response(time.perf_counter(), 0, [])
 
@@ -261,32 +177,51 @@ class PatternScannerService:
         symbol: str,
         timeframe: str
     ) -> Dict[str, Any]:
-        """Convert PatternResult to dictionary"""
-        score = pattern.confidence * 10  # Convert 0-1 to 0-10 scale
+        score = pattern.confidence * 10
+
+        def safe_float(v):
+            if v is None: return None
+            try: return float(v)
+            except: return None
 
         return {
             "symbol": symbol,
             "timeframe": timeframe,
             "pattern": pattern.pattern_type.value,
-            "score": round(score, 1),
-            "confidence": round(pattern.confidence, 3),
-            "entry": pattern.entry,
-            "stop": pattern.stop,
-            "target": pattern.target,
-            "risk_reward": round((pattern.target - pattern.entry) / (pattern.entry - pattern.stop), 2)
-            if pattern.entry and pattern.stop and pattern.target and pattern.entry > pattern.stop
+            "score": round(float(score), 1),
+            "confidence": round(float(pattern.confidence), 3),
+            "entry": safe_float(pattern.entry),
+            "stop": safe_float(pattern.stop),
+            "target": safe_float(pattern.target),
+            "risk_reward": round((safe_float(pattern.target) - safe_float(pattern.entry)) / (safe_float(pattern.entry) - safe_float(pattern.stop)), 2)
+            if safe_float(pattern.entry) and safe_float(pattern.stop) and safe_float(pattern.target) and safe_float(pattern.entry) > safe_float(pattern.stop)
             else None,
             "window_start": pattern.window_start,
             "window_end": pattern.window_end,
             "description": pattern.description,
-            "strong": pattern.strong,
-            "evidence": pattern.evidence,
+            "strong": bool(pattern.strong),
+            "evidence": self._sanitize(pattern.evidence),
             "detected_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
 
+    def _sanitize(self, obj: Any) -> Any:
+        """Deep clean object to remove numpy types"""
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return {k: self._sanitize(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._sanitize(v) for v in obj]
+        elif isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        elif isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        return obj
+
     @staticmethod
     def _to_dataframe(payload: Dict[str, Any]) -> pd.DataFrame:
-        """Convert market data payload to DataFrame"""
         closes = payload.get("c", [])
         opens = payload.get("o", closes)
         highs = payload.get("h", closes)
@@ -316,10 +251,10 @@ class PatternScannerService:
         results: List[Dict[str, Any]],
         total_hits: int = 0
     ) -> Dict[str, Any]:
-        """Build response payload"""
         duration_ms = (time.perf_counter() - started) * 1000
 
-        return {
+        # Deep clean the entire response payload
+        payload = {
             "success": True,
             "as_of": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "universe_size": universe_size,
@@ -332,6 +267,7 @@ class PatternScannerService:
                 "scanner_type": "multi_pattern",
             },
         }
+        return self._sanitize(payload)
 
 
 # Global service instance

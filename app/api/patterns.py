@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -52,35 +52,12 @@ class PatternRequest(BaseModel):
 class PatternResponse(BaseModel):
     """Response model for pattern detection"""
     success: bool = Field(..., description="Whether the request was successful")
-    data: Optional[PatternResult] = Field(None, description="Pattern analysis result")
+    data: Optional[Dict[str, Any]] = Field(None, description="Pattern analysis result")
     error: Optional[str] = Field(None, description="Error message if request failed")
     cached: bool = Field(False, description="Whether result was served from cache")
     api_used: str = Field("unknown", description="Data source used (cache, twelvedata, finnhub, alphavantage, yahoo)")
     processing_time: Optional[float] = Field(None, description="Processing time in seconds")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "data": {
-                    "ticker": "AAPL",
-                    "pattern": "Cup and Handle",
-                    "score": 8.5,
-                    "entry": 175.50,
-                    "stop": 168.00,
-                    "target": 190.25,
-                    "support_start": 170.00,
-                    "support_end": 172.00,
-                    "risk_reward_ratio": 2.1,
-                    "chart_url": "https://chart-img.com/AAPL",
-                    "timestamp": "2024-01-15T10:30:00"
-                },
-                "error": None,
-                "cached": False,
-                "api_used": "twelvedata",
-                "processing_time": 1.23
-            }
-        }
 
 # --------------------------------------------------------------------------- #
 # New API request/response models
@@ -140,139 +117,9 @@ class ExportResponse(BaseModel):
     copied: bool = False
 
 
-@router.post("/detect",
-             response_model=PatternResponse,
-             summary="Detect Chart Pattern",
-             responses={
-                 200: {
-                     "description": "Successful pattern detection",
-                     "content": {
-                         "application/json": {
-                             "example": {
-                                 "success": True,
-                                 "data": {
-                                     "ticker": "AAPL",
-                                     "pattern": "Cup and Handle",
-                                     "score": 8.5,
-                                     "entry": 175.50,
-                                     "stop": 168.00,
-                                     "target": 190.25,
-                                     "support_start": 170.00,
-                                     "support_end": 172.00,
-                                     "risk_reward_ratio": 2.1,
-                                     "chart_url": "https://chart-img.com/chart.png",
-                                     "timestamp": "2024-01-15T10:30:00"
-                                 },
-                                 "error": None,
-                                 "cached": False,
-                                 "api_used": "twelvedata",
-                                 "processing_time": 1.23
-                             }
-                         }
-                     }
-                 },
-                 400: {
-                     "description": "Bad Request - Invalid ticker format",
-                     "content": {
-                         "application/json": {
-                             "example": {
-                                 "detail": "Invalid ticker symbol format"
-                             }
-                         }
-                     }
-                 },
-                 404: {
-                     "description": "Not Found - No price data available",
-                     "content": {
-                         "application/json": {
-                             "example": {
-                                 "detail": "No price data available for INVALID"
-                             }
-                         }
-                     }
-                 }
-             })
+@router.post("/detect", response_model=PatternResponse)
 async def detect_pattern(request: PatternRequest):
-    """
-    🎯 **Detect Chart Pattern for Any Stock**
-
-    Analyzes price action and detects bullish chart patterns with AI-powered scoring.
-
-    ## Features
-
-    - ✅ Multi-source data (TwelveData → Finnhub → AlphaVantage → Yahoo)
-    - ✅ Smart caching (1-hour TTL)
-    - ✅ Automatic chart generation with indicators
-    - ✅ Entry, stop, and target levels
-    - ✅ Risk/reward ratio calculation
-
-    ## Supported Patterns
-
-    - Cup and Handle
-    - Bullish Flag
-    - Ascending Triangle
-    - Double Bottom
-    - And more...
-
-    ## Example Usage
-
-    **Python:**
-    ```python
-    import requests
-
-    response = requests.post(
-        'https://your-api.com/api/patterns/detect',
-        json={'ticker': 'AAPL', 'interval': '1day'}
-    )
-
-    result = response.json()
-    if result['success']:
-        print(f"Pattern: {result['data']['pattern']}")
-        print(f"Score: {result['data']['score']}/10")
-        print(f"Entry: ${result['data']['entry']}")
-    ```
-
-    **cURL:**
-    ```bash
-    curl -X POST "https://your-api.com/api/patterns/detect" \\
-      -H "Content-Type: application/json" \\
-      -d '{"ticker": "AAPL", "interval": "1day"}'
-    ```
-
-    **JavaScript:**
-    ```javascript
-    const response = await fetch('/api/patterns/detect', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ticker: 'AAPL', interval: '1day'})
-    });
-    const result = await response.json();
-    ```
-
-    ## Response Fields
-
-    | Field | Type | Description |
-    |-------|------|-------------|
-    | `success` | boolean | Request success status |
-    | `data.pattern` | string | Detected pattern name |
-    | `data.score` | float | Confidence score (0-10) |
-    | `data.entry` | float | Suggested entry price |
-    | `data.stop` | float | Stop loss price |
-    | `data.target` | float | Target price |
-    | `data.chart_url` | string | Generated chart URL |
-    | `cached` | boolean | Served from cache? |
-    | `processing_time` | float | Processing time (seconds) |
-
-    ## Notes
-
-    - Cached results are refreshed hourly
-    - Chart URLs include support/resistance levels
-    - Processing time typically < 2 seconds
-
-    ---
-
-    **Replaces legacy endpoint:** `POST /webhook/pattern-signal`
-    """
+    """Detect Chart Pattern for Any Stock"""
     import time
     start_time = time.time()
     cache = get_cache_service()
@@ -282,10 +129,7 @@ async def detect_pattern(request: PatternRequest):
 
         # Validate ticker format
         if not ticker or not ticker.replace(".", "").replace("-", "").isalnum():
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid ticker symbol format"
-            )
+            raise HTTPException(status_code=400, detail="Invalid ticker symbol format")
 
         logger.info(f"🔍 Analyzing pattern for {ticker}")
 
@@ -293,49 +137,21 @@ async def detect_pattern(request: PatternRequest):
         cached_result = await cache.get_pattern(ticker=ticker, interval=request.interval)
         if cached_result:
             # Convert cached dict back to PatternResult
-            # Convert ISO timestamp string back to datetime
-            from datetime import datetime
             if isinstance(cached_result.get("timestamp"), str):
                 cached_result["timestamp"] = datetime.fromisoformat(cached_result["timestamp"])
 
-            result = PatternResult(**cached_result)
-
-            # Always regenerate fresh chart URLs with latest indicators
-            try:
-                charting = get_charting_service()
-                chart_url = await charting.generate_chart(
-                    ticker=ticker,
-                    timeframe=request.interval,
-                    entry=result.entry,
-                    stop=result.stop,
-                    target=result.target,
-                    support=result.support_start,
-                    resistance=None,
-                    pattern_name=f"{result.pattern} Entry"
-                )
-                if chart_url:
-                    result.chart_url = chart_url
-                    logger.info(f"📊 Chart regenerated for {ticker}: {chart_url[:60]}...")
-            except Exception as e:
-                logger.warning(f"⚠️ Chart regeneration failed for {ticker}: {e}")
-
+            # Just return the cached dict directly (it should be clean)
             processing_time = time.time() - start_time
-
-            logger.info(f"⚡ Cache hit for {ticker}: {result.pattern} ({result.score}/10) in {processing_time:.2f}s")
-
             return PatternResponse(
                 success=True,
-                data=result,
+                data=cached_result,
                 error=None,
                 cached=True,
                 api_used="cache",
                 processing_time=round(processing_time, 2)
             )
 
-        # 2. Cache miss - fetch from API (uses smart multi-source fallback)
-        logger.info(f"📡 Cache miss for {ticker}, fetching from API")
-
-        # Get price data (tries TwelveData → Finnhub → AlphaVantage → Yahoo)
+        # 2. Cache miss - fetch from API
         price_data = await market_data_service.get_time_series(
             ticker=ticker,
             interval=request.interval,
@@ -343,32 +159,21 @@ async def detect_pattern(request: PatternRequest):
         )
 
         if not price_data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No price data available for {ticker}"
-            )
+            raise HTTPException(status_code=404, detail=f"No price data available for {ticker}")
 
         api_used = price_data.get("source", "unknown")
 
-        # Get SPY data for RS calculation
-        spy_data = await market_data_service.get_time_series(
-            ticker="SPY",
-            interval="1day",
-            outputsize=500
-        )
+        # Get SPY data for RS
+        spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
 
-        # Run pattern detection - use advanced engine by default
+        # Run pattern detection
+        result = None
         if request.use_advanced_patterns:
-            logger.info(f"Using Legend AI Pattern Engine for {ticker}")
             advanced_detector = get_pattern_detector()
             detected_patterns = advanced_detector.detect_all_patterns(price_data, ticker)
             
             if detected_patterns:
-                # Use the highest confidence pattern
                 best_pattern = max(detected_patterns, key=lambda p: p.get('confidence', 0))
-                
-                # Convert to PatternResult format
-                from datetime import datetime
                 result = PatternResult(
                     ticker=ticker,
                     pattern=best_pattern['pattern'],
@@ -379,43 +184,25 @@ async def detect_pattern(request: PatternRequest):
                     risk_reward=best_pattern['risk_reward'],
                     criteria_met=[
                         f"✓ {best_pattern['pattern']} confirmed" if best_pattern.get('confirmed') else f"⚠ {best_pattern['pattern']} pending confirmation",
-                        f"✓ Confidence: {best_pattern['confidence']*100:.1f}%",
-                        f"✓ Risk/Reward: {best_pattern['risk_reward']:.2f}:1"
+                        f"✓ Confidence: {best_pattern['confidence']*100:.1f}%"
                     ],
-                    analysis=f"Legend AI detected {best_pattern['pattern']} with {best_pattern['confidence']*100:.0f}% confidence. Pattern width: {best_pattern.get('width', 0)} bars.",
+                    analysis=f"Legend AI detected {best_pattern['pattern']} with {best_pattern['confidence']*100:.0f}% confidence.",
                     timestamp=datetime.now(),
                     current_price=best_pattern.get('current_price'),
-                    support_start=best_pattern.get('metadata', {}).get('bottom1') or best_pattern.get('metadata', {}).get('bottom'),
-                    support_end=best_pattern.get('metadata', {}).get('bottom2') or best_pattern.get('metadata', {}).get('bottom'),
+                    support_start=best_pattern.get('metadata', {}).get('bottom'),
+                    support_end=best_pattern.get('metadata', {}).get('bottom')
                 )
-                
-                logger.info(f"✅ Legend AI detected {len(detected_patterns)} patterns, using best: {result.pattern} (score: {result.score})")
             else:
-                logger.info(f"No advanced patterns found for {ticker}, falling back to basic detector")
-                # Fallback to original detector
                 detector = PatternDetector()
-                result = await detector.analyze_ticker(
-                    ticker=ticker,
-                    price_data=price_data,
-                    spy_data=spy_data
-                )
+                result = await detector.analyze_ticker(ticker=ticker, price_data=price_data, spy_data=spy_data)
         else:
-            # Use original Minervini-style detector
-            logger.info(f"Using basic pattern detection for {ticker}")
             detector = PatternDetector()
-            result = await detector.analyze_ticker(
-                ticker=ticker,
-                price_data=price_data,
-                spy_data=spy_data
-            )
+            result = await detector.analyze_ticker(ticker=ticker, price_data=price_data, spy_data=spy_data)
 
         if not result:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Pattern analysis failed for {ticker}"
-            )
+            raise HTTPException(status_code=500, detail=f"Pattern analysis failed for {ticker}")
 
-        # Generate chart with indicators and drawings
+        # Generate chart
         try:
             charting = get_charting_service()
             chart_url = await charting.generate_chart(
@@ -430,114 +217,129 @@ async def detect_pattern(request: PatternRequest):
             )
             if chart_url:
                 result.chart_url = chart_url
-                logger.info(f"📊 Chart generated for {ticker}: {chart_url[:60]}...")
-            else:
-                logger.warning(f"⚠️ Chart service returned None for {ticker}")
-                result.chart_url = None
-        except Exception as e:
-            logger.warning(f"⚠️ Chart generation failed for {ticker}: {e}")
-            result.chart_url = None
+        except Exception:
+            pass
 
-        # Cache the result (1 hour TTL)
-        await cache.set_pattern(ticker, request.interval, result.to_dict())
+        # Convert to dict (sanitizes numpy types)
+        result_dict = result.to_dict()
 
-        processing_time = time.time() - start_time
-
-        logger.info(f"✅ Pattern detected for {ticker}: {result.pattern} ({result.score}/10) in {processing_time:.2f}s")
+        # Cache result
+        await cache.set_pattern(ticker, request.interval, result_dict)
 
         return PatternResponse(
             success=True,
-            data=result,
+            data=result_dict,
             error=None,
             cached=False,
             api_used=api_used,
-            processing_time=round(processing_time, 2)
+            processing_time=round(time.time() - start_time, 2)
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"💥 Pattern detection failed for {request.ticker}: {e}")
-
         return PatternResponse(
             success=False,
             data=None,
             error=str(e),
             cached=False,
             api_used="error",
-            processing_time=round(processing_time, 2)
+            processing_time=round(time.time() - start_time, 2)
         )
 
 
-@router.get("/health")
-async def patterns_health():
-    """Health check for patterns service"""
-    cache_status = "unknown"
-    market_data_status = "unknown"
-
-    try:
-        cache = get_cache_service()
-        cache_health = await cache.health_check()
-        cache_status = cache_health["status"]
-    except Exception as e:
-        logger.warning(f"Cache health check failed: {e}")
-        cache_status = "disconnected"
-
-    try:
-        # Test market data service with a quick request
-        test_data = await market_data_service.get_time_series("AAPL", "1day", 1)
-        market_data_status = "connected" if test_data else "error"
-    except Exception as e:
-        logger.warning(f"Market data health check failed: {e}")
-        market_data_status = "disconnected"
-
+def _catalog_description(name: str) -> str:
+    """Helper to return descriptions for patterns."""
     return {
-        "status": "healthy",
-        "market_data_service": market_data_status,
-        "redis_cache": cache_status,
-        "pattern_detector": "ready"
+        "Cup & Handle": "Bullish continuation pattern. A U-shaped cup followed by a short handle.",
+        "VCP": "Volatility Contraction Pattern. A series of tighter and tighter price contractions.",
+        "Double Bottom": "Reversal pattern with two distinct lows at a similar price level.",
+        "Ascending Triangle": "Bullish continuation. Flat top resistance with rising support trendline.",
+        "Descending Triangle": "Bearish continuation. Flat bottom support with falling resistance trendline.",
+        "Bull Flag": "Bullish continuation. A short channel sloping against the trend after a sharp rise.",
+        "Bear Flag": "Bearish continuation. A short channel sloping against the trend after a sharp drop.",
+        "Head & Shoulders": "Bearish reversal. Three peaks with the middle one being the highest.",
+        "Inverse Head & Shoulders": "Bullish reversal. Three troughs with the middle one being the lowest.",
+    }.get(name, "Algorithmic pattern detection.")
+
+
+@router.get("/catalog")
+async def get_pattern_catalog() -> Dict[str, Any]:
+    """
+    List all available patterns with metadata grouped by category.
+    Used for populating the frontend scanner UI.
+    """
+
+    # Define Categories
+    categories = {
+        "Classical": ["Head & Shoulders", "Head & Shoulders Inverse", "Double Bottom", "Double Top", "Triple Bottom", "Triple Top", "Triangle Ascending", "Triangle Descending", "Triangle Symmetrical"],
+        "Trend Continuation": ["Bull Flag", "Bear Flag", "Pennant", "Channel Up", "Channel Down"],
+        "Trend Reversal": ["Wedge Rising", "Wedge Falling", "Rounding Bottom", "Rounding Top"],
+        "SEPA / Minervini": ["VCP (Volatility Contraction)", "MMU VCP", "Volatility Dry-Up", "Cheat Entry"],
+        "Specialist": ["Cup & Handle", "Broadening Top", "Broadening Bottom", "Adam & Eve Double Bottom"],
+        "Candlestick": ["Hammer", "Shooting Star", "Doji", "Engulfing Bullish", "Engulfing Bearish"]
     }
 
+    # Helper to find type
+    def get_type(name):
+        lower = name.lower()
+        if "bull" in lower or "ascending" in lower or "cup" in lower or "bottom" in lower:
+            return "Bullish"
+        if "bear" in lower or "descending" in lower or "top" in lower:
+            return "Bearish"
+        return "Neutral"
 
-@router.get("/cache/stats")
-async def cache_stats():
-    """Get cache statistics"""
-    try:
-        cache = get_cache_service()
-        stats = await cache.get_cache_stats()
-        return {
-            "status": "success",
-            "cache_stats": stats
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+    catalog = {}
 
+    # 1. Populate from Enum
+    for pattern_type in PatternType:
+        name = pattern_type.value
+        found_cat = "Other"
+        for cat, patterns in categories.items():
+            if name in patterns or any(p in name for p in patterns):
+                found_cat = cat
+                break
 
-def _parse_as_of(value: Any) -> datetime:
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except Exception:
-            pass
-    return datetime.utcnow()
+        if found_cat not in catalog:
+            catalog[found_cat] = []
 
+        catalog[found_cat].append({
+            "name": name,
+            "type": get_type(name),
+            "description": _catalog_description(name),
+            "enabled": True
+        })
 
-def _catalog_description(name: str) -> str:
+    # 2. Add extra patterns not in Enum yet (for future proofing UI)
+    extras = [
+        ("SEPA / Minervini", "MMU VCP", "Bullish"),
+        ("Candlestick", "Hammer", "Bullish"),
+        ("Candlestick", "Shooting Star", "Bearish"),
+        ("Trend Continuation", "Bull Flag", "Bullish"),
+    ]
+
+    for cat, name, ptype in extras:
+        if cat not in catalog:
+            catalog[cat] = []
+        # Check if already exists
+        if not any(p['name'] == name for p in catalog[cat]):
+             catalog[cat].append({
+                "name": name,
+                "type": ptype,
+                "description": _catalog_description(name),
+                "enabled": True
+            })
+
+    # Convert to list for easier frontend consumption
+    result_list = []
+    for cat, patterns in catalog.items():
+        result_list.append({
+            "category": cat,
+            "patterns": patterns
+        })
+
     return {
-        "Cup & Handle": "Rounded base with shallow handle forming below highs.",
-        "Double Bottom": "Two swing lows forming a W near support.",
-        "Triangle Ascending": "Rising higher lows against horizontal resistance.",
-        "Triangle Descending": "Lower highs pressing against support.",
-        "Triangle Symmetrical": "Converging highs/lows signaling volatility compression.",
-        "VCP (Volatility Contraction)": "Mark Minervini style contraction leading to breakout.",
-    }.get(name, "Pattern generated by the Legend AI detection engine.")
-
+        "count": sum(len(c["patterns"]) for c in result_list),
+        "categories": result_list
+    }
 
 @router.post("/scan", response_model=ScanTickersResponse)
 async def scan_tickers(
@@ -619,22 +421,3 @@ async def export_patterns(
         return ExportResponse(success=True, location=text, copied=True)
 
     raise HTTPException(status_code=400, detail=f"Unsupported export format: {request.format}")
-
-
-@router.get("/catalog")
-async def get_pattern_catalog() -> Dict[str, Any]:
-    """List all available patterns with short descriptions."""
-    catalog = []
-    for pattern_type in PatternType:
-        name = pattern_type.value
-        catalog.append({"name": name, "description": _catalog_description(name)})
-
-    # Frequently requested swing pattern
-    catalog.append(
-        {
-            "name": "MMU VCP",
-            "description": "Minervini style volatility contraction pivot (most requested swing setup).",
-        }
-    )
-
-    return {"count": len(catalog), "patterns": catalog}

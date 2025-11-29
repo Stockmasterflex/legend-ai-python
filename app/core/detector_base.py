@@ -2,7 +2,7 @@
 Base classes and utilities for pattern detectors.
 Provides the common Detector interface and shared data structures.
 """
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Protocol, Dict, Any, List, Optional
 from datetime import datetime
 from enum import Enum
@@ -60,7 +60,6 @@ class PatternResult:
     timeframe: str
     asof: str  # ISO8601 timestamp
     pattern_type: PatternType
-    strong: bool  # Is this a "Strong" pattern (confidence ≥ 0.75)?
     confidence: float  # [0, 1]
 
     # Pattern geometry
@@ -71,31 +70,61 @@ class PatternResult:
     lines: Dict[str, Any]  # e.g., {"upper": LineSegment, "lower": LineSegment}
     touches: Dict[str, int]  # e.g., {"upper": 4, "lower": 3}
 
-    # Breakout info (if applicable)
-    breakout: Optional[Dict[str, Any]] = None  # {"dir": "up/down", "t": "...", "price": X, "volume_z": Y}
+    # Optional metadata (Added to fix crashes and support API)
+    entry: Optional[float] = None
+    stop: Optional[float] = None
+    target: Optional[float] = None
+    risk_reward: Optional[float] = None
+    strong: bool = False
+    description: Optional[str] = None
+    breakout: Optional[Dict[str, Any]] = None
+    evidence: Optional[Dict[str, Any]] = None
 
-    # Evidence for transparency
-    evidence: Optional[Dict[str, Any]] = None  # {"pivots": [...], "metrics": {...}}
+    # Extended metadata (for advanced scanner)
+    criteria_met: Optional[List[str]] = None
+    analysis: Optional[str] = None
+    chart_url: Optional[str] = None
+    current_price: Optional[float] = None
+    support_start: Optional[float] = None
+    support_end: Optional[float] = None
+    score: Optional[float] = None
+    timestamp: Optional[datetime] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary, handling nested dataclasses"""
+        """Convert to dictionary, handling nested dataclasses and numpy types"""
+        # First conversion to dict
         result = asdict(self)
-        result["pattern_type"] = self.pattern_type.value
-        # Recursively handle nested PricePoint and LineSegment
-        result["lines"] = self._serialize_lines(self.lines)
-        if self.breakout:
-            result["breakout"] = self._serialize_lines(self.breakout)
-        return result
+
+        # Handle Enum serialization
+        result["pattern_type"] = self.pattern_type.value if hasattr(self.pattern_type, "value") else str(self.pattern_type)
+
+        # Recursive serialization and cleaning
+        clean_result = self._serialize_lines(result)
+
+        return clean_result
 
     @staticmethod
     def _serialize_lines(obj: Any) -> Any:
-        """Recursively serialize nested dataclass objects"""
+        """Recursively serialize nested objects and handle numpy types"""
+        # Handle numpy types
+        if isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        if isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        if isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+
+        # Handle complex structures
         if isinstance(obj, dict):
             return {k: PatternResult._serialize_lines(v) for k, v in obj.items()}
         elif isinstance(obj, (list, tuple)):
             return [PatternResult._serialize_lines(item) for item in obj]
         elif isinstance(obj, (PricePoint, LineSegment)):
             return asdict(obj)
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
         else:
             return obj
 
@@ -265,10 +294,13 @@ class StatsHelper:
     @staticmethod
     def kendall_tau(series: np.ndarray) -> float:
         """Kendall's τ correlation with time index (detects trend)"""
-        from scipy.stats import kendalltau
-        x = np.arange(len(series))
-        tau, _ = kendalltau(x, series)
-        return tau
+        try:
+            from scipy.stats import kendalltau
+            x = np.arange(len(series))
+            tau, _ = kendalltau(x, series)
+            return tau
+        except ImportError:
+            return 0.0
 
     @staticmethod
     def zigzag_pivots(high: np.ndarray, low: np.ndarray, close: np.ndarray,

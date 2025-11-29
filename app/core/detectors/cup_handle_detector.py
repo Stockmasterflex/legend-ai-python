@@ -12,10 +12,14 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
+import logging
+
 from app.core.detector_base import (
     Detector, PatternResult, PatternType, PricePoint, LineSegment, StatsHelper, GeometryHelper
 )
 from app.core.detector_config import CupHandleConfig, BreakoutConfig
+
+logger = logging.getLogger(__name__)
 
 
 class CupHandleDetector(Detector):
@@ -195,7 +199,7 @@ class CupHandleDetector(Detector):
 
         # Build result
         result = PatternResult(
-            symbol=dates.name if hasattr(dates, 'name') else 'UNKNOWN',
+            symbol=symbol,
             timeframe='1D',
             asof=datetime.now().isoformat(),
             pattern_type=PatternType.CUP_HANDLE,
@@ -259,7 +263,7 @@ class CupHandleDetector(Detector):
         elif handle_depth < handle_ideal_range[0]:
             handle_score = handle_depth / handle_ideal_range[0]
         else:
-            handle_score = max(0, 1.0 - (handle_depth - handle_ideal_range[1]) / 0.10)
+            handle_score = max(0, 1.0 - (handle_depth - handle_ideal_range[1]) / (0.10))
         score += 0.20 * handle_score
 
         # Volume weight: 20%
