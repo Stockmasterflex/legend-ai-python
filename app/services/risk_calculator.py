@@ -2,10 +2,10 @@
 Risk Calculator and Position Sizing Service
 Implements professional risk management for swing traders
 """
+
 import logging
-from typing import Optional
 from dataclasses import dataclass
-import math
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PositionSize:
     """Position sizing result"""
+
     account_size: float
     risk_per_trade: float  # 2% of account
     entry_price: float
@@ -58,7 +59,7 @@ class RiskCalculator:
         stop_loss_price: float,
         target_price: float,
         risk_percentage: float = DEFAULT_RISK_PERCENT,
-        win_rate: Optional[float] = None
+        win_rate: Optional[float] = None,
     ) -> PositionSize:
         """
         Calculate optimal position size using the 2% rule
@@ -87,7 +88,10 @@ class RiskCalculator:
             raise ValueError("Stop loss price must be positive")
         if target_price <= 0:
             raise ValueError("Target price must be positive")
-        if risk_percentage < self.MIN_RISK_PERCENT or risk_percentage > self.MAX_RISK_PERCENT:
+        if (
+            risk_percentage < self.MIN_RISK_PERCENT
+            or risk_percentage > self.MAX_RISK_PERCENT
+        ):
             risk_percentage = self.DEFAULT_RISK_PERCENT
 
         # Validate entry/stop/target logic
@@ -118,7 +122,9 @@ class RiskCalculator:
 
         # Validate position size
         if position_size <= 0:
-            logger.warning(f"Position size calculated as {position_size}, using minimum of 1")
+            logger.warning(
+                f"Position size calculated as {position_size}, using minimum of 1"
+            )
             position_size = 1
 
         position_size_dollars = position_size * entry_price
@@ -133,8 +139,9 @@ class RiskCalculator:
         expected_value = 0.0
         if win_rate is not None and win_rate > 0:
             # Expected Value = (Win Rate × Reward) - (Loss Rate × Risk)
-            expected_value = (win_rate * reward_distance * position_size) - \
-                           ((1 - win_rate) * risk_distance * position_size)
+            expected_value = (win_rate * reward_distance * position_size) - (
+                (1 - win_rate) * risk_distance * position_size
+            )
 
         # Calculate Kelly Criterion sizing (optional)
         kelly_size = None
@@ -153,7 +160,9 @@ class RiskCalculator:
         if account_size < 10000:
             notes.append("⚠️ Small account: Consider micro positions or paper trading")
         if position_size > account_size * 0.1:
-            notes.append("⚠️ Large position relative to account - consider reducing size")
+            notes.append(
+                "⚠️ Large position relative to account - consider reducing size"
+            )
         if risk_reward_ratio < 1.0:
             notes.append("⚠️ Risk > Reward - unfavorable R:R ratio")
         if risk_reward_ratio >= 2.0:
@@ -179,7 +188,7 @@ class RiskCalculator:
             kelly_position_percentage=kelly_percentage,
             conservative_position_size=conservative_size,
             aggressive_position_size=aggressive_size,
-            notes=notes
+            notes=notes,
         )
 
     def _kelly_criterion(
@@ -188,7 +197,7 @@ class RiskCalculator:
         win_rate: float,
         risk_reward_ratio: float,
         risk_distance: float,
-        entry_price: float
+        entry_price: float,
     ) -> tuple:
         """
         Calculate Kelly Criterion position sizing
@@ -220,7 +229,9 @@ class RiskCalculator:
                 return None, None
 
             # Kelly percentage to risk
-            kelly_percent = (win_rate - (loss_rate / risk_reward_ratio)) / risk_reward_ratio
+            kelly_percent = (
+                win_rate - (loss_rate / risk_reward_ratio)
+            ) / risk_reward_ratio
 
             # Ensure positive
             if kelly_percent <= 0:
@@ -243,10 +254,7 @@ class RiskCalculator:
             return None, None
 
     def calculate_break_even_points(
-        self,
-        entry_price: float,
-        position_size: int,
-        commission_per_share: float = 0.01
+        self, entry_price: float, position_size: int, commission_per_share: float = 0.01
     ) -> dict:
         """
         Calculate break-even points accounting for commissions
@@ -267,14 +275,13 @@ class RiskCalculator:
             "entry_price": entry_price,
             "breakeven_price": breakeven_price,
             "commission_impact": breakeven_price - entry_price,
-            "commission_percentage": ((breakeven_price - entry_price) / entry_price) * 100,
-            "notes": f"Need {((breakeven_price - entry_price) / entry_price) * 100:.2f}% profit just to break even after commissions"
+            "commission_percentage": ((breakeven_price - entry_price) / entry_price)
+            * 100,
+            "notes": f"Need {((breakeven_price - entry_price) / entry_price) * 100:.2f}% profit just to break even after commissions",
         }
 
     def calculate_account_recovery(
-        self,
-        starting_account: float,
-        current_account: float
+        self, starting_account: float, current_account: float
     ) -> dict:
         """
         Calculate how much profit needed to recover from losses
@@ -293,7 +300,7 @@ class RiskCalculator:
             return {
                 "status": "profitable",
                 "profit_amount": -loss_amount,
-                "profit_percentage": -loss_percentage
+                "profit_percentage": -loss_percentage,
             }
 
         # Recovery percentage needed
@@ -305,7 +312,7 @@ class RiskCalculator:
             "loss_percentage": loss_percentage,
             "recovery_needed_dollars": loss_amount,
             "recovery_needed_percentage": recovery_needed,
-            "warning": f"Need +{recovery_needed:.1f}% gain to recover from {loss_percentage:.1f}% loss"
+            "warning": f"Need +{recovery_needed:.1f}% gain to recover from {loss_percentage:.1f}% loss",
         }
 
 

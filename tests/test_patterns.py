@@ -13,7 +13,9 @@ def test_minervini_pass_and_fail():
     closes_fail = [300 - i * 0.5 for i in range(230)]
     res_fail = minervini_trend_template(closes_fail)
     assert res_fail.get("pass") is False
-    assert any("SMA200" in r or "not rising" in r for r in res_fail.get("failed_rules", []))
+    assert any(
+        "SMA200" in r or "not rising" in r for r in res_fail.get("failed_rules", [])
+    )
 
 
 def test_weinstein_stage_2_and_4():
@@ -27,4 +29,3 @@ def test_weinstein_stage_2_and_4():
     weekly_falling = [200 - i * 1.5 for i in range(80)]
     w4 = weinstein_stage(weekly_falling)
     assert w4.get("stage") == 4
-

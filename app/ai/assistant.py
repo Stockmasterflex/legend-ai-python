@@ -2,24 +2,26 @@
 AI Financial Assistant - Conversational AI for Trading
 Beats Intellectia's AI agent with GPT-4 + RAG architecture
 """
-import os
-import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime
+
 import json
+import logging
+import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 # Check if openai is available
 try:
     from openai import AsyncOpenAI
+
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
     AsyncOpenAI = None
 
-from app.services.market_data import MarketDataService
 from app.detectors.advanced.patterns import AdvancedPatternDetector
-from app.technicals.trendlines import AutoTrendlineDetector
+from app.services.market_data import MarketDataService
 from app.technicals.fibonacci import FibonacciCalculator
+from app.technicals.trendlines import AutoTrendlineDetector
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +64,7 @@ class AIFinancialAssistant:
     Cost-optimized: Uses OpenRouter by default (3-10x cheaper than direct OpenAI!)
     """
 
-    def __init__(
-        self,
-        model: Optional[str] = None,
-        temperature: float = 0.7
-    ):
+    def __init__(self, model: Optional[str] = None, temperature: float = 0.7):
         if not OPENAI_AVAILABLE:
             raise ImportError("openai package not installed. Run: pip install openai")
 
@@ -77,8 +75,7 @@ class AIFinancialAssistant:
         if openrouter_key:
             # Use OpenRouter (MUCH cheaper!)
             self.client = AsyncOpenAI(
-                api_key=openrouter_key,
-                base_url="https://openrouter.ai/api/v1"
+                api_key=openrouter_key, base_url="https://openrouter.ai/api/v1"
             )
             # Default to Claude 3.5 Sonnet (best value: ~$3/1M tokens)
             self.model = model or os.getenv("AI_MODEL", "anthropic/claude-3.5-sonnet")
@@ -115,7 +112,7 @@ class AIFinancialAssistant:
         user_message: str,
         symbol: Optional[str] = None,
         include_market_data: bool = True,
-        conversation_id: Optional[str] = None
+        conversation_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Chat with the AI assistant
@@ -142,7 +139,7 @@ class AIFinancialAssistant:
                     "role": "system",
                     "content": SYSTEM_PROMPT.format(
                         current_date=datetime.now().strftime("%Y-%m-%d")
-                    )
+                    ),
                 }
             ]
 
@@ -152,36 +149,28 @@ class AIFinancialAssistant:
 
             # Add context from market data
             if context:
-                messages.append({
-                    "role": "system",
-                    "content": f"CURRENT MARKET DATA:\n{context}"
-                })
+                messages.append(
+                    {"role": "system", "content": f"CURRENT MARKET DATA:\n{context}"}
+                )
 
             # Add user message
-            messages.append({
-                "role": "user",
-                "content": user_message
-            })
+            messages.append({"role": "user", "content": user_message})
 
             # Call GPT-4
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature,
-                max_tokens=800
+                max_tokens=800,
             )
 
             assistant_message = response.choices[0].message.content
 
             # Update conversation history
-            self.conversation_history.append({
-                "role": "user",
-                "content": user_message
-            })
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": assistant_message
-            })
+            self.conversation_history.append({"role": "user", "content": user_message})
+            self.conversation_history.append(
+                {"role": "assistant", "content": assistant_message}
+            )
 
             # Keep only last 20 messages to avoid token limits
             if len(self.conversation_history) > 20:
@@ -193,7 +182,7 @@ class AIFinancialAssistant:
                 "timestamp": datetime.now().isoformat(),
                 "model": self.model,
                 "context_included": bool(context),
-                "conversation_id": conversation_id
+                "conversation_id": conversation_id,
             }
 
         except Exception as e:
@@ -201,7 +190,7 @@ class AIFinancialAssistant:
             return {
                 "response": "I apologize, but I encountered an error processing your request. Please try again.",
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
     async def analyze_stock(self, symbol: str) -> Dict[str, Any]:
@@ -238,19 +227,16 @@ Be specific with price levels and percentages."""
                     "role": "system",
                     "content": SYSTEM_PROMPT.format(
                         current_date=datetime.now().strftime("%Y-%m-%d")
-                    )
+                    ),
                 },
-                {
-                    "role": "user",
-                    "content": analysis_prompt
-                }
+                {"role": "user", "content": analysis_prompt},
             ]
 
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=0.5,  # Lower temperature for analysis
-                max_tokens=1200
+                max_tokens=1200,
             )
 
             analysis = response.choices[0].message.content
@@ -259,7 +245,7 @@ Be specific with price levels and percentages."""
                 "symbol": symbol,
                 "analysis": analysis,
                 "timestamp": datetime.now().isoformat(),
-                "raw_data": json.loads(context) if context.startswith("{") else None
+                "raw_data": json.loads(context) if context.startswith("{") else None,
             }
 
         except Exception as e:
@@ -267,7 +253,7 @@ Be specific with price levels and percentages."""
             return {
                 "symbol": symbol,
                 "error": str(e),
-                "analysis": "Unable to complete analysis at this time."
+                "analysis": "Unable to complete analysis at this time.",
             }
 
     async def compare_stocks(self, symbols: List[str]) -> Dict[str, Any]:
@@ -293,10 +279,9 @@ Be specific with price levels and percentages."""
                 contexts[symbol] = await self._build_market_context(symbol)
 
             # Build comparison prompt
-            context_text = "\n\n".join([
-                f"=== {sym} ===\n{ctx}"
-                for sym, ctx in contexts.items()
-            ])
+            context_text = "\n\n".join(
+                [f"=== {sym} ===\n{ctx}" for sym, ctx in contexts.items()]
+            )
 
             comparison_prompt = f"""Compare these stocks and recommend which one(s) offer the best risk/reward for:
 1. Day trading
@@ -318,19 +303,13 @@ Conclude with a clear ranking and reasoning."""
                     "role": "system",
                     "content": SYSTEM_PROMPT.format(
                         current_date=datetime.now().strftime("%Y-%m-%d")
-                    )
+                    ),
                 },
-                {
-                    "role": "user",
-                    "content": comparison_prompt
-                }
+                {"role": "user", "content": comparison_prompt},
             ]
 
             response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.6,
-                max_tokens=1500
+                model=self.model, messages=messages, temperature=0.6, max_tokens=1500
             )
 
             comparison = response.choices[0].message.content
@@ -338,7 +317,7 @@ Conclude with a clear ranking and reasoning."""
             return {
                 "symbols": symbols,
                 "comparison": comparison,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
@@ -346,7 +325,7 @@ Conclude with a clear ranking and reasoning."""
             return {
                 "symbols": symbols,
                 "error": str(e),
-                "comparison": "Unable to complete comparison at this time."
+                "comparison": "Unable to complete comparison at this time.",
             }
 
     async def explain_pattern(self, pattern_name: str) -> Dict[str, Any]:
@@ -376,19 +355,13 @@ Make it educational but practical."""
                     "role": "system",
                     "content": SYSTEM_PROMPT.format(
                         current_date=datetime.now().strftime("%Y-%m-%d")
-                    )
+                    ),
                 },
-                {
-                    "role": "user",
-                    "content": explain_prompt
-                }
+                {"role": "user", "content": explain_prompt},
             ]
 
             response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1000
+                model=self.model, messages=messages, temperature=0.7, max_tokens=1000
             )
 
             explanation = response.choices[0].message.content
@@ -396,7 +369,7 @@ Make it educational but practical."""
             return {
                 "pattern": pattern_name,
                 "explanation": explanation,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
@@ -404,7 +377,7 @@ Make it educational but practical."""
             return {
                 "pattern": pattern_name,
                 "error": str(e),
-                "explanation": "Unable to provide explanation at this time."
+                "explanation": "Unable to provide explanation at this time.",
             }
 
     async def _build_market_context(self, symbol: str) -> str:
@@ -421,9 +394,7 @@ Make it educational but practical."""
         try:
             # Fetch market data
             df = await self.market_data.get_price_data(
-                symbol=symbol,
-                period="3mo",
-                interval="1d"
+                symbol=symbol, period="3mo", interval="1d"
             )
 
             if df is None or df.empty:
@@ -431,18 +402,18 @@ Make it educational but practical."""
 
             # Current price info
             latest = df.iloc[-1]
-            current_price = latest['close']
-            prev_close = df.iloc[-2]['close'] if len(df) > 1 else current_price
-            change = ((current_price - prev_close) / prev_close * 100)
+            current_price = latest["close"]
+            prev_close = df.iloc[-2]["close"] if len(df) > 1 else current_price
+            change = (current_price - prev_close) / prev_close * 100
 
             # Calculate indicators
-            sma_20 = df['close'].tail(20).mean()
-            sma_50 = df['close'].tail(50).mean() if len(df) >= 50 else None
-            sma_200 = df['close'].tail(200).mean() if len(df) >= 200 else None
+            sma_20 = df["close"].tail(20).mean()
+            sma_50 = df["close"].tail(50).mean() if len(df) >= 50 else None
+            sma_200 = df["close"].tail(200).mean() if len(df) >= 200 else None
 
             rsi = None
             if len(df) >= 14:
-                delta = df['close'].diff()
+                delta = df["close"].diff()
                 gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
                 loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
                 rs = gain / loss
@@ -453,9 +424,11 @@ Make it educational but practical."""
             top_patterns = patterns[:5]  # Top 5 patterns
 
             # Detect trendlines
-            trendlines = self.trendline_detector.detect_all_trendlines(df, lookback_period=100)
-            top_support = trendlines['support'][:2]
-            top_resistance = trendlines['resistance'][:2]
+            trendlines = self.trendline_detector.detect_all_trendlines(
+                df, lookback_period=100
+            )
+            top_support = trendlines["support"][:2]
+            top_resistance = trendlines["resistance"][:2]
 
             # Calculate Fibonacci
             fib_levels = self.fib_calculator.calculate_auto_fibonacci(df, lookback=100)
@@ -519,16 +492,16 @@ Make it educational but practical."""
                     context += f"\n- Nearest Resistance: ${nearest_resistance['price']:.2f} ({nearest_resistance['ratio']:.1%} Fib)"
 
             # Recent volatility
-            returns = df['close'].pct_change().tail(20)
+            returns = df["close"].pct_change().tail(20)
             volatility = returns.std() * np.sqrt(252) * 100  # Annualized
             context += f"\n\n**Volatility:** {volatility:.1f}% (annualized, 20-day)"
 
             # Volume analysis
-            avg_volume = df['volume'].tail(20).mean()
-            latest_volume = latest['volume']
+            avg_volume = df["volume"].tail(20).mean()
+            latest_volume = latest["volume"]
             volume_ratio = latest_volume / avg_volume
 
-            context += f"\n\n**Volume:**"
+            context += "\n\n**Volume:**"
             context += f"\n- Latest: {latest_volume:,.0f}"
             context += f"\n- 20-day avg: {avg_volume:,.0f}"
             context += f"\n- Ratio: {volume_ratio:.2f}x {'(High)' if volume_ratio > 1.5 else '(Normal)' if volume_ratio > 0.7 else '(Low)'}"

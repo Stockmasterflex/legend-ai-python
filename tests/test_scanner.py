@@ -7,7 +7,9 @@ from app.services import market_data as market_data_module
 
 
 class _DummyDetector:
-    def detect_all_patterns(self, ohlcv_data, ticker="UNKNOWN", include_candlesticks=True):
+    def detect_all_patterns(
+        self, ohlcv_data, ticker="UNKNOWN", include_candlesticks=True
+    ):
         high_confidence = ticker == "AAPL"
         base_conf = 0.82 if high_confidence else 0.35
         return [
@@ -48,7 +50,9 @@ async def _fake_time_series(*args, **kwargs):
 
 @pytest.mark.asyncio
 async def test_scan_ticker(monkeypatch):
-    monkeypatch.setattr(market_data_module.market_data_service, "get_time_series", _fake_time_series)
+    monkeypatch.setattr(
+        market_data_module.market_data_service, "get_time_series", _fake_time_series
+    )
     scanner = UniverseScanner(_DummyDetector(), PatternFilter(), PatternScorer())
 
     patterns = await scanner.scan_ticker("AAPL", "1day")
@@ -58,7 +62,9 @@ async def test_scan_ticker(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_scan_universe_applies_scoring_and_filter(monkeypatch):
-    monkeypatch.setattr(market_data_module.market_data_service, "get_time_series", _fake_time_series)
+    monkeypatch.setattr(
+        market_data_module.market_data_service, "get_time_series", _fake_time_series
+    )
     scanner = UniverseScanner(_DummyDetector(), PatternFilter(), PatternScorer())
 
     config = ScanConfig(

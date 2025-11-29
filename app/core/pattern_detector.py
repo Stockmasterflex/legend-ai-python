@@ -1,19 +1,19 @@
+import statistics
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-import statistics
-import math
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class PatternResult:
     """Result of pattern detection analysis"""
+
     ticker: str
     pattern: str  # "VCP", "Cup & Handle", "Flat Base", "Breakout", "NONE"
     score: float  # 0-10 scale
     entry: float  # Entry price
-    stop: float   # Stop loss price
-    target: float # Target price
+    stop: float  # Stop loss price
+    target: float  # Target price
     risk_reward: float  # Risk/reward ratio
     criteria_met: List[str]  # List of satisfied criteria
     analysis: str  # Detailed analysis text
@@ -65,7 +65,7 @@ class PatternDetector:
         self,
         ticker: str,
         price_data: Dict[str, Any],
-        spy_data: Optional[Dict[str, Any]] = None
+        spy_data: Optional[Dict[str, Any]] = None,
     ) -> Optional[PatternResult]:
         """
         Analyze a ticker for pattern setups
@@ -104,21 +104,32 @@ class PatternDetector:
             # Detect patterns (only if trend template passes)
             patterns_found = []
             if trend_pass["pass"]:
-                patterns_found = self._detect_patterns(closes, highs, lows, volumes, metrics)
+                patterns_found = self._detect_patterns(
+                    closes, highs, lows, volumes, metrics
+                )
 
             # Select best pattern
             if patterns_found:
                 best_pattern = max(patterns_found, key=lambda x: x["score"])
-                return self._create_pattern_result(ticker, best_pattern, closes, highs, lows, volumes, metrics, rs_data)
+                return self._create_pattern_result(
+                    ticker, best_pattern, closes, highs, lows, volumes, metrics, rs_data
+                )
             else:
-                return self._create_no_pattern_result(ticker, closes, highs, lows, volumes, metrics, rs_data)
+                return self._create_no_pattern_result(
+                    ticker, closes, highs, lows, volumes, metrics, rs_data
+                )
 
         except Exception as e:
             logger.exception(f"Error analyzing {ticker}: {e}")
             return None
 
-    def _compute_technical_metrics(self, closes: List[float], highs: List[float],
-                                 lows: List[float], volumes: List[float]) -> Dict[str, Any]:
+    def _compute_technical_metrics(
+        self,
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+        volumes: List[float],
+    ) -> Dict[str, Any]:
         """Compute technical indicators and metrics"""
         n = len(closes)
         current_price = closes[-1] if closes else 0
@@ -165,7 +176,7 @@ class PatternDetector:
             "support_start": support_start,
             "support_end": support_end,
             "current_price": current_price,
-            "rs": 0  # Will be set if SPY data available
+            "rs": 0,  # Will be set if SPY data available
         }
 
     def _check_trend_template(self, closes: List[float]) -> Dict[str, Any]:
@@ -175,7 +186,7 @@ class PatternDetector:
             return {"pass": False, "criteria": []}
 
         # Calculate moving averages
-        sma_50 = self._sma(closes, 50)
+        self._sma(closes, 50)
         sma_150 = self._sma(closes, 150)
         sma_200 = self._sma(closes, 200)
         ema_50 = self._ema(closes, 50)
@@ -222,12 +233,17 @@ class PatternDetector:
 
         return {
             "pass": len(criteria) >= 7,  # Need 7 of 8 criteria (RS is separate)
-            "criteria": criteria
+            "criteria": criteria,
         }
 
-    def _detect_patterns(self, closes: List[float], highs: List[float],
-                        lows: List[float], volumes: List[float],
-                        metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _detect_patterns(
+        self,
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+        volumes: List[float],
+        metrics: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
         """Detect various chart patterns"""
         patterns = []
 
@@ -285,8 +301,9 @@ class PatternDetector:
 
         return patterns
 
-    def _detect_vcp(self, closes: List[float], volumes: List[float],
-                   metrics: Dict[str, Any]) -> Dict[str, Any]:
+    def _detect_vcp(
+        self, closes: List[float], volumes: List[float], metrics: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Detect Volatility Contraction Pattern"""
         n = len(closes)
         if n < 120:
@@ -301,7 +318,7 @@ class PatternDetector:
         pulls = contractions["pulls"]
         contracting = True
         for i in range(1, len(pulls)):
-            if pulls[i] > pulls[i-1] * 0.8:  # Not contracting enough
+            if pulls[i] > pulls[i - 1] * 0.8:  # Not contracting enough
                 contracting = False
                 break
 
@@ -330,11 +347,16 @@ class PatternDetector:
             "info": " · ".join(info_bits),
             "name": "VCP",
             "contractions": contraction_count,
-            "volume_dry_up": volume_dry_up
+            "volume_dry_up": volume_dry_up,
         }
 
-    def _detect_cup_handle(self, closes: List[float], highs: List[float],
-                          lows: List[float], volumes: List[float]) -> Dict[str, Any]:
+    def _detect_cup_handle(
+        self,
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+        volumes: List[float],
+    ) -> Dict[str, Any]:
         """Detect Cup & Handle pattern - improved with stricter criteria"""
         n = len(closes)
         if n < 150:
@@ -342,8 +364,6 @@ class PatternDetector:
 
         # Analyze last 200 days for cup formation
         window = closes[-200:]
-        window_highs = highs[-200:]
-        window_lows = lows[-200:]
 
         # Left rim (first 1/4 of window)
         left_quarter = window[:50]
@@ -352,7 +372,7 @@ class PatternDetector:
         # Bottom (middle section, 40-120 days back)
         middle_section = window[40:120]
         bottom = min(middle_section)
-        bottom_idx = 40 + middle_section.index(bottom)
+        40 + middle_section.index(bottom)
 
         # Right rim (last 1/4 of window, but should be before handle)
         right_section = window[100:160]
@@ -363,12 +383,20 @@ class PatternDetector:
 
         # Relaxed criteria for depth/length
         if cup_depth < 12 or cup_depth > 45:
-            return {"hit": False, "score": 0, "info": f"Cup depth {cup_depth:.1f}% out of range"}
+            return {
+                "hit": False,
+                "score": 0,
+                "info": f"Cup depth {cup_depth:.1f}% out of range",
+            }
 
         # 2. Left and right rims should be similar (within 12%)
         rim_difference = abs(left_rim - right_rim) / left_rim * 100
         if rim_difference > 12:
-            return {"hit": False, "score": 0, "info": f"Rims differ by {rim_difference:.1f}%"}
+            return {
+                "hit": False,
+                "score": 0,
+                "info": f"Rims differ by {rim_difference:.1f}%",
+            }
 
         # 3. Check handle formation (last 25 days)
         handle_window = closes[-25:]
@@ -378,7 +406,11 @@ class PatternDetector:
 
         # Handle must be shallow-ish
         if handle_depth < 2 or handle_depth > 15:
-            return {"hit": False, "score": 0, "info": f"Handle depth {handle_depth:.1f}% invalid"}
+            return {
+                "hit": False,
+                "score": 0,
+                "info": f"Handle depth {handle_depth:.1f}% invalid",
+            }
 
         # 4. Handle should be above the cup bottom
         if handle_low < bottom * 1.005:
@@ -390,7 +422,9 @@ class PatternDetector:
 
         # 6. Volume should increase on breakout (soft requirement)
         volume_increasing = bool(
-            volumes[-5:] and len(volumes) >= 20 and volumes[-1] > statistics.mean(volumes[-20:-5]) * 1.1
+            volumes[-5:]
+            and len(volumes) >= 20
+            and volumes[-1] > statistics.mean(volumes[-20:-5]) * 1.1
         )
 
         # Scoring weights
@@ -408,7 +442,7 @@ class PatternDetector:
             "hit": True,
             "score": round(score, 1),
             "info": f"Cup {cup_depth:.1f}%, handle {handle_depth:.1f}% · vol {'up' if volume_increasing else 'flat'}",
-            "name": "Cup & Handle"
+            "name": "Cup & Handle",
         }
 
     def _detect_flat_base(self, closes: List[float]) -> Dict[str, Any]:
@@ -450,11 +484,16 @@ class PatternDetector:
             "hit": score >= 6,
             "score": round(min(9.0, score), 1),
             "info": f"Depth {depth:.1f}%, tight={tight}",
-            "name": "Flat Base"
+            "name": "Flat Base",
         }
 
-    def _detect_breakout(self, closes: List[float], highs: List[float],
-                        volumes: List[float], metrics: Dict[str, Any]) -> Dict[str, Any]:
+    def _detect_breakout(
+        self,
+        closes: List[float],
+        highs: List[float],
+        volumes: List[float],
+        metrics: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Detect Breakout pattern"""
         n = len(closes)
         if n < 160:
@@ -501,10 +540,12 @@ class PatternDetector:
             "hit": score >= 6,
             "score": round(min(9.5, score), 1),
             "info": f"vol +{volume_spike:.0f}%, broke={broke}",
-            "name": "Breakout"
+            "name": "Breakout",
         }
 
-    def _detect_wedge(self, highs: List[float], lows: List[float], direction: str = "rising") -> Dict[str, Any]:
+    def _detect_wedge(
+        self, highs: List[float], lows: List[float], direction: str = "rising"
+    ) -> Dict[str, Any]:
         """Detect rising/falling wedge formations."""
         window = 60
         if len(highs) < window or len(lows) < window:
@@ -514,8 +555,12 @@ class PatternDetector:
         recent_lows = lows[-window:]
         slope_high = self._linear_slope(recent_highs)
         slope_low = self._linear_slope(recent_lows)
-        first_half_range = max(recent_highs[:window // 2]) - min(recent_lows[:window // 2])
-        second_half_range = max(recent_highs[window // 2:]) - min(recent_lows[window // 2:])
+        first_half_range = max(recent_highs[: window // 2]) - min(
+            recent_lows[: window // 2]
+        )
+        second_half_range = max(recent_highs[window // 2 :]) - min(
+            recent_lows[window // 2 :]
+        )
         if first_half_range <= 0 or second_half_range <= 0:
             return {"hit": False, "score": 0, "info": "Range insufficient"}
         range_ratio = second_half_range / first_half_range
@@ -533,7 +578,7 @@ class PatternDetector:
                 "hit": True,
                 "score": round(min(9.5, score), 1),
                 "info": info,
-                "name": "Rising Wedge"
+                "name": "Rising Wedge",
             }
         else:
             if not (slope_high < 0 and slope_low < 0):
@@ -548,10 +593,12 @@ class PatternDetector:
                 "hit": True,
                 "score": round(min(9.5, score), 1),
                 "info": info,
-                "name": "Falling Wedge"
+                "name": "Falling Wedge",
             }
 
-    def _detect_triangle(self, highs: List[float], lows: List[float], kind: str = "ascending") -> Dict[str, Any]:
+    def _detect_triangle(
+        self, highs: List[float], lows: List[float], kind: str = "ascending"
+    ) -> Dict[str, Any]:
         """Detect ascending or symmetrical triangle formations."""
         window = 70
         if len(highs) < window or len(lows) < window:
@@ -561,14 +608,20 @@ class PatternDetector:
         recent_lows = lows[-window:]
         slope_high = self._linear_slope(recent_highs)
         slope_low = self._linear_slope(recent_lows)
-        first_half_range = max(recent_highs[:window // 2]) - min(recent_lows[:window // 2])
-        second_half_range = max(recent_highs[window // 2:]) - min(recent_lows[window // 2:])
+        first_half_range = max(recent_highs[: window // 2]) - min(
+            recent_lows[: window // 2]
+        )
+        second_half_range = max(recent_highs[window // 2 :]) - min(
+            recent_lows[window // 2 :]
+        )
         if first_half_range <= 0 or second_half_range <= 0:
             return {"hit": False, "score": 0, "info": "Range insufficient"}
         range_ratio = second_half_range / first_half_range
 
         if kind == "ascending":
-            flat_resistance = abs(slope_high) < abs(slope_low) * 0.3 and abs(slope_high) < 0.05
+            flat_resistance = (
+                abs(slope_high) < abs(slope_low) * 0.3 and abs(slope_high) < 0.05
+            )
             rising_support = slope_low > 0.02
             if not (flat_resistance and rising_support):
                 return {"hit": False, "score": 0, "info": "No flat top + rising base"}
@@ -579,7 +632,7 @@ class PatternDetector:
                 "hit": True,
                 "score": round(min(9.2, score), 1),
                 "info": f"slopeL {slope_low:.3f}",
-                "name": "Ascending Triangle"
+                "name": "Ascending Triangle",
             }
 
         # symmetrical
@@ -594,10 +647,12 @@ class PatternDetector:
             "hit": True,
             "score": round(min(9.0, score), 1),
             "info": f"slopeH {slope_high:.3f}, slopeL {slope_low:.3f}",
-            "name": "Symmetrical Triangle"
+            "name": "Symmetrical Triangle",
         }
 
-    def _detect_head_shoulders(self, closes: List[float], inverted: bool = False) -> Dict[str, Any]:
+    def _detect_head_shoulders(
+        self, closes: List[float], inverted: bool = False
+    ) -> Dict[str, Any]:
         """Detect (inverse) head & shoulders formations."""
         window = 110
         if len(closes) < window:
@@ -625,7 +680,11 @@ class PatternDetector:
                     continue
                 name = "Head & Shoulders"
 
-            neckline = min(segment[p1[0]:p3[0] + 1]) if not inverted else max(segment[p1[0]:p3[0] + 1])
+            neckline = (
+                min(segment[p1[0] : p3[0] + 1])
+                if not inverted
+                else max(segment[p1[0] : p3[0] + 1])
+            )
             span = p3[0] - p1[0]
             score = 6.5 + min(2.0, span / 30)
             info = f"shoulders Δ {shoulder_diff:.2%}, neckline {neckline:.2f}"
@@ -633,16 +692,18 @@ class PatternDetector:
                 "hit": True,
                 "score": round(min(9.0, score), 1),
                 "info": info,
-                "name": name
+                "name": name,
             }
 
         return {"hit": False, "score": 0, "info": "Pattern not detected"}
 
-    def _find_local_extrema(self, values: List[float], mode: str = "max") -> List[tuple]:
+    def _find_local_extrema(
+        self, values: List[float], mode: str = "max"
+    ) -> List[tuple]:
         """Return local maxima or minima indices/value pairs."""
         extrema = []
         for idx in range(2, len(values) - 2):
-            window = values[idx - 2:idx + 3]
+            window = values[idx - 2 : idx + 3]
             center = window[2]
             if mode == "max":
                 if center == max(window):
@@ -668,7 +729,9 @@ class PatternDetector:
             return 0.0
         return numerator / denominator
 
-    def _detect_ma_pullback(self, closes: List[float], metrics: Dict[str, Any], length: int = 21) -> Dict[str, Any]:
+    def _detect_ma_pullback(
+        self, closes: List[float], metrics: Dict[str, Any], length: int = 21
+    ) -> Dict[str, Any]:
         """Detect constructive pullbacks to 21 EMA or 50 SMA."""
         if len(closes) < length + 10:
             return {"hit": False, "score": 0, "info": "Insufficient data"}
@@ -706,10 +769,12 @@ class PatternDetector:
             "hit": True,
             "score": round(score, 1),
             "info": f"Δ{distance_pct:.2f}% vs MA",
-            "name": label
+            "name": label,
         }
 
-    def _calculate_rs_rating(self, stock_closes: List[float], spy_closes: List[float]) -> Dict[str, float]:
+    def _calculate_rs_rating(
+        self, stock_closes: List[float], spy_closes: List[float]
+    ) -> Dict[str, float]:
         """Calculate Relative Strength vs SPY"""
         if len(spy_closes) < 61 or len(stock_closes) < 61:
             return {"rs": 0, "bonus": 0}
@@ -739,11 +804,19 @@ class PatternDetector:
 
         # Find local highs and lows
         for i in range(2, len(window) - 2):
-            if (window[i] > window[i-1] and window[i] > window[i-2] and
-                window[i] > window[i+1] and window[i] > window[i+2]):
+            if (
+                window[i] > window[i - 1]
+                and window[i] > window[i - 2]
+                and window[i] > window[i + 1]
+                and window[i] > window[i + 2]
+            ):
                 highs.append(i)
-            if (window[i] < window[i-1] and window[i] < window[i-2] and
-                window[i] < window[i+1] and window[i] < window[i+2]):
+            if (
+                window[i] < window[i - 1]
+                and window[i] < window[i - 2]
+                and window[i] < window[i + 1]
+                and window[i] < window[i + 2]
+            ):
                 lows.append(i)
 
         pulls = []
@@ -780,8 +853,13 @@ class PatternDetector:
         long_avg = sum(volumes[-50:]) / 50
         return short_avg < long_avg * 0.7  # 30% below normal
 
-    def _calculate_entry_stop_target(self, pattern_type: str, closes: List[float],
-                                   highs: List[float], lows: List[float]) -> tuple[float, float, float]:
+    def _calculate_entry_stop_target(
+        self,
+        pattern_type: str,
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+    ) -> tuple[float, float, float]:
         """Calculate entry, stop, and target prices"""
         current_price = closes[-1]
 
@@ -805,7 +883,7 @@ class PatternDetector:
             if i < period - 1:
                 result.append(None)
             else:
-                avg = sum(values[i-period+1:i+1]) / period
+                avg = sum(values[i - period + 1 : i + 1]) / period
                 result.append(avg)
         return result
 
@@ -823,7 +901,9 @@ class PatternDetector:
 
         return result
 
-    def _create_insufficient_data_result(self, ticker: str, closes: List[float]) -> PatternResult:
+    def _create_insufficient_data_result(
+        self, ticker: str, closes: List[float]
+    ) -> PatternResult:
         """Create result for insufficient data"""
         current_price = closes[-1] if closes else 0
         recent_high = max(closes[-10:]) if len(closes) >= 10 else current_price
@@ -837,17 +917,28 @@ class PatternDetector:
             entry=round(recent_high, 2),
             stop=round(recent_low, 2),
             target=round(target, 2),
-            risk_reward=round((target - recent_high) / (recent_high - recent_low), 2) if recent_high > recent_low else 0,
+            risk_reward=(
+                round((target - recent_high) / (recent_high - recent_low), 2)
+                if recent_high > recent_low
+                else 0
+            ),
             criteria_met=[],
             analysis=f"Insufficient price history (need ≥60 candles, have {len(closes)})",
             timestamp=datetime.now(),
-            current_price=round(current_price, 2)
+            current_price=round(current_price, 2),
         )
 
-    def _create_pattern_result(self, ticker: str, pattern_data: Dict[str, Any],
-                              closes: List[float], highs: List[float], lows: List[float],
-                              volumes: List[float], metrics: Dict[str, Any],
-                              rs_data: Optional[Dict[str, Any]]) -> PatternResult:
+    def _create_pattern_result(
+        self,
+        ticker: str,
+        pattern_data: Dict[str, Any],
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+        volumes: List[float],
+        metrics: Dict[str, Any],
+        rs_data: Optional[Dict[str, Any]],
+    ) -> PatternResult:
         """Create PatternResult for detected pattern"""
         entry, stop, target = self._calculate_entry_stop_target(
             pattern_data["name"], closes, highs, lows
@@ -866,7 +957,9 @@ class PatternDetector:
         # Generate criteria met list
         criteria = []
         if metrics["contractions"]["count"] >= 3:
-            criteria.append(f"✓ {metrics['contractions']['count']} volatility contractions detected")
+            criteria.append(
+                f"✓ {metrics['contractions']['count']} volatility contractions detected"
+            )
         if metrics["above_50sma"]:
             criteria.append("✓ Above 50-day SMA")
         if metrics["above_200sma"]:
@@ -894,14 +987,23 @@ class PatternDetector:
             support_start=round(metrics["support_start"], 2),
             support_end=round(metrics["support_end"], 2),
             volume_increasing=metrics["volume_increasing"],
-            consolidation_days=metrics["contractions"]["count"] * 3
+            consolidation_days=metrics["contractions"]["count"] * 3,
         )
 
-    def _create_no_pattern_result(self, ticker: str, closes: List[float], highs: List[float],
-                                 lows: List[float], volumes: List[float], metrics: Dict[str, Any],
-                                 rs_data: Optional[Dict[str, Any]]) -> PatternResult:
+    def _create_no_pattern_result(
+        self,
+        ticker: str,
+        closes: List[float],
+        highs: List[float],
+        lows: List[float],
+        volumes: List[float],
+        metrics: Dict[str, Any],
+        rs_data: Optional[Dict[str, Any]],
+    ) -> PatternResult:
         """Create PatternResult when no pattern detected"""
-        entry, stop, target = self._calculate_entry_stop_target("NONE", closes, highs, lows)
+        entry, stop, target = self._calculate_entry_stop_target(
+            "NONE", closes, highs, lows
+        )
 
         risk = entry - stop
         reward = target - entry
@@ -914,7 +1016,9 @@ class PatternDetector:
         if not metrics["above_200sma"]:
             reasons.append("✗ Below 200-day SMA")
         if metrics["contractions"]["count"] < 3:
-            reasons.append(f"✗ Only {metrics['contractions']['count']} contraction(s) (need 3+)")
+            reasons.append(
+                f"✗ Only {metrics['contractions']['count']} contraction(s) (need 3+)"
+            )
         if not metrics["volume_dry_up"]:
             reasons.append("✗ Volume not decreasing on pullbacks")
         if rs_data and rs_data["rs"] < 70:
@@ -938,5 +1042,5 @@ class PatternDetector:
             support_start=round(metrics["support_start"], 2),
             support_end=round(metrics["support_end"], 2),
             volume_increasing=metrics["volume_increasing"],
-            consolidation_days=metrics["contractions"]["count"] * 3
+            consolidation_days=metrics["contractions"]["count"] * 3,
         )

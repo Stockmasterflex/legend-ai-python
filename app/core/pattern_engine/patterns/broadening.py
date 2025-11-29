@@ -1,6 +1,7 @@
 """
 Broadening formations (top, bottom, ascending/descending wedges).
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -63,7 +64,9 @@ def _build_pattern(
         "width": int(end_idx - start_idx),
         "height": round(height, 2),
         "current_price": round(current_price, 2),
-        "confirmed": bool((current_price <= entry) if breakout == "down" else (current_price >= entry)),
+        "confirmed": bool(
+            (current_price <= entry) if breakout == "down" else (current_price >= entry)
+        ),
         "metadata": {
             "breakout_direction": breakout,
             "slopes": slopes,
@@ -159,7 +162,12 @@ def find_broadening_formations(
 ) -> List[Dict[str, Any]]:
     """Find all broadening formation variants."""
     results: List[Dict[str, Any]] = []
-    for name in ["Broadening Top", "Broadening Bottom", "Ascending Broadening Wedge", "Descending Broadening Wedge"]:
+    for name in [
+        "Broadening Top",
+        "Broadening Bottom",
+        "Ascending Broadening Wedge",
+        "Descending Broadening Wedge",
+    ]:
         pat = _detect_broadening(high, low, name, strict)
         if pat:
             results.append(pat)

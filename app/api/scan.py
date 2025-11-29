@@ -3,36 +3,30 @@
 Provides both POST/GET `/api/scan` endpoints plus `/api/top-setups` for the dashboard.
 Combines universe scanning with flag-gated VCP scanner and comprehensive telemetry.
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
-import time
 import logging
+import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from collections import defaultdict
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from app.api.universe import (
-    ScanRequest,
-    ScanResponse,
-    ScanResult,
-    scan_universe as universe_scan_handler,
-    quick_scan,
-)
-from app.services.universe import universe_service
+from app.api.universe import ScanRequest, ScanResponse, ScanResult, quick_scan
+from app.api.universe import scan_universe as universe_scan_handler
 from app.core.flags import get_legend_flags
-from app.services.scanner import scan_service
-from app.services.pattern_scanner import pattern_scanner_service
-from app.telemetry.metrics import (
-    SCAN_ERRORS_TOTAL,
-    SCAN_REQUEST_DURATION_SECONDS,
-)
-from app.utils.build_info import resolve_build_sha
 from app.services.cache import get_cache_service
+from app.services.pattern_scanner import pattern_scanner_service
+from app.services.scanner import scan_service
+from app.services.universe import universe_service
+from app.telemetry.metrics import (SCAN_ERRORS_TOTAL,
+                                   SCAN_REQUEST_DURATION_SECONDS)
+from app.utils.build_info import resolve_build_sha
 from app.utils.pattern_groups import bucket_name
 
 logger = logging.getLogger(__name__)
@@ -42,7 +36,9 @@ SCAN_LATEST_KEY = "scan:latest"
 SCAN_HISTORY_TEMPLATE = "scan:results:{date}"
 
 
-def _bucketize_entries(entries: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def _bucketize_entries(
+    entries: List[Dict[str, Any]],
+) -> Dict[str, List[Dict[str, Any]]]:
     buckets: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for entry in entries:
         bucket = bucket_name(entry.get("pattern", ""))
@@ -101,10 +97,7 @@ async def scan_endpoint(
     try:
         telemetry["status"] = "running"
         payload = await scan_service.run_daily_vcp_scan(
-            limit=limit, 
-            sector=sector_filter,
-            minervini_trend=minervini_trend,
-            vcp=vcp
+            limit=limit, sector=sector_filter, minervini_trend=minervini_trend, vcp=vcp
         )
         telemetry.update(
             {
@@ -162,7 +155,9 @@ async def get_top_setups(
             results=results,
         )
     except asyncio.TimeoutError:
-        logger.warning(f"⏱️ Top setups request timed out after 15s - returning empty results")
+        logger.warning(
+            "⏱️ Top setups request timed out after 15s - returning empty results"
+        )
         # Return empty results instead of failing
         return TopSetupsResponse(
             success=True,
@@ -193,8 +188,8 @@ async def get_latest_scan_result() -> Dict[str, Any]:
     payload = await cache_service.get(SCAN_LATEST_KEY)
     if not payload:
         raise HTTPException(
-            status_code=404, 
-            detail="No scan results yet. EOD scan runs at 4:05 PM ET Mon-Fri. Use POST /api/scan/trigger to run manually."
+            status_code=404,
+            detail="No scan results yet. EOD scan runs at 4:05 PM ET Mon-Fri. Use POST /api/scan/trigger to run manually.",
         )
     return payload
 
@@ -204,21 +199,22 @@ async def trigger_manual_scan() -> Dict[str, Any]:
     """Manually trigger an EOD scan (for testing/admin use)"""
     try:
         from app.jobs.scan_universe import run_scan_job
+
         logger.info("Manual scan triggered via API")
         await run_scan_job()
-        
+
         # Fetch and return the results
         payload = await cache_service.get(SCAN_LATEST_KEY)
         if not payload:
             return {
                 "success": True,
-                "message": "Scan completed but no results cached. Check logs."
+                "message": "Scan completed but no results cached. Check logs.",
             }
-        
+
         return {
             "success": True,
             "message": f"Scan completed: {payload.get('patterns_found', 0)} patterns found",
-            "results": payload
+            "results": payload,
         }
     except Exception as e:
         logger.error(f"Manual scan failed: {e}")
@@ -244,7 +240,8 @@ async def get_scan_by_sector(sector: str) -> Dict[str, Any]:
 
     sector_normalized = sector.strip().lower()
     filtered = [
-        entry for entry in payload.get("results", [])
+        entry
+        for entry in payload.get("results", [])
         if (entry.get("sector") or "").strip().lower() == sector_normalized
     ]
     summary = {
@@ -252,14 +249,18 @@ async def get_scan_by_sector(sector: str) -> Dict[str, Any]:
         "total_symbols": payload.get("total_symbols"),
         "patterns_found": len(filtered),
         "buckets": _bucketize_entries(filtered),
-        "top_setups": sorted(filtered, key=lambda item: item.get("score", 0), reverse=True)[:10],
+        "top_setups": sorted(
+            filtered, key=lambda item: item.get("score", 0), reverse=True
+        )[:10],
         "results": filtered,
         "generated_at": payload.get("generated_at"),
     }
     return summary
 
 
-async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResult], bool]:
+async def _load_top_setups(
+    min_score: float, limit: int
+) -> tuple[list[ScanResult], bool]:
     """Fetch cached universe scan results or trigger a fresh run using multi-pattern scanner."""
 
     logger.info(f"Loading top setups: min_score={min_score}, limit={limit}")
@@ -288,7 +289,9 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
         logger.info("Using nightly scan data for top setups (%s entries)", len(results))
         if results:
             normalized = [_coerce_scan_result(item) for item in results[:limit]]
-            logger.info(f"Returning {len(normalized)} normalized top setups (cached={cached})")
+            logger.info(
+                f"Returning {len(normalized)} normalized top setups (cached={cached})"
+            )
             return normalized, cached
 
     # Try Redis cache first to keep responses fast.
@@ -310,25 +313,30 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
         try:
             # Use the old scanner temporarily
             from app.services.scanner import scan_service
+
             scan_result = await scan_service.run_daily_vcp_scan(limit=max(limit, 20))
 
-            logger.info(f"VCP scan result: results_count={len(scan_result.get('results', []))}")
+            logger.info(
+                f"VCP scan result: results_count={len(scan_result.get('results', []))}"
+            )
 
             if scan_result.get("results"):
                 # Convert old format to new format
                 converted_results = []
                 for item in scan_result["results"]:
-                    converted_results.append({
-                        "ticker": item.get("ticker", item.get("symbol", "???")),
-                        "pattern": item.get("pattern", "VCP"),
-                        "score": float(item.get("score", 0)),
-                        "entry": item.get("entry", 0),
-                        "stop": item.get("stop", 0),
-                        "target": item.get("target", 0),
-                        "risk_reward": item.get("risk_reward", 0),
-                        "current_price": item.get("current_price"),
-                        "source": "VCP_Scanner"
-                    })
+                    converted_results.append(
+                        {
+                            "ticker": item.get("ticker", item.get("symbol", "???")),
+                            "pattern": item.get("pattern", "VCP"),
+                            "score": float(item.get("score", 0)),
+                            "entry": item.get("entry", 0),
+                            "stop": item.get("stop", 0),
+                            "target": item.get("target", 0),
+                            "risk_reward": item.get("risk_reward", 0),
+                            "current_price": item.get("current_price"),
+                            "source": "VCP_Scanner",
+                        }
+                    )
                 results = converted_results
                 logger.info(f"Using {len(results)} results from VCP scan")
 
@@ -350,17 +358,20 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
         try:
             # Create a default QuickScanRequest for fallback
             from app.api.universe import QuickScanRequest
+
             default_request = QuickScanRequest(
                 universe="nasdaq100",
                 limit=max(limit * 2, 20),  # Scan more for better results
                 min_score=min_score,
                 min_rs=60.0,
-                timeframe="1day"
+                timeframe="1day",
             )
             fallback = await quick_scan(default_request)
             raw_results = fallback.get("data", [])
             results = _normalize_quick_scan(raw_results)
-            logger.info(f"Quick scan fallback: {len(raw_results)} raw results, {len(results)} normalized")
+            logger.info(
+                f"Quick scan fallback: {len(raw_results)} raw results, {len(results)} normalized"
+            )
         except Exception as exc:
             logger.error(f"Quick scan fallback failed: {exc}")
 
@@ -427,7 +438,9 @@ async def scan_patterns(
     request: Request,
     limit: int = Query(50, ge=1, le=200),
     min_score: float = Query(7.0, ge=0.0, le=10.0),
-    patterns: Optional[str] = Query(None, description="Comma-separated pattern names to filter by"),
+    patterns: Optional[str] = Query(
+        None, description="Comma-separated pattern names to filter by"
+    ),
 ) -> Dict[str, Any]:
     """
     Multi-pattern scanner endpoint - scans universe with all available detectors
@@ -468,15 +481,17 @@ async def scan_patterns(
             universe=None,  # Use default universe
             limit=limit,
             pattern_filter=pattern_filter,
-            min_score=min_score
+            min_score=min_score,
         )
 
-        telemetry.update({
-            "status": "ok",
-            "scan_universe": payload.get("universe_size"),
-            "scan_results": len(payload.get("results", [])),
-            "total_hits": payload.get("meta", {}).get("total_hits", 0),
-        })
+        telemetry.update(
+            {
+                "status": "ok",
+                "scan_universe": payload.get("universe_size"),
+                "scan_results": len(payload.get("results", [])),
+                "total_hits": payload.get("meta", {}).get("total_hits", 0),
+            }
+        )
 
         return payload
 
@@ -484,7 +499,9 @@ async def scan_patterns(
         telemetry["status"] = "error"
         SCAN_ERRORS_TOTAL.inc()
         logger.exception("Multi-pattern scan failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Multi-pattern scan failed") from exc
+        raise HTTPException(
+            status_code=500, detail="Multi-pattern scan failed"
+        ) from exc
     finally:
         duration = time.perf_counter() - started
         telemetry["duration_ms"] = round(duration * 1000, 2)

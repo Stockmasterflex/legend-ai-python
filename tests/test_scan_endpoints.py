@@ -1,12 +1,14 @@
 """Contract tests for scan alias + top setups endpoint."""
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+
 import types
 
-from app.api import universe as universe_mod
-from app.api.universe import router as universe_router
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 import app.api.scan as scan_mod
+from app.api import universe as universe_mod
 from app.api.scan import router as scan_router
+from app.api.universe import router as universe_router
 
 
 def _stub_universe_service(monkeypatch):
@@ -58,16 +60,15 @@ def _stub_universe_service(monkeypatch):
                     "current_price": 104.0,
                     "source": "SP500",
                 }
-            ]
+            ],
         }
-    
-    scan_dummy = types.SimpleNamespace(
-        run_daily_vcp_scan=_run_daily_vcp_scan
-    )
+
+    scan_dummy = types.SimpleNamespace(run_daily_vcp_scan=_run_daily_vcp_scan)
     monkeypatch.setattr(scan_mod, "scan_service", scan_dummy)
-    
+
     # Also patch where it might be imported inside functions
     import app.services.scanner
+
     monkeypatch.setattr(app.services.scanner, "scan_service", scan_dummy)
 
     return dummy

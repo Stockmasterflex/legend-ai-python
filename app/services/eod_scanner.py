@@ -1,6 +1,7 @@
 """
 End-of-day universe scanner.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -9,10 +10,10 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from app.config import get_settings
 from app.services.cache import get_cache_service
 from app.services.database import get_database_service
 from app.services.pattern_scanner import pattern_scanner_service
-from app.config import get_settings
 from app.utils.pattern_groups import bucket_name
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,10 @@ class EODScanner:
 
         universe_rows = self.db_service.get_universe_symbols()
         symbols = [row.symbol for row in universe_rows]
-        metadata = {row.symbol: {"sector": row.sector, "industry": row.industry} for row in universe_rows}
+        metadata = {
+            row.symbol: {"sector": row.sector, "industry": row.industry}
+            for row in universe_rows
+        }
         total = len(symbols)
         logger.info("Starting EOD scan for %s symbols (date=%s)", total, scan_date)
 
@@ -81,7 +85,9 @@ class EODScanner:
         for i in range(0, len(data), size):
             yield data[i : i + size]
 
-    def _categorize(self, patterns: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    def _categorize(
+        self, patterns: List[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         bucket_map = defaultdict(list)
         for pattern in patterns:
             name = (pattern.get("pattern") or "").lower()
@@ -111,7 +117,9 @@ class EODScanner:
         buckets: Dict[str, List[Dict[str, Any]]],
         errors: List[str],
     ) -> Dict[str, Any]:
-        sorted_results = sorted(results, key=lambda item: item.get("score", 0), reverse=True)
+        sorted_results = sorted(
+            results, key=lambda item: item.get("score", 0), reverse=True
+        )
         top_setups = [self._summarize(item) for item in sorted_results[:10]]
         all_summaries = [self._summarize(item) for item in results]
         return {
@@ -127,6 +135,7 @@ class EODScanner:
 
 
 _eod_scanner: Optional[EODScanner] = None
+
 
 def get_eod_scanner() -> EODScanner:
     global _eod_scanner

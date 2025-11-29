@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
 import logging
 import time
+from typing import Any, Dict, List, Optional
 
-from app.services.charting import get_charting_service
-from app.services.cache import get_cache_service
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 from app.infra.chartimg import build_analyze_chart
+from app.services.cache import get_cache_service
+from app.services.charting import get_charting_service
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,9 @@ async def generate_chart(request: ChartRequest):
         cached_url = await cache.get_chart(request.ticker, request.interval)
         if cached_url:
             processing_time = time.time() - start_time
-            logger.info(f"⚡ Chart cache hit for {request.ticker}: {cached_url[:50]}...")
+            logger.info(
+                f"⚡ Chart cache hit for {request.ticker}: {cached_url[:50]}..."
+            )
 
             return ChartResponse(
                 success=True,
@@ -105,7 +108,7 @@ async def generate_chart(request: ChartRequest):
                 cached=True,
                 ticker=request.ticker,
                 interval=request.interval,
-                processing_time=round(processing_time, 2)
+                processing_time=round(processing_time, 2),
             )
 
         # Map overlay request flags to indicator list
@@ -131,7 +134,7 @@ async def generate_chart(request: ChartRequest):
             stop=request.stop,
             target=request.target,
             overlays=overlays if overlays else None,
-            preset=request.preset
+            preset=request.preset,
         )
 
         plan_payload = {
@@ -141,7 +144,11 @@ async def generate_chart(request: ChartRequest):
         }
 
         if not chart_url or _is_widget_embed(chart_url):
-            logger.info("Chart-IMG fallback triggered for %s (interval %s)", request.ticker, request.interval)
+            logger.info(
+                "Chart-IMG fallback triggered for %s (interval %s)",
+                request.ticker,
+                request.interval,
+            )
             chart_url = await build_analyze_chart(
                 ticker=request.ticker,
                 tf=_interval_to_tf_label(request.interval),
@@ -153,7 +160,9 @@ async def generate_chart(request: ChartRequest):
             await cache.set_chart(request.ticker, request.interval, chart_url)
 
             processing_time = time.time() - start_time
-            logger.info(f"✅ Chart generated for {request.ticker} in {processing_time:.2f}s")
+            logger.info(
+                f"✅ Chart generated for {request.ticker} in {processing_time:.2f}s"
+            )
 
             return ChartResponse(
                 success=True,
@@ -161,7 +170,7 @@ async def generate_chart(request: ChartRequest):
                 cached=False,
                 ticker=request.ticker,
                 interval=request.interval,
-                processing_time=round(processing_time, 2)
+                processing_time=round(processing_time, 2),
             )
         else:
             processing_time = time.time() - start_time
@@ -173,7 +182,7 @@ async def generate_chart(request: ChartRequest):
                 cached=False,
                 ticker=request.ticker,
                 interval=request.interval,
-                processing_time=round(processing_time, 2)
+                processing_time=round(processing_time, 2),
             )
 
     except Exception as e:
@@ -186,7 +195,7 @@ async def generate_chart(request: ChartRequest):
             cached=False,
             ticker=request.ticker,
             interval=request.interval,
-            processing_time=round(processing_time, 2)
+            processing_time=round(processing_time, 2),
         )
 
 
@@ -207,7 +216,9 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
     charting_service = get_charting_service()
 
     try:
-        logger.info(f"🎨 Generating multi-timeframe charts for {request.ticker}: {request.timeframes}")
+        logger.info(
+            f"🎨 Generating multi-timeframe charts for {request.ticker}: {request.timeframes}"
+        )
 
         # Generate charts for all timeframes concurrently
         chart_urls = await charting_service.generate_multi_timeframe_charts(
@@ -217,14 +228,12 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
             stop=request.stop,
             target=request.target,
             overlays=request.overlays,
-            preset=request.preset
+            preset=request.preset,
         )
 
         processing_time = time.time() - start_time
 
-        failed_timeframes = [
-            tf for tf in request.timeframes if tf not in chart_urls
-        ]
+        failed_timeframes = [tf for tf in request.timeframes if tf not in chart_urls]
 
         if chart_urls:
             return MultiTimeframeChartResponse(
@@ -233,7 +242,7 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
                 charts=chart_urls,
                 failed_timeframes=failed_timeframes,
                 processing_time=round(processing_time, 2),
-                message=f"Generated {len(chart_urls)}/{len(request.timeframes)} charts"
+                message=f"Generated {len(chart_urls)}/{len(request.timeframes)} charts",
             )
         else:
             return MultiTimeframeChartResponse(
@@ -242,7 +251,7 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
                 charts={},
                 failed_timeframes=request.timeframes,
                 processing_time=round(processing_time, 2),
-                message="Failed to generate any charts"
+                message="Failed to generate any charts",
             )
 
     except Exception as e:
@@ -255,7 +264,7 @@ async def generate_multi_timeframe_charts(request: MultiTimeframeChartRequest):
             charts={},
             failed_timeframes=request.timeframes,
             processing_time=round(processing_time, 2),
-            message=f"Error: {str(e)}"
+            message=f"Error: {str(e)}",
         )
 
 
@@ -284,12 +293,10 @@ async def charts_health():
             "chart_img_api": status_msg,
             "daily_usage": usage.get("daily_usage"),
             "daily_limit": usage.get("daily_limit"),
-            "remaining_calls": max(0, usage.get("daily_limit", 0) - usage.get("daily_usage", 0)),
-            "burst_limit": usage.get("burst_limit")
+            "remaining_calls": max(
+                0, usage.get("daily_limit", 0) - usage.get("daily_usage", 0)
+            ),
+            "burst_limit": usage.get("burst_limit"),
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "chart_img_api": "disconnected",
-            "error": str(e)
-        }
+        return {"status": "error", "chart_img_api": "disconnected", "error": str(e)}

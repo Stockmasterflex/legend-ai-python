@@ -4,6 +4,7 @@ Triple Tops and Bottoms detection adapted from Patternz FindPatterns.cs.
 These routines use helper pivot finders plus nearness checks to keep the
 logic faithful while staying lightweight for the Python engine.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
@@ -42,7 +43,11 @@ def _build_pattern(
     lows: np.ndarray,
     metadata: Dict[str, Any],
 ) -> Dict[str, Any]:
-    height = float(highs[mid_idx] - lows[start_idx]) if start_idx is not None and mid_idx is not None else None
+    height = (
+        float(highs[mid_idx] - lows[start_idx])
+        if start_idx is not None and mid_idx is not None
+        else None
+    )
     current_price = float(highs[end_idx]) if end_idx is not None else None
     return {
         "pattern": name,
@@ -53,7 +58,11 @@ def _build_pattern(
         "stop": round(stop, 2) if stop is not None else None,
         "target": round(target, 2) if target is not None else None,
         "risk_reward": _risk_reward(entry, stop, target),
-        "width": int(end_idx - start_idx) if start_idx is not None and end_idx is not None else None,
+        "width": (
+            int(end_idx - start_idx)
+            if start_idx is not None and end_idx is not None
+            else None
+        ),
         "height": round(height, 2) if height is not None else None,
         "current_price": round(current_price, 2) if current_price is not None else None,
         "confirmed": bool(current_price and entry and current_price >= entry),
@@ -119,8 +128,12 @@ def find_triple_bottoms(
         return results
 
     # Require peaks between bottoms
-    mid_top1 = max([t for t in tops if p1 < t < p2], default=None, key=lambda i: high[i])
-    mid_top2 = max([t for t in tops if p2 < t < p3], default=None, key=lambda i: high[i])
+    mid_top1 = max(
+        [t for t in tops if p1 < t < p2], default=None, key=lambda i: high[i]
+    )
+    mid_top2 = max(
+        [t for t in tops if p2 < t < p3], default=None, key=lambda i: high[i]
+    )
     if mid_top1 is None:
         mid_top1 = int(np.argmax(high[p1:p2]) + p1)
     if mid_top2 is None:
@@ -185,12 +198,18 @@ def find_triple_tops(
         right = int(np.argmax(high[head + 1 :]) + head + 1)
         if not (left < head < right):
             return results
-        if not _are_near(helpers, [high[left], high[head], high[right]], tolerance * 1.2):
+        if not _are_near(
+            helpers, [high[left], high[head], high[right]], tolerance * 1.2
+        ):
             return results
         p1, p2, p3 = left, head, right
 
-    mid_bot1 = min([b for b in bottoms if p1 < b < p2], default=None, key=lambda i: low[i])
-    mid_bot2 = min([b for b in bottoms if p2 < b < p3], default=None, key=lambda i: low[i])
+    mid_bot1 = min(
+        [b for b in bottoms if p1 < b < p2], default=None, key=lambda i: low[i]
+    )
+    mid_bot2 = min(
+        [b for b in bottoms if p2 < b < p3], default=None, key=lambda i: low[i]
+    )
     if mid_bot1 is None:
         mid_bot1 = int(np.argmin(low[p1:p2]) + p1)
     if mid_bot2 is None:

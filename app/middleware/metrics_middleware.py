@@ -2,18 +2,18 @@
 Enhanced metrics middleware for comprehensive monitoring
 Tracks all HTTP requests, response times, error rates, and more
 """
-import time
+
 import logging
+import time
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
-from app.telemetry.metrics import (
-    HTTP_REQUESTS_TOTAL,
-    HTTP_REQUEST_DURATION_SECONDS,
-    HTTP_REQUEST_SIZE_BYTES,
-    HTTP_RESPONSE_SIZE_BYTES,
-    ERROR_RATE_TOTAL,
-)
+
+from app.telemetry.metrics import (ERROR_RATE_TOTAL,
+                                   HTTP_REQUEST_DURATION_SECONDS,
+                                   HTTP_REQUEST_SIZE_BYTES,
+                                   HTTP_REQUESTS_TOTAL,
+                                   HTTP_RESPONSE_SIZE_BYTES)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         # Track request size
         request_size = int(request.headers.get("content-length", 0))
         if request_size > 0:
-            HTTP_REQUEST_SIZE_BYTES.labels(method=method, endpoint=endpoint).observe(request_size)
+            HTTP_REQUEST_SIZE_BYTES.labels(method=method, endpoint=endpoint).observe(
+                request_size
+            )
 
         # Time the request
         start_time = time.perf_counter()
@@ -51,9 +53,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                 error_type = "client_error" if status_code < 500 else "server_error"
                 severity = "warning" if status_code < 500 else "error"
                 ERROR_RATE_TOTAL.labels(
-                    error_type=error_type,
-                    severity=severity,
-                    endpoint=endpoint
+                    error_type=error_type, severity=severity, endpoint=endpoint
                 ).inc()
 
             return response
@@ -61,9 +61,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # Track unhandled exceptions
             ERROR_RATE_TOTAL.labels(
-                error_type="exception",
-                severity="critical",
-                endpoint=endpoint
+                error_type="exception", severity="critical", endpoint=endpoint
             ).inc()
             logger.error(f"Unhandled exception in {endpoint}: {e}")
             raise
@@ -73,15 +71,11 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             duration = time.perf_counter() - start_time
 
             HTTP_REQUESTS_TOTAL.labels(
-                method=method,
-                endpoint=endpoint,
-                status_code=status_code
+                method=method, endpoint=endpoint, status_code=status_code
             ).inc()
 
             HTTP_REQUEST_DURATION_SECONDS.labels(
-                method=method,
-                endpoint=endpoint,
-                status_code=status_code
+                method=method, endpoint=endpoint, status_code=status_code
             ).observe(duration)
 
             # Track response size
@@ -89,8 +83,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                 response_size = int(response.headers.get("content-length", 0))
                 if response_size > 0:
                     HTTP_RESPONSE_SIZE_BYTES.labels(
-                        method=method,
-                        endpoint=endpoint
+                        method=method, endpoint=endpoint
                     ).observe(response_size)
 
     def _normalize_path(self, path: str) -> str:

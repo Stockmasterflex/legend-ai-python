@@ -1,4 +1,5 @@
 """Shared utilities for grouping patterns into named buckets."""
+
 from typing import Optional
 
 
@@ -14,6 +15,11 @@ def bucket_name(pattern_name: str) -> Optional[str]:
         return "flat_base"
     if "pullback" in lower or "throwback" in lower:
         return "pullback"
-    if "cup" in lower or "triangle" in lower or "rectangle" in lower or "channel" in lower:
+    if (
+        "cup" in lower
+        or "triangle" in lower
+        or "rectangle" in lower
+        or "channel" in lower
+    ):
         return "breakout"
     return None

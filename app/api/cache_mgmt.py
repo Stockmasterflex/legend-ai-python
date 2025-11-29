@@ -3,13 +3,14 @@ Cache Management API
 Provides endpoints for cache monitoring, invalidation, and warming
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel
 import logging
+from typing import Any, Dict, List, Optional
 
-from app.services.multi_tier_cache import get_multi_tier_cache, CacheTier
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
+
 from app.services.cache_warmer import get_cache_warmer
+from app.services.multi_tier_cache import CacheTier, get_multi_tier_cache
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/api/cache", tags=["cache"])
 
 class CacheInvalidateRequest(BaseModel):
     """Request to invalidate cache entries"""
+
     key: Optional[str] = None
     pattern: Optional[str] = None
     all_tiers: bool = True
@@ -25,11 +27,13 @@ class CacheInvalidateRequest(BaseModel):
 
 class CacheWarmRequest(BaseModel):
     """Request to warm cache with data"""
+
     data: List[Dict[str, Any]]
 
 
 class CacheSetRequest(BaseModel):
     """Request to manually set cache entry"""
+
     key: str
     value: Any
     data_type: str = "generic"
@@ -53,10 +57,7 @@ async def get_cache_stats():
         cache = get_multi_tier_cache()
         stats = await cache.get_detailed_stats()
 
-        return {
-            "status": "success",
-            "data": stats
-        }
+        return {"status": "success", "data": stats}
 
     except Exception as e:
         logger.error(f"Error getting cache stats: {e}")
@@ -78,10 +79,7 @@ async def get_cache_metrics():
         cache = get_multi_tier_cache()
         metrics = cache.get_metrics()
 
-        return {
-            "status": "success",
-            "data": metrics
-        }
+        return {"status": "success", "data": metrics}
 
     except Exception as e:
         logger.error(f"Error getting cache metrics: {e}")
@@ -108,7 +106,9 @@ async def invalidate_cache(request: CacheInvalidateRequest):
         if request.pattern:
             # Invalidate by pattern
             count = await cache.invalidate_pattern(request.pattern)
-            logger.info(f"Invalidated {count} entries matching pattern: {request.pattern}")
+            logger.info(
+                f"Invalidated {count} entries matching pattern: {request.pattern}"
+            )
 
         elif request.key:
             # Invalidate specific key
@@ -116,13 +116,15 @@ async def invalidate_cache(request: CacheInvalidateRequest):
             logger.info(f"Invalidated {count} entries for key: {request.key}")
 
         else:
-            raise HTTPException(status_code=400, detail="Must provide either 'key' or 'pattern'")
+            raise HTTPException(
+                status_code=400, detail="Must provide either 'key' or 'pattern'"
+            )
 
         return {
             "status": "success",
             "invalidated": count,
             "key": request.key,
-            "pattern": request.pattern
+            "pattern": request.pattern,
         }
 
     except HTTPException:
@@ -150,10 +152,7 @@ async def warm_cache(request: CacheWarmRequest):
         cache = get_multi_tier_cache()
         stats = await cache.warm_cache(request.data)
 
-        return {
-            "status": "success",
-            "stats": stats
-        }
+        return {"status": "success", "stats": stats}
 
     except Exception as e:
         logger.error(f"Error warming cache: {e}")
@@ -172,10 +171,7 @@ async def cleanup_cache():
         cache = get_multi_tier_cache()
         stats = await cache.cleanup_expired()
 
-        return {
-            "status": "success",
-            "cleaned": stats
-        }
+        return {"status": "success", "cleaned": stats}
 
     except Exception as e:
         logger.error(f"Error cleaning up cache: {e}")
@@ -204,22 +200,15 @@ async def set_cache_entry(request: CacheSetRequest):
             tier = CacheTier(request.tier)
 
         success = await cache.set(
-            request.key,
-            request.value,
-            data_type=request.data_type,
-            tier=tier
+            request.key, request.value, data_type=request.data_type, tier=tier
         )
 
         if not success:
             raise HTTPException(status_code=500, detail="Failed to set cache entry")
 
-        return {
-            "status": "success",
-            "key": request.key,
-            "tier": request.tier or "auto"
-        }
+        return {"status": "success", "key": request.key, "tier": request.tier or "auto"}
 
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid tier: {request.tier}")
     except Exception as e:
         logger.error(f"Error setting cache: {e}")
@@ -245,11 +234,7 @@ async def get_cache_entry(key: str, data_type: str = Query("generic")):
         if value is None:
             raise HTTPException(status_code=404, detail="Cache entry not found")
 
-        return {
-            "status": "success",
-            "key": key,
-            "value": value
-        }
+        return {"status": "success", "key": key, "value": value}
 
     except HTTPException:
         raise
@@ -280,7 +265,7 @@ async def cache_health():
         cdn_health = {
             "status": "healthy" if cache.cdn_path.exists() else "unhealthy",
             "path": str(cache.cdn_path),
-            "writable": cache.cdn_path.exists() and cache.cdn_path.is_dir()
+            "writable": cache.cdn_path.exists() and cache.cdn_path.is_dir(),
         }
 
         overall_status = "healthy"
@@ -289,19 +274,12 @@ async def cache_health():
 
         return {
             "status": overall_status,
-            "tiers": {
-                "hot": redis_health,
-                "warm": db_health,
-                "cdn": cdn_health
-            }
+            "tiers": {"hot": redis_health, "warm": db_health, "cdn": cdn_health},
         }
 
     except Exception as e:
         logger.error(f"Error checking cache health: {e}")
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        return {"status": "unhealthy", "error": str(e)}
 
 
 @router.post("/warm/ticker/{ticker}")
@@ -320,12 +298,14 @@ async def warm_ticker_cache(ticker: str):
         success = await warmer.warm_ticker(ticker.upper())
 
         if not success:
-            raise HTTPException(status_code=500, detail=f"Failed to warm cache for {ticker}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to warm cache for {ticker}"
+            )
 
         return {
             "status": "success",
             "ticker": ticker.upper(),
-            "message": f"Cache warmed for {ticker.upper()}"
+            "message": f"Cache warmed for {ticker.upper()}",
         }
 
     except HTTPException:
@@ -351,11 +331,7 @@ async def warm_multiple_tickers(tickers: List[str]):
         tickers_upper = [t.upper() for t in tickers]
         stats = await warmer.warm_tickers(tickers_upper)
 
-        return {
-            "status": "success",
-            "tickers": tickers_upper,
-            "stats": stats
-        }
+        return {"status": "success", "tickers": tickers_upper, "stats": stats}
 
     except Exception as e:
         logger.error(f"Error warming multiple tickers: {e}")
@@ -377,10 +353,7 @@ async def warm_all_cache():
         warmer = get_cache_warmer()
         stats = await warmer.warm_all()
 
-        return {
-            "status": "success",
-            "stats": stats
-        }
+        return {"status": "success", "stats": stats}
 
     except Exception as e:
         logger.error(f"Error warming all cache: {e}")

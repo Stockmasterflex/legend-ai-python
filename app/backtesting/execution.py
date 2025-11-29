@@ -3,15 +3,15 @@ Execution Simulation
 Realistic simulation of order execution with slippage, commissions, market impact, and partial fills
 """
 
+import random
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, Tuple
-import random
-import pandas as pd
 
 
 class CommissionType(str, Enum):
     """Commission model types"""
+
     FIXED = "fixed"  # Fixed $ per trade
     PERCENTAGE = "percentage"  # Percentage of trade value
     PER_SHARE = "per_share"  # $ per share
@@ -20,6 +20,7 @@ class CommissionType(str, Enum):
 
 class SlippageType(str, Enum):
     """Slippage model types"""
+
     FIXED_BPS = "fixed_bps"  # Fixed basis points
     PERCENTAGE = "percentage"  # Percentage of price
     VOLUME_BASED = "volume_based"  # Based on order size vs volume
@@ -29,6 +30,7 @@ class SlippageType(str, Enum):
 @dataclass
 class CommissionModel:
     """Commission calculation model"""
+
     type: CommissionType
     value: float  # Depends on type
     minimum: float = 0.0
@@ -78,6 +80,7 @@ class CommissionModel:
 @dataclass
 class SlippageModel:
     """Slippage calculation model"""
+
     type: SlippageType
     value: float  # Depends on type
     is_aggressive: bool = False  # More aggressive execution = more slippage
@@ -146,6 +149,7 @@ class MarketImpactModel:
     Market impact model (for large orders)
     Price moves against you as you execute
     """
+
     enabled: bool = False
     impact_coefficient: float = 0.1  # How much order moves market
     temporary_impact_pct: float = 0.5  # % that is temporary vs permanent
@@ -179,7 +183,7 @@ class MarketImpactModel:
 
         # Square root impact model (common in research)
         # Impact ∝ σ * √(Q/V)
-        impact_pct = volatility * self.impact_coefficient * (participation ** 0.5)
+        impact_pct = volatility * self.impact_coefficient * (participation**0.5)
 
         # Apply direction
         if is_buy:
@@ -198,6 +202,7 @@ class PartialFillModel:
     Partial fill simulation
     Orders may not fill completely
     """
+
     enabled: bool = False
     min_fill_rate: float = 0.5  # Minimum % of order that fills
     max_fill_rate: float = 1.0  # Maximum % of order that fills
@@ -349,7 +354,9 @@ class ExecutionSimulator:
             "total_cost": total_cost,
         }
 
-    def get_realistic_config(self, account_size: str = "retail") -> "ExecutionSimulator":
+    def get_realistic_config(
+        self, account_size: str = "retail"
+    ) -> "ExecutionSimulator":
         """
         Get realistic configuration for different account sizes
 

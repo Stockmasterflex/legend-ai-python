@@ -2,11 +2,12 @@
 Multi-Timeframe Confirmation Service
 Analyzes patterns across multiple timeframes (1D, 1W, 4H, 1H) for confluence
 """
-import logging
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass, asdict
 
-from app.core.pattern_detector import PatternDetector, PatternResult
+import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+from app.core.pattern_detector import PatternDetector
 from app.services.market_data import market_data_service
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TimeframeAnalysis:
     """Analysis result for a single timeframe"""
+
     timeframe: str
     pattern_detected: bool
     pattern_type: Optional[str]
@@ -30,6 +32,7 @@ class TimeframeAnalysis:
 @dataclass
 class MultiTimeframeResult:
     """Consolidated multi-timeframe analysis result"""
+
     ticker: str
     overall_confluence: float  # 0-1, higher = stronger confluence
     strong_signal: bool  # True if all timeframes align
@@ -52,7 +55,12 @@ class MultiTimeframeConfirmation:
     def __init__(self):
         self.detector = PatternDetector()
         self.timeframes = ["1day", "1week", "4hour", "1hour"]
-        self.timeframe_labels = {"1day": "1D", "1week": "1W", "4hour": "4H", "1hour": "1H"}
+        self.timeframe_labels = {
+            "1day": "1D",
+            "1week": "1W",
+            "4hour": "4H",
+            "1hour": "1H",
+        }
 
     async def analyze_multi_timeframe(self, ticker: str) -> MultiTimeframeResult:
         """
@@ -71,9 +79,7 @@ class MultiTimeframeConfirmation:
         for tf in self.timeframes:
             try:
                 data = await market_data_service.get_time_series(
-                    ticker=ticker,
-                    interval=tf,
-                    outputsize=500
+                    ticker=ticker, interval=tf, outputsize=500
                 )
                 data_by_timeframe[tf] = data
             except Exception as e:
@@ -85,15 +91,20 @@ class MultiTimeframeConfirmation:
         try:
             spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
         except Exception as e:
-            logger.warning(f"Failed to fetch SPY data for multi-timeframe analysis: {e}")
+            logger.warning(
+                f"Failed to fetch SPY data for multi-timeframe analysis: {e}"
+            )
             spy_data = None
 
         for tf in self.timeframes:
             try:
-                if data_by_timeframe[tf] is not None and not data_by_timeframe[tf].empty:
+                if (
+                    data_by_timeframe[tf] is not None
+                    and not data_by_timeframe[tf].empty
+                ):
                     # Only use SPY data for daily timeframe to avoid mismatch
                     tf_spy_data = spy_data if tf == "1day" else None
-                    
+
                     analysis = await self.detector.analyze_ticker(
                         ticker, data_by_timeframe[tf], tf_spy_data
                     )
@@ -102,7 +113,9 @@ class MultiTimeframeConfirmation:
                         results[tf] = TimeframeAnalysis(
                             timeframe=self.timeframe_labels[tf],
                             pattern_detected=analysis.score >= 0.60,
-                            pattern_type=analysis.pattern if analysis.score >= 0.60 else None,
+                            pattern_type=(
+                                analysis.pattern if analysis.score >= 0.60 else None
+                            ),
                             confidence=analysis.score,
                             trend_direction=self._get_trend(data_by_timeframe[tf]),
                             trend_strength=self._get_trend_strength(analysis.score),
@@ -160,15 +173,73 @@ class MultiTimeframeConfirmation:
             overall_confluence=confluence_score,
             strong_signal=strong_signal,
             signal_quality=signal_quality,
-            daily_1d=results.get("1day", TimeframeAnalysis("1D", False, None, 0, "unknown", "unknown", "unknown", None, None, None)),
-            weekly_1w=results.get("1week", TimeframeAnalysis("1W", False, None, 0, "unknown", "unknown", "unknown", None, None, None)),
-            four_hour_4h=results.get("4hour", TimeframeAnalysis("4H", False, None, 0, "unknown", "unknown", "unknown", None, None, None)),
-            one_hour_1h=results.get("1hour", TimeframeAnalysis("1H", False, None, 0, "unknown", "unknown", "unknown", None, None, None)),
+            daily_1d=results.get(
+                "1day",
+                TimeframeAnalysis(
+                    "1D",
+                    False,
+                    None,
+                    0,
+                    "unknown",
+                    "unknown",
+                    "unknown",
+                    None,
+                    None,
+                    None,
+                ),
+            ),
+            weekly_1w=results.get(
+                "1week",
+                TimeframeAnalysis(
+                    "1W",
+                    False,
+                    None,
+                    0,
+                    "unknown",
+                    "unknown",
+                    "unknown",
+                    None,
+                    None,
+                    None,
+                ),
+            ),
+            four_hour_4h=results.get(
+                "4hour",
+                TimeframeAnalysis(
+                    "4H",
+                    False,
+                    None,
+                    0,
+                    "unknown",
+                    "unknown",
+                    "unknown",
+                    None,
+                    None,
+                    None,
+                ),
+            ),
+            one_hour_1h=results.get(
+                "1hour",
+                TimeframeAnalysis(
+                    "1H",
+                    False,
+                    None,
+                    0,
+                    "unknown",
+                    "unknown",
+                    "unknown",
+                    None,
+                    None,
+                    None,
+                ),
+            ),
             alignment_details=alignment,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
-        logger.info(f"✅ {ticker} Multi-TF Analysis: {signal_quality} ({confluence_score:.1%} confluence)")
+        logger.info(
+            f"✅ {ticker} Multi-TF Analysis: {signal_quality} ({confluence_score:.1%} confluence)"
+        )
 
         return result
 
@@ -179,8 +250,8 @@ class MultiTimeframeConfirmation:
 
         # Get recent prices
         recent = ohlcv_data.tail(20)
-        avg_price_recent = recent['close'].mean()
-        avg_price_older = ohlcv_data.iloc[-50:-30]['close'].mean()
+        avg_price_recent = recent["close"].mean()
+        avg_price_older = ohlcv_data.iloc[-50:-30]["close"].mean()
 
         if avg_price_recent > avg_price_older * 1.02:
             return "up"
@@ -203,8 +274,8 @@ class MultiTimeframeConfirmation:
         if not ohlcv_data or len(ohlcv_data) < 20:
             return "unknown"
 
-        recent_vol = ohlcv_data.tail(10)['volume'].mean()
-        older_vol = ohlcv_data.iloc[-30:-20]['volume'].mean()
+        recent_vol = ohlcv_data.tail(10)["volume"].mean()
+        older_vol = ohlcv_data.iloc[-30:-20]["volume"].mean()
 
         if recent_vol > older_vol * 1.1:
             return "increasing"
@@ -238,10 +309,10 @@ class MultiTimeframeConfirmation:
         # Calculate overall confluence
         # Daily is most important (50%), weekly (25%), 4H (15%), 1H (10%)
         confluence = (
-            scores.get("1day", 0) * 0.50 +
-            scores.get("1week", 0) * 0.25 +
-            scores.get("4hour", 0) * 0.15 +
-            scores.get("1hour", 0) * 0.10
+            scores.get("1day", 0) * 0.50
+            + scores.get("1week", 0) * 0.25
+            + scores.get("4hour", 0) * 0.15
+            + scores.get("1hour", 0) * 0.10
         )
 
         # Check if all timeframes are aligned (strong signal)
@@ -250,9 +321,12 @@ class MultiTimeframeConfirmation:
         four_h = results.get("4hour")
 
         strong_signal = (
-            daily and daily.pattern_detected and
-            weekly and weekly.trend_direction == "up" and
-            four_h and four_h.trend_direction == "up"
+            daily
+            and daily.pattern_detected
+            and weekly
+            and weekly.trend_direction == "up"
+            and four_h
+            and four_h.trend_direction == "up"
         )
 
         # Build alignment details
@@ -261,17 +335,31 @@ class MultiTimeframeConfirmation:
                 "1D": scores.get("1day", 0),
                 "1W": scores.get("1week", 0),
                 "4H": scores.get("4hour", 0),
-                "1H": scores.get("1hour", 0)
+                "1H": scores.get("1hour", 0),
             },
-            "daily_setup": f"{daily.pattern_type or 'None'} ({daily.confidence:.1%})" if daily else "No data",
-            "weekly_trend": f"{weekly.trend_direction.upper()} ({weekly.confidence:.1%})" if weekly else "No data",
-            "4h_alignment": f"{four_h.trend_direction.upper()} ({four_h.confidence:.1%})" if four_h else "No data",
-            "overall": f"{confluence:.1%} confluence"
+            "daily_setup": (
+                f"{daily.pattern_type or 'None'} ({daily.confidence:.1%})"
+                if daily
+                else "No data"
+            ),
+            "weekly_trend": (
+                f"{weekly.trend_direction.upper()} ({weekly.confidence:.1%})"
+                if weekly
+                else "No data"
+            ),
+            "4h_alignment": (
+                f"{four_h.trend_direction.upper()} ({four_h.confidence:.1%})"
+                if four_h
+                else "No data"
+            ),
+            "overall": f"{confluence:.1%} confluence",
         }
 
         return confluence, alignment, strong_signal
 
-    def _generate_recommendations(self, results: Dict[str, TimeframeAnalysis], confluence: float) -> List[str]:
+    def _generate_recommendations(
+        self, results: Dict[str, TimeframeAnalysis], confluence: float
+    ) -> List[str]:
         """Generate trading recommendations based on multi-TF analysis"""
         recommendations = []
 
@@ -298,7 +386,9 @@ class MultiTimeframeConfirmation:
             recommendations.append("🎯 EXCELLENT CONFLUENCE - High probability trade")
             recommendations.append("💰 Risk is low, reward is high - ideal entry point")
         elif confluence >= 0.70:
-            recommendations.append("✅ Good confluence across timeframes - trade-worthy setup")
+            recommendations.append(
+                "✅ Good confluence across timeframes - trade-worthy setup"
+            )
         elif confluence >= 0.55:
             recommendations.append("⚠️ Fair confluence - wait for more confirmation")
         else:

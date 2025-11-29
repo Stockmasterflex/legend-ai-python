@@ -2,13 +2,15 @@
 Automated Trendline Detection
 Replicates TrendSpider's patented automated trendline drawing
 """
+
+import logging
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Optional, Dict
-from dataclasses import dataclass
 from scipy import stats
 from scipy.signal import argrelextrema
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Trendline:
     """Represents a detected trendline"""
+
     slope: float
     intercept: float
     start_idx: int
@@ -45,13 +48,14 @@ class Trendline:
             "type": self.type,
             "touches": int(self.touches),
             "r_squared": round(self.r_squared, 4),
-            "breaks": int(self.breaks)
+            "breaks": int(self.breaks),
         }
 
 
 @dataclass
 class Channel:
     """Represents a price channel"""
+
     upper_trendline: Trendline
     lower_trendline: Trendline
     width: float  # Average channel width
@@ -64,7 +68,7 @@ class Channel:
             "lower": self.lower_trendline.to_dict(),
             "width": float(self.width),
             "type": self.type,
-            "strength": round(self.strength, 2)
+            "strength": round(self.strength, 2),
         }
 
 
@@ -78,16 +82,14 @@ class AutoTrendlineDetector:
         self,
         min_touches: int = 3,
         min_r_squared: float = 0.7,
-        tolerance: float = 0.02  # 2% price tolerance for "touch"
+        tolerance: float = 0.02,  # 2% price tolerance for "touch"
     ):
         self.min_touches = min_touches
         self.min_r_squared = min_r_squared
         self.tolerance = tolerance
 
     def detect_all_trendlines(
-        self,
-        df: pd.DataFrame,
-        lookback_period: Optional[int] = None
+        self, df: pd.DataFrame, lookback_period: Optional[int] = None
     ) -> Dict[str, List[Trendline]]:
         """
         Detect all trendlines (support and resistance)
@@ -111,17 +113,14 @@ class AutoTrendlineDetector:
         support_lines = self._detect_support_trendlines(data)
         resistance_lines = self._detect_resistance_trendlines(data)
 
-        logger.info(f"Detected {len(support_lines)} support and {len(resistance_lines)} resistance lines")
+        logger.info(
+            f"Detected {len(support_lines)} support and {len(resistance_lines)} resistance lines"
+        )
 
-        return {
-            "support": support_lines,
-            "resistance": resistance_lines
-        }
+        return {"support": support_lines, "resistance": resistance_lines}
 
     def detect_channels(
-        self,
-        df: pd.DataFrame,
-        lookback_period: Optional[int] = None
+        self, df: pd.DataFrame, lookback_period: Optional[int] = None
     ) -> List[Channel]:
         """
         Detect price channels (parallel support/resistance)
@@ -134,8 +133,8 @@ class AutoTrendlineDetector:
             List of detected channels
         """
         trendlines = self.detect_all_trendlines(df, lookback_period)
-        support_lines = trendlines['support']
-        resistance_lines = trendlines['resistance']
+        support_lines = trendlines["support"]
+        resistance_lines = trendlines["resistance"]
 
         channels = []
 
@@ -157,7 +156,7 @@ class AutoTrendlineDetector:
                     # Calculate average vertical distance
                     overlapping_indices = range(
                         max(support.start_idx, resistance.start_idx),
-                        min(support.end_idx, resistance.end_idx) + 1
+                        min(support.end_idx, resistance.end_idx) + 1,
                     )
 
                     if len(overlapping_indices) < 10:
@@ -178,21 +177,23 @@ class AutoTrendlineDetector:
                         if width_std / avg_width < 0.15:  # Less than 15% variation
                             # Determine channel type
                             if support.slope > 0.001:
-                                channel_type = 'ascending'
+                                channel_type = "ascending"
                             elif support.slope < -0.001:
-                                channel_type = 'descending'
+                                channel_type = "descending"
                             else:
-                                channel_type = 'horizontal'
+                                channel_type = "horizontal"
 
                             # Channel strength = average of trendline strengths
-                            channel_strength = (support.strength + resistance.strength) / 2
+                            channel_strength = (
+                                support.strength + resistance.strength
+                            ) / 2
 
                             channel = Channel(
                                 upper_trendline=resistance,
                                 lower_trendline=support,
                                 width=avg_width,
                                 type=channel_type,
-                                strength=channel_strength
+                                strength=channel_strength,
                             )
                             channels.append(channel)
 
@@ -207,8 +208,8 @@ class AutoTrendlineDetector:
         """Detect support trendlines (drawn under price)"""
         trendlines = []
 
-        lows = df['low'].values
-        closes = df['close'].values
+        lows = df["low"].values
+        df["close"].values
 
         # Find local minima (potential support pivot points)
         minima_idx = argrelextrema(lows, np.less_equal, order=5)[0]
@@ -248,10 +249,10 @@ class AutoTrendlineDetector:
                         start_price=slope * start_idx + intercept,
                         end_price=slope * end_idx + intercept,
                         strength=strength,
-                        type='support',
+                        type="support",
                         touches=touches,
-                        r_squared=r_value ** 2,
-                        breaks=breaks
+                        r_squared=r_value**2,
+                        breaks=breaks,
                     )
                     trendlines.append(trendline)
 
@@ -268,8 +269,8 @@ class AutoTrendlineDetector:
         """Detect resistance trendlines (drawn above price)"""
         trendlines = []
 
-        highs = df['high'].values
-        closes = df['close'].values
+        highs = df["high"].values
+        df["close"].values
 
         # Find local maxima (potential resistance pivot points)
         maxima_idx = argrelextrema(highs, np.greater_equal, order=5)[0]
@@ -305,10 +306,10 @@ class AutoTrendlineDetector:
                         start_price=slope * start_idx + intercept,
                         end_price=slope * end_idx + intercept,
                         strength=strength,
-                        type='resistance',
+                        type="resistance",
                         touches=touches,
-                        r_squared=r_value ** 2,
-                        breaks=breaks
+                        r_squared=r_value**2,
+                        breaks=breaks,
                     )
                     trendlines.append(trendline)
 
@@ -323,7 +324,7 @@ class AutoTrendlineDetector:
         slope: float,
         intercept: float,
         start_idx: int,
-        end_idx: int
+        end_idx: int,
     ) -> Tuple[int, List[int], int]:
         """
         Count how many times price touches a support trendline
@@ -340,8 +341,8 @@ class AutoTrendlineDetector:
                 break
 
             trendline_price = slope * idx + intercept
-            low = df['low'].iloc[idx]
-            close = df['close'].iloc[idx]
+            low = df["low"].iloc[idx]
+            close = df["close"].iloc[idx]
 
             # Touch: low comes within tolerance of trendline
             if abs(low - trendline_price) / trendline_price < self.tolerance:
@@ -360,7 +361,7 @@ class AutoTrendlineDetector:
         slope: float,
         intercept: float,
         start_idx: int,
-        end_idx: int
+        end_idx: int,
     ) -> Tuple[int, List[int], int]:
         """Count how many times price touches a resistance trendline"""
         touches = 0
@@ -372,8 +373,8 @@ class AutoTrendlineDetector:
                 break
 
             trendline_price = slope * idx + intercept
-            high = df['high'].iloc[idx]
-            close = df['close'].iloc[idx]
+            high = df["high"].iloc[idx]
+            close = df["close"].iloc[idx]
 
             # Touch: high comes within tolerance of trendline
             if abs(high - trendline_price) / trendline_price < self.tolerance:
@@ -386,12 +387,7 @@ class AutoTrendlineDetector:
 
         return touches, actual_touches, breaks
 
-    def _calculate_strength(
-        self,
-        touches: int,
-        r_value: float,
-        breaks: int
-    ) -> float:
+    def _calculate_strength(self, touches: int, r_value: float, breaks: int) -> float:
         """
         Calculate overall strength of trendline
 
@@ -404,7 +400,7 @@ class AutoTrendlineDetector:
         touch_score = min(50, touches * 10)
 
         # R² score (max 40 points)
-        r_squared_score = (r_value ** 2) * 40
+        r_squared_score = (r_value**2) * 40
 
         # Break penalty (minus 5 points per break)
         break_penalty = breaks * 5
@@ -431,10 +427,13 @@ class AutoTrendlineDetector:
 
                 # Also check if they cover similar time periods
                 time_overlap = (
-                    min(tl.end_idx, existing.end_idx) - max(tl.start_idx, existing.start_idx)
-                ) / max(tl.end_idx - tl.start_idx, existing.end_idx - existing.start_idx)
+                    min(tl.end_idx, existing.end_idx)
+                    - max(tl.start_idx, existing.start_idx)
+                ) / max(
+                    tl.end_idx - tl.start_idx, existing.end_idx - existing.start_idx
+                )
 
-                if (slope_diff < 0.01 and intercept_diff < 5 and time_overlap > 0.7):
+                if slope_diff < 0.01 and intercept_diff < 5 and time_overlap > 0.7:
                     is_duplicate = True
                     # Keep the stronger one
                     if tl.strength > existing.strength:
@@ -452,7 +451,7 @@ def detect_horizontal_support_resistance(
     df: pd.DataFrame,
     lookback: int = 100,
     min_touches: int = 3,
-    tolerance: float = 0.015  # 1.5% tolerance
+    tolerance: float = 0.015,  # 1.5% tolerance
 ) -> Dict[str, List[float]]:
     """
     Detect horizontal support and resistance levels
@@ -464,8 +463,8 @@ def detect_horizontal_support_resistance(
     """
     data = df.tail(lookback) if len(df) > lookback else df
 
-    highs = data['high'].values
-    lows = data['low'].values
+    highs = data["high"].values
+    lows = data["low"].values
 
     # Find local minima and maxima
     support_pivots = argrelextrema(lows, np.less_equal, order=5)[0]
@@ -473,20 +472,19 @@ def detect_horizontal_support_resistance(
 
     # Cluster similar price levels
     support_levels = _cluster_price_levels(lows[support_pivots], tolerance, min_touches)
-    resistance_levels = _cluster_price_levels(highs[resistance_pivots], tolerance, min_touches)
+    resistance_levels = _cluster_price_levels(
+        highs[resistance_pivots], tolerance, min_touches
+    )
 
-    logger.info(f"Found {len(support_levels)} horizontal support and {len(resistance_levels)} resistance levels")
+    logger.info(
+        f"Found {len(support_levels)} horizontal support and {len(resistance_levels)} resistance levels"
+    )
 
-    return {
-        "support": support_levels,
-        "resistance": resistance_levels
-    }
+    return {"support": support_levels, "resistance": resistance_levels}
 
 
 def _cluster_price_levels(
-    prices: np.ndarray,
-    tolerance: float,
-    min_touches: int
+    prices: np.ndarray, tolerance: float, min_touches: int
 ) -> List[float]:
     """
     Cluster similar price levels together

@@ -3,23 +3,25 @@ Database service for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import create_engine, text, event
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool, QueuePool
-from typing import Optional, List, Dict, Any, Callable
+import hashlib
 import logging
 import os
-import hashlib
-import json
 from functools import wraps
+from typing import Any, Callable, Dict, List, Optional
+
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool, StaticPool
 
 from app.config import get_settings
-from app.models import Base, Ticker, PatternScan, Watchlist, ScanLog
+from app.models import Base, PatternScan, ScanLog, Ticker, Watchlist
 
 logger = logging.getLogger(__name__)
 
+
 def cache_query(ttl: int = 300, key_prefix: str = "db"):
     """Decorator to cache database query results in Redis"""
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(self, *args, **kwargs):
@@ -30,13 +32,16 @@ def cache_query(ttl: int = 300, key_prefix: str = "db"):
             if args:
                 cache_key_parts.append(hashlib.md5(str(args).encode()).hexdigest()[:8])
             if kwargs:
-                cache_key_parts.append(hashlib.md5(str(sorted(kwargs.items())).encode()).hexdigest()[:8])
+                cache_key_parts.append(
+                    hashlib.md5(str(sorted(kwargs.items())).encode()).hexdigest()[:8]
+                )
 
             cache_key = ":".join(cache_key_parts)
 
             # Try to get from cache
             try:
                 from app.services.cache import get_cache_service
+
                 cache = get_cache_service()
                 cached_result = await cache.get(cache_key)
                 if cached_result is not None:
@@ -50,6 +55,7 @@ def cache_query(ttl: int = 300, key_prefix: str = "db"):
 
             try:
                 from app.services.cache import get_cache_service
+
                 cache = get_cache_service()
                 await cache.set(cache_key, result, ttl=ttl)
                 logger.debug(f"Cached result for {cache_key} (ttl={ttl}s)")
@@ -66,11 +72,13 @@ def cache_query(ttl: int = 300, key_prefix: str = "db"):
 
         # Return async wrapper if function is async, else sync wrapper
         import inspect
+
         if inspect.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
 
     return decorator
+
 
 class DatabaseService:
     """Database service for Legend AI operations"""
@@ -91,7 +99,9 @@ class DatabaseService:
             }
 
             if not self.database_url:
-                logger.warning("DATABASE_URL not set. Falling back to local SQLite database.")
+                logger.warning(
+                    "DATABASE_URL not set. Falling back to local SQLite database."
+                )
                 self.database_url = "sqlite:///./legend_ai.db"
 
             if self.database_url.startswith("sqlite"):
@@ -102,35 +112,50 @@ class DatabaseService:
             else:
                 # PostgreSQL connection pooling configuration
                 # Optimized for Railway deployment with limited connections
-                pool_size = int(os.getenv("DB_POOL_SIZE", "5"))  # Reduced from default 5 for Railway
-                max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))  # Max additional connections
-                pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))  # Seconds to wait for connection
-                pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "3600"))  # Recycle connections after 1 hour
-                pool_pre_ping = os.getenv("DB_POOL_PRE_PING", "true").lower() == "true"  # Test connections before use
+                pool_size = int(
+                    os.getenv("DB_POOL_SIZE", "5")
+                )  # Reduced from default 5 for Railway
+                max_overflow = int(
+                    os.getenv("DB_MAX_OVERFLOW", "10")
+                )  # Max additional connections
+                pool_timeout = int(
+                    os.getenv("DB_POOL_TIMEOUT", "30")
+                )  # Seconds to wait for connection
+                pool_recycle = int(
+                    os.getenv("DB_POOL_RECYCLE", "3600")
+                )  # Recycle connections after 1 hour
+                pool_pre_ping = (
+                    os.getenv("DB_POOL_PRE_PING", "true").lower() == "true"
+                )  # Test connections before use
 
-                engine_kwargs.update({
-                    "poolclass": QueuePool,
-                    "pool_size": pool_size,
-                    "max_overflow": max_overflow,
-                    "pool_timeout": pool_timeout,
-                    "pool_recycle": pool_recycle,
-                    "pool_pre_ping": pool_pre_ping,  # Verify connections are alive
-                    "connect_args": {
-                        "connect_timeout": 10,  # Connection timeout in seconds
-                        "options": "-c statement_timeout=30000"  # 30 second query timeout
+                engine_kwargs.update(
+                    {
+                        "poolclass": QueuePool,
+                        "pool_size": pool_size,
+                        "max_overflow": max_overflow,
+                        "pool_timeout": pool_timeout,
+                        "pool_recycle": pool_recycle,
+                        "pool_pre_ping": pool_pre_ping,  # Verify connections are alive
+                        "connect_args": {
+                            "connect_timeout": 10,  # Connection timeout in seconds
+                            "options": "-c statement_timeout=30000",  # 30 second query timeout
+                        },
                     }
-                })
+                )
 
                 self.engine = create_engine(self.database_url, **engine_kwargs)
 
                 # Log connection pool events in debug mode
                 if os.getenv("DEBUG", "").lower() == "true":
+
                     @event.listens_for(self.engine, "connect")
                     def receive_connect(dbapi_conn, connection_record):
                         logger.debug("Database connection established")
 
                     @event.listens_for(self.engine, "checkout")
-                    def receive_checkout(dbapi_conn, connection_record, connection_proxy):
+                    def receive_checkout(
+                        dbapi_conn, connection_record, connection_proxy
+                    ):
                         logger.debug("Connection checked out from pool")
 
             # Create session factory with optimized settings
@@ -138,13 +163,15 @@ class DatabaseService:
                 autocommit=False,
                 autoflush=False,
                 bind=self.engine,
-                expire_on_commit=False  # Don't expire objects after commit for better performance
+                expire_on_commit=False,  # Don't expire objects after commit for better performance
             )
 
             # Create tables
             Base.metadata.create_all(bind=self.engine)
 
-            logger.info(f"Database initialized successfully (pool_size={engine_kwargs.get('pool_size', 'N/A')})")
+            logger.info(
+                f"Database initialized successfully (pool_size={engine_kwargs.get('pool_size', 'N/A')})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
@@ -165,19 +192,15 @@ class DatabaseService:
         """Check database health"""
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(text("SELECT 1"))
+                conn.execute(text("SELECT 1"))
                 pool_status = self.get_pool_status()
-                return {
-                    "status": "healthy",
-                    "connection": True,
-                    "pool": pool_status
-                }
+                return {"status": "healthy", "connection": True, "pool": pool_status}
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
 
     def get_pool_status(self) -> Dict[str, Any]:
         """Get connection pool statistics"""
-        if not self.engine or not hasattr(self.engine.pool, 'size'):
+        if not self.engine or not hasattr(self.engine.pool, "size"):
             return {"status": "not_available"}
 
         pool = self.engine.pool
@@ -186,7 +209,7 @@ class DatabaseService:
             "checked_in": pool.checkedin(),
             "checked_out": pool.checkedout(),
             "overflow": pool.overflow(),
-            "total_connections": pool.size() + pool.overflow()
+            "total_connections": pool.size() + pool.overflow(),
         }
 
     # Ticker operations
@@ -207,7 +230,9 @@ class DatabaseService:
             return db.query(Ticker).limit(limit).all()
 
     # Pattern operations
-    def save_pattern_scan(self, ticker_symbol: str, pattern_data: Dict[str, Any]) -> PatternScan:
+    def save_pattern_scan(
+        self, ticker_symbol: str, pattern_data: Dict[str, Any]
+    ) -> PatternScan:
         """Save pattern scan result"""
         with self.get_db() as db:
             ticker = self.get_or_create_ticker(ticker_symbol, pattern_data.get("name"))
@@ -224,7 +249,7 @@ class DatabaseService:
                 analysis=pattern_data.get("analysis", ""),
                 current_price=pattern_data.get("current_price"),
                 volume_dry_up=pattern_data.get("volume_dry_up", False),
-                consolidation_days=pattern_data.get("consolidation_days")
+                consolidation_days=pattern_data.get("consolidation_days"),
             )
 
             db.add(scan)
@@ -240,9 +265,14 @@ class DatabaseService:
         try:
             with self.get_db() as db:
                 # Pre-fetch all tickers to avoid N+1 queries
-                symbols = {scan.get("ticker_symbol") for scan in scans_data if scan.get("ticker_symbol")}
+                symbols = {
+                    scan.get("ticker_symbol")
+                    for scan in scans_data
+                    if scan.get("ticker_symbol")
+                }
                 existing_tickers = {
-                    t.symbol: t for t in db.query(Ticker).filter(Ticker.symbol.in_(symbols)).all()
+                    t.symbol: t
+                    for t in db.query(Ticker).filter(Ticker.symbol.in_(symbols)).all()
                 }
 
                 # Create missing tickers
@@ -280,7 +310,7 @@ class DatabaseService:
                         analysis=data.get("analysis", ""),
                         current_price=data.get("current_price"),
                         volume_dry_up=data.get("volume_dry_up", False),
-                        consolidation_days=data.get("consolidation_days")
+                        consolidation_days=data.get("consolidation_days"),
                     )
                     scans.append(scan)
 
@@ -294,7 +324,9 @@ class DatabaseService:
             logger.error(f"Failed to save pattern scans batch: {e}")
             raise
 
-    def get_recent_scans(self, limit: int = 50, pattern_type: str = None, min_score: float = None) -> List[Dict[str, Any]]:
+    def get_recent_scans(
+        self, limit: int = 50, pattern_type: str = None, min_score: float = None
+    ) -> List[Dict[str, Any]]:
         """Get recent pattern scans with ticker info (optimized with filters)"""
         with self.get_db() as db:
             query = db.query(
@@ -305,7 +337,7 @@ class DatabaseService:
                 PatternScan.stop_price,
                 PatternScan.target_price,
                 PatternScan.scanned_at,
-                Ticker.symbol
+                Ticker.symbol,
             ).join(Ticker)
 
             # Apply filters
@@ -314,32 +346,36 @@ class DatabaseService:
             if min_score is not None:
                 query = query.filter(PatternScan.score >= min_score)
 
-            results = query.order_by(
-                PatternScan.scanned_at.desc()
-            ).limit(limit).all()
+            results = query.order_by(PatternScan.scanned_at.desc()).limit(limit).all()
 
-            return [{
-                "id": row.id,
-                "ticker": row.symbol,
-                "pattern": row.pattern_type,
-                "score": row.score,
-                "entry": row.entry_price,
-                "stop": row.stop_price,
-                "target": row.target_price,
-                "scanned_at": row.scanned_at.isoformat()
-            } for row in results]
+            return [
+                {
+                    "id": row.id,
+                    "ticker": row.symbol,
+                    "pattern": row.pattern_type,
+                    "score": row.score,
+                    "entry": row.entry_price,
+                    "stop": row.stop_price,
+                    "target": row.target_price,
+                    "scanned_at": row.scanned_at.isoformat(),
+                }
+                for row in results
+            ]
 
     # Watchlist operations
-    def add_to_watchlist(self, user_id: str, ticker_symbol: str, notes: str = None) -> Watchlist:
+    def add_to_watchlist(
+        self, user_id: str, ticker_symbol: str, notes: str = None
+    ) -> Watchlist:
         """Add ticker to user watchlist"""
         with self.get_db() as db:
             ticker = self.get_or_create_ticker(ticker_symbol)
 
             # Check if already exists
-            existing = db.query(Watchlist).filter(
-                Watchlist.user_id == user_id,
-                Watchlist.ticker_id == ticker.id
-            ).first()
+            existing = (
+                db.query(Watchlist)
+                .filter(Watchlist.user_id == user_id, Watchlist.ticker_id == ticker.id)
+                .first()
+            )
 
             if existing:
                 if notes:
@@ -348,9 +384,7 @@ class DatabaseService:
                 return existing
 
             watchlist_item = Watchlist(
-                user_id=user_id,
-                ticker_id=ticker.id,
-                notes=notes
+                user_id=user_id, ticker_id=ticker.id, notes=notes
             )
 
             db.add(watchlist_item)
@@ -361,23 +395,33 @@ class DatabaseService:
     def get_watchlist(self, user_id: str) -> List[Dict[str, Any]]:
         """Get user watchlist"""
         with self.get_db() as db:
-            results = db.query(
-                Watchlist, Ticker.symbol, Ticker.name
-            ).join(Ticker).filter(
-                Watchlist.user_id == user_id
-            ).all()
+            results = (
+                db.query(Watchlist, Ticker.symbol, Ticker.name)
+                .join(Ticker)
+                .filter(Watchlist.user_id == user_id)
+                .all()
+            )
 
-            return [{
-                "id": item.id,
-                "ticker": symbol,
-                "name": name,
-                "added_at": item.added_at.isoformat(),
-                "notes": item.notes
-            } for item, symbol, name in results]
+            return [
+                {
+                    "id": item.id,
+                    "ticker": symbol,
+                    "name": name,
+                    "added_at": item.added_at.isoformat(),
+                    "notes": item.notes,
+                }
+                for item, symbol, name in results
+            ]
 
     # Scan logging
-    def log_scan(self, scan_type: str, tickers_scanned: int, patterns_found: int,
-                 status: str = "completed", error_message: str = None) -> ScanLog:
+    def log_scan(
+        self,
+        scan_type: str,
+        tickers_scanned: int,
+        patterns_found: int,
+        status: str = "completed",
+        error_message: str = None,
+    ) -> ScanLog:
         """Log a scanning operation"""
         with self.get_db() as db:
             scan_log = ScanLog(
@@ -385,7 +429,7 @@ class DatabaseService:
                 tickers_scanned=tickers_scanned,
                 patterns_found=patterns_found,
                 status=status,
-                error_message=error_message
+                error_message=error_message,
             )
 
             db.add(scan_log)
@@ -397,8 +441,9 @@ class DatabaseService:
     def ensure_watchlist_table(self):
         try:
             with self.engine.begin() as conn:
-                conn.execute(text(
-                    """
+                conn.execute(
+                    text(
+                        """
                     create table if not exists watchlist (
                       id serial primary key,
                       symbol text unique not null,
@@ -408,7 +453,8 @@ class DatabaseService:
                       created_at timestamptz default now()
                     );
                     """
-                ))
+                    )
+                )
         except Exception as e:
             logger.warning(f"Could not ensure watchlist table: {e}")
 
@@ -419,13 +465,21 @@ class DatabaseService:
                 return []
             self.ensure_watchlist_table()
             with self.engine.begin() as conn:
-                rows = conn.execute(text("select id, symbol, reason, tags, status, created_at from watchlist order by created_at desc"))
+                rows = conn.execute(
+                    text(
+                        "select id, symbol, reason, tags, status, created_at from watchlist order by created_at desc"
+                    )
+                )
                 return [
                     {
                         "id": r[0],
                         "ticker": r[1],
                         "reason": r[2],
-                        "tags": [tag.strip() for tag in (r[3] or "").split(",") if tag.strip()],
+                        "tags": [
+                            tag.strip()
+                            for tag in (r[3] or "").split(",")
+                            if tag.strip()
+                        ],
                         "status": r[4],
                         "added_at": r[5].isoformat() if r[5] else None,
                     }
@@ -435,15 +489,23 @@ class DatabaseService:
             logger.warning(f"get_watchlist_items fallback: {e}")
             return []
 
-    def add_watchlist_symbol(self, symbol: str, reason: str = None, tags: str = None, status: str = "Watching") -> bool:
+    def add_watchlist_symbol(
+        self,
+        symbol: str,
+        reason: str = None,
+        tags: str = None,
+        status: str = "Watching",
+    ) -> bool:
         try:
             if not self.engine:
                 return False
             self.ensure_watchlist_table()
             with self.engine.begin() as conn:
                 conn.execute(
-                    text("insert into watchlist (symbol, reason, tags, status) values (:s, :r, :t, :st) on conflict(symbol) do update set reason=excluded.reason, tags=excluded.tags, status=excluded.status"),
-                    {"s": symbol.upper(), "r": reason, "t": tags, "st": status}
+                    text(
+                        "insert into watchlist (symbol, reason, tags, status) values (:s, :r, :t, :st) on conflict(symbol) do update set reason=excluded.reason, tags=excluded.tags, status=excluded.status"
+                    ),
+                    {"s": symbol.upper(), "r": reason, "t": tags, "st": status},
                 )
             return True
         except Exception as e:
@@ -451,36 +513,48 @@ class DatabaseService:
             return False
 
     def log_alert(
-        self, ticker: str, alert_type: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self,
+        ticker: str,
+        alert_type: str,
+        message: str,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Log alert to database"""
         try:
             if not self.engine:
                 return False
-            from datetime import datetime
             import json
-            
+            from datetime import datetime
+
             with self.engine.connect() as conn:
                 conn.execute(
-                    text("""
+                    text(
+                        """
                         INSERT INTO alert_logs (ticker, alert_type, message, metadata, created_at)
                         VALUES (:ticker, :alert_type, :message, :metadata, :created_at)
-                    """),
+                    """
+                    ),
                     {
                         "ticker": ticker,
                         "alert_type": alert_type,
                         "message": message,
                         "metadata": json.dumps(metadata) if metadata else None,
-                        "created_at": datetime.utcnow()
-                    }
+                        "created_at": datetime.utcnow(),
+                    },
                 )
                 conn.commit()
             return True
         except Exception as e:
             logger.warning(f"Failed to log alert for {ticker}: {e}")
             return False
-    
-    def update_watchlist_symbol(self, symbol: str, reason: Optional[str] = None, tags: Optional[str] = None, status: Optional[str] = None) -> bool:
+
+    def update_watchlist_symbol(
+        self,
+        symbol: str,
+        reason: Optional[str] = None,
+        tags: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> bool:
         try:
             if not self.engine:
                 return False
@@ -497,7 +571,12 @@ class DatabaseService:
                         where symbol = :symbol
                         """
                     ),
-                    {"reason": reason, "tags": tags, "status": status, "symbol": symbol.upper()},
+                    {
+                        "reason": reason,
+                        "tags": tags,
+                        "status": status,
+                        "symbol": symbol.upper(),
+                    },
                 )
             return result.rowcount > 0
         except Exception as e:
@@ -519,7 +598,9 @@ class DatabaseService:
             logger.warning(f"remove_watchlist_symbol failed: {e}")
             return False
 
-    def get_universe_symbols(self, limit: Optional[int] = None) -> List["UniverseSymbol"]:
+    def get_universe_symbols(
+        self, limit: Optional[int] = None
+    ) -> List["UniverseSymbol"]:
         """Return symbols stored in the universe_symbols table."""
         from app.models import UniverseSymbol
 
@@ -529,8 +610,10 @@ class DatabaseService:
                 query = query.limit(limit)
             return query.order_by(UniverseSymbol.symbol).all()
 
+
 # Global database service instance
 _db_service: Optional[DatabaseService] = None
+
 
 def get_database_service() -> DatabaseService:
     """Get global database service instance"""
@@ -540,6 +623,7 @@ def get_database_service() -> DatabaseService:
         _db_service = DatabaseService(settings.database_url)
         _db_service.init_db()
     return _db_service
+
 
 def get_db():
     """Dependency for getting database session"""

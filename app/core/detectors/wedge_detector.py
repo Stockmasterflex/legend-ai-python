@@ -2,15 +2,15 @@
 Wedge Pattern Detector
 Implements Rising and Falling Wedge detection
 """
-from typing import List, Optional, Dict, Any
-import pandas as pd
-import numpy as np
-from datetime import datetime
 
-from app.core.detector_base import (
-    Detector, PatternResult, PatternType, PricePoint, LineSegment,
-    GeometryHelper, StatsHelper
-)
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+
+from app.core.detector_base import (Detector, GeometryHelper, PatternResult,
+                                    PatternType, StatsHelper)
 from app.core.detector_config import WedgeConfig
 
 
@@ -31,7 +31,9 @@ class WedgeDetector(Detector):
             if hasattr(self.cfg, key.upper()):
                 setattr(self.cfg, key.upper(), value)
 
-    def find(self, ohlcv: pd.DataFrame, timeframe: str, symbol: str) -> List[PatternResult]:
+    def find(
+        self, ohlcv: pd.DataFrame, timeframe: str, symbol: str
+    ) -> List[PatternResult]:
         """Detect wedge patterns in OHLCV data"""
         if len(ohlcv) < self.cfg.MIN_LENGTH:
             return []
@@ -40,14 +42,16 @@ class WedgeDetector(Detector):
 
         try:
             # Calculate ATR
-            high = ohlcv['high'].values
-            low = ohlcv['low'].values
-            close = ohlcv['close'].values
+            high = ohlcv["high"].values
+            low = ohlcv["low"].values
+            close = ohlcv["close"].values
             atr = StatsHelper.atr(high, low, close)
 
             # Get pivots
             pivots_tuples = StatsHelper.zigzag_pivots(high, low, close, atr)
-            pivots = [{'index': p[0], 'price': p[1], 'type': p[2]} for p in pivots_tuples]
+            pivots = [
+                {"index": p[0], "price": p[1], "type": p[2]} for p in pivots_tuples
+            ]
 
             if len(pivots) < 4:
                 return []
@@ -58,24 +62,30 @@ class WedgeDetector(Detector):
                     continue
 
                 window = ohlcv.iloc[-lookback:]
-                window_pivots = [p for p in pivots if p['index'] >= len(ohlcv) - lookback]
+                window_pivots = [
+                    p for p in pivots if p["index"] >= len(ohlcv) - lookback
+                ]
 
                 if len(window_pivots) < 4:
                     continue
 
-                highs = [p for p in window_pivots if p['type'] == 'high']
-                lows = [p for p in window_pivots if p['type'] == 'low']
+                highs = [p for p in window_pivots if p["type"] == "high"]
+                lows = [p for p in window_pivots if p["type"] == "low"]
 
                 if len(highs) < 2 or len(lows) < 2:
                     continue
 
                 # Try rising wedge
-                rising = self._detect_rising_wedge(window, highs, lows, atr[-1], timeframe, symbol)
+                rising = self._detect_rising_wedge(
+                    window, highs, lows, atr[-1], timeframe, symbol
+                )
                 if rising:
                     results.append(rising)
 
                 # Try falling wedge
-                falling = self._detect_falling_wedge(window, highs, lows, atr[-1], timeframe, symbol)
+                falling = self._detect_falling_wedge(
+                    window, highs, lows, atr[-1], timeframe, symbol
+                )
                 if falling:
                     results.append(falling)
 
@@ -91,7 +101,7 @@ class WedgeDetector(Detector):
         lows: List[Dict],
         atr: float,
         timeframe: str,
-        symbol: str
+        symbol: str,
     ) -> Optional[PatternResult]:
         """
         Rising Wedge: Both lines rising, resistance steeper
@@ -101,14 +111,14 @@ class WedgeDetector(Detector):
             return None
 
         # Fit resistance line (through highs)
-        high_points = [(h['index'], h['price']) for h in highs]
+        high_points = [(h["index"], h["price"]) for h in highs]
         high_line = GeometryHelper.fit_line_ransac(high_points)
 
         if not high_line:
             return None
 
         # Fit support line (through lows)
-        low_points = [(l['index'], l['price']) for l in lows]
+        low_points = [(l["index"], l["price"]) for l in lows]
         low_line = GeometryHelper.fit_line_ransac(low_points)
 
         if not low_line:
@@ -126,8 +136,8 @@ class WedgeDetector(Detector):
             return None
 
         # Check convergence
-        first_idx = min(highs[0]['index'], lows[0]['index'])
-        last_idx = max(highs[-1]['index'], lows[-1]['index'])
+        first_idx = min(highs[0]["index"], lows[0]["index"])
+        last_idx = max(highs[-1]["index"], lows[-1]["index"])
 
         resistance_start = high_slope * first_idx + high_intercept
         resistance_end = high_slope * last_idx + high_intercept
@@ -147,13 +157,15 @@ class WedgeDetector(Detector):
 
         # Count touches
         resistance_touches = sum(
-            1 for h in highs
-            if abs(h['price'] - (high_slope * h['index'] + high_intercept)) < atr * 0.5
+            1
+            for h in highs
+            if abs(h["price"] - (high_slope * h["index"] + high_intercept)) < atr * 0.5
         )
 
         support_touches = sum(
-            1 for l in lows
-            if abs(l['price'] - (low_slope * l['index'] + low_intercept)) < atr * 0.5
+            1
+            for l in lows
+            if abs(l["price"] - (low_slope * l["index"] + low_intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE
@@ -161,7 +173,7 @@ class WedgeDetector(Detector):
             return None
 
         # Check volume contraction
-        volumes = window['volume'].values
+        volumes = window["volume"].values
         volume_trend = StatsHelper.kendall_tau(volumes)
         volume_declining = volume_trend < -0.2
 
@@ -171,14 +183,22 @@ class WedgeDetector(Detector):
             support_touches,
             convergence,
             len(window),
-            volume_declining
+            volume_declining,
         )
 
         if confidence < 0.40:
             return None
 
-        window_start = window.index[0].isoformat() if hasattr(window.index[0], 'isoformat') else str(window.index[0])
-        window_end = window.index[-1].isoformat() if hasattr(window.index[-1], 'isoformat') else str(window.index[-1])
+        window_start = (
+            window.index[0].isoformat()
+            if hasattr(window.index[0], "isoformat")
+            else str(window.index[0])
+        )
+        window_end = (
+            window.index[-1].isoformat()
+            if hasattr(window.index[-1], "isoformat")
+            else str(window.index[-1])
+        )
 
         return PatternResult(
             symbol=symbol,
@@ -190,23 +210,20 @@ class WedgeDetector(Detector):
             window_start=window_start,
             window_end=window_end,
             lines={
-                'resistance_slope': high_slope,
-                'resistance_intercept': high_intercept,
-                'support_slope': low_slope,
-                'support_intercept': low_intercept
+                "resistance_slope": high_slope,
+                "resistance_intercept": high_intercept,
+                "support_slope": low_slope,
+                "support_intercept": low_intercept,
             },
-            touches={
-                'resistance': resistance_touches,
-                'support': support_touches
-            },
+            touches={"resistance": resistance_touches, "support": support_touches},
             breakout=None,
             evidence={
-                'convergence': convergence,
-                'volume_declining': volume_declining,
-                'slope_ratio': high_slope / low_slope if low_slope != 0 else 0,
-                'pattern_length': len(window),
-                'direction': 'rising'
-            }
+                "convergence": convergence,
+                "volume_declining": volume_declining,
+                "slope_ratio": high_slope / low_slope if low_slope != 0 else 0,
+                "pattern_length": len(window),
+                "direction": "rising",
+            },
         )
 
     def _detect_falling_wedge(
@@ -216,7 +233,7 @@ class WedgeDetector(Detector):
         lows: List[Dict],
         atr: float,
         timeframe: str,
-        symbol: str
+        symbol: str,
     ) -> Optional[PatternResult]:
         """
         Falling Wedge: Both lines falling, support steeper
@@ -226,13 +243,13 @@ class WedgeDetector(Detector):
             return None
 
         # Fit lines
-        high_points = [(h['index'], h['price']) for h in highs]
+        high_points = [(h["index"], h["price"]) for h in highs]
         high_line = GeometryHelper.fit_line_ransac(high_points)
 
         if not high_line:
             return None
 
-        low_points = [(l['index'], l['price']) for l in lows]
+        low_points = [(l["index"], l["price"]) for l in lows]
         low_line = GeometryHelper.fit_line_ransac(low_points)
 
         if not low_line:
@@ -250,8 +267,8 @@ class WedgeDetector(Detector):
             return None
 
         # Check convergence
-        first_idx = min(highs[0]['index'], lows[0]['index'])
-        last_idx = max(highs[-1]['index'], lows[-1]['index'])
+        first_idx = min(highs[0]["index"], lows[0]["index"])
+        last_idx = max(highs[-1]["index"], lows[-1]["index"])
 
         resistance_start = high_slope * first_idx + high_intercept
         resistance_end = high_slope * last_idx + high_intercept
@@ -271,13 +288,15 @@ class WedgeDetector(Detector):
 
         # Count touches
         resistance_touches = sum(
-            1 for h in highs
-            if abs(h['price'] - (high_slope * h['index'] + high_intercept)) < atr * 0.5
+            1
+            for h in highs
+            if abs(h["price"] - (high_slope * h["index"] + high_intercept)) < atr * 0.5
         )
 
         support_touches = sum(
-            1 for l in lows
-            if abs(l['price'] - (low_slope * l['index'] + low_intercept)) < atr * 0.5
+            1
+            for l in lows
+            if abs(l["price"] - (low_slope * l["index"] + low_intercept)) < atr * 0.5
         )
 
         min_touches = self.cfg.MIN_TOUCHES_PER_SIDE
@@ -285,7 +304,7 @@ class WedgeDetector(Detector):
             return None
 
         # Check volume contraction
-        volumes = window['volume'].values
+        volumes = window["volume"].values
         volume_trend = StatsHelper.kendall_tau(volumes)
         volume_declining = volume_trend < -0.2
 
@@ -295,14 +314,22 @@ class WedgeDetector(Detector):
             support_touches,
             convergence,
             len(window),
-            volume_declining
+            volume_declining,
         )
 
         if confidence < 0.40:
             return None
 
-        window_start = window.index[0].isoformat() if hasattr(window.index[0], 'isoformat') else str(window.index[0])
-        window_end = window.index[-1].isoformat() if hasattr(window.index[-1], 'isoformat') else str(window.index[-1])
+        window_start = (
+            window.index[0].isoformat()
+            if hasattr(window.index[0], "isoformat")
+            else str(window.index[0])
+        )
+        window_end = (
+            window.index[-1].isoformat()
+            if hasattr(window.index[-1], "isoformat")
+            else str(window.index[-1])
+        )
 
         return PatternResult(
             symbol=symbol,
@@ -314,23 +341,22 @@ class WedgeDetector(Detector):
             window_start=window_start,
             window_end=window_end,
             lines={
-                'resistance_slope': high_slope,
-                'resistance_intercept': high_intercept,
-                'support_slope': low_slope,
-                'support_intercept': low_intercept
+                "resistance_slope": high_slope,
+                "resistance_intercept": high_intercept,
+                "support_slope": low_slope,
+                "support_intercept": low_intercept,
             },
-            touches={
-                'resistance': resistance_touches,
-                'support': support_touches
-            },
+            touches={"resistance": resistance_touches, "support": support_touches},
             breakout=None,
             evidence={
-                'convergence': convergence,
-                'volume_declining': volume_declining,
-                'slope_ratio': abs(low_slope) / abs(high_slope) if high_slope != 0 else 0,
-                'pattern_length': len(window),
-                'direction': 'falling'
-            }
+                "convergence": convergence,
+                "volume_declining": volume_declining,
+                "slope_ratio": (
+                    abs(low_slope) / abs(high_slope) if high_slope != 0 else 0
+                ),
+                "pattern_length": len(window),
+                "direction": "falling",
+            },
         )
 
     def _calculate_confidence(
@@ -339,7 +365,7 @@ class WedgeDetector(Detector):
         support_touches: int,
         convergence: float,
         pattern_length: int,
-        volume_declining: bool
+        volume_declining: bool,
     ) -> float:
         """Calculate wedge pattern confidence"""
 
@@ -358,10 +384,10 @@ class WedgeDetector(Detector):
         volume_score = 0.8 if volume_declining else 0.3
 
         confidence = (
-            0.25 * touch_score +
-            0.35 * convergence_score +
-            0.20 * length_score +
-            0.20 * volume_score
+            0.25 * touch_score
+            + 0.35 * convergence_score
+            + 0.20 * length_score
+            + 0.20 * volume_score
         )
 
         return np.clip(confidence, 0, 1)
