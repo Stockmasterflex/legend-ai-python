@@ -12,6 +12,10 @@ from datetime import datetime, timezone
 
 from app.core.detector_registry import get_all_detectors
 from app.core.detector_base import PatternResult
+from app.core.pattern_engine.detector import get_pattern_detector
+from app.core.pattern_engine.filter import PatternFilter
+from app.core.pattern_engine.scoring import PatternScorer
+from app.core.pattern_engine.scanner import ScanConfig, UniverseScanner
 from app.services.market_data import market_data_service
 from app.services.universe_store import universe_store
 from app.services import universe_data
@@ -46,6 +50,12 @@ class PatternScannerService:
         self.output_bars = bars
         self.max_concurrency = max_concurrency
         self.min_confidence = min_confidence
+        # New pattern-engine powered scanner for targeted API endpoints
+        self.engine_scanner = UniverseScanner(
+            detector=get_pattern_detector(),
+            filter_system=PatternFilter(),
+            scorer=PatternScorer(),
+        )
 
     async def scan_symbol(
         self,
@@ -219,6 +229,31 @@ class PatternScannerService:
         )
 
         return self._response(started, len(symbols), limited_results, len(all_patterns))
+
+    async def scan_with_pattern_engine(
+        self,
+        tickers: List[str],
+        interval: str = "1day",
+        apply_filters: bool = True,
+        min_score: float = 6.0,
+        filter_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Scan a provided list of tickers using the pattern engine + scoring pipeline.
+        """
+        if not tickers:
+            return self._response(time.perf_counter(), 0, [])
+
+        config = ScanConfig(
+            universe=[t.upper() for t in tickers],
+            interval=interval,
+            max_concurrent=self.max_concurrency,
+            apply_filters=apply_filters,
+            apply_scoring=True,
+            min_score=min_score,
+            filter_config=filter_config,
+        )
+        return await self.engine_scanner.scan_universe(config)
 
     def _pattern_to_dict(
         self,

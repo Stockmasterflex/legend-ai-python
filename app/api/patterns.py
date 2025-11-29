@@ -1,16 +1,27 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pathlib import Path
+from datetime import datetime
 import logging
 
+from app.core.detector_base import PatternType
 from app.core.pattern_detector import PatternDetector, PatternResult
+from app.core.pattern_engine.detector import get_pattern_detector
+from app.core.pattern_engine.export import PatternExporter
+from app.core.pattern_engine.filter import PatternFilter
+from app.core.pattern_engine.scoring import PatternScorer
 from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
 from app.services.charting import get_charting_service
+from app.services.pattern_scanner import pattern_scanner_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
+_pattern_filter = PatternFilter()
+_pattern_scorer = PatternScorer()
+_pattern_exporter = PatternExporter()
 
 
 class PatternRequest(BaseModel):
@@ -18,6 +29,7 @@ class PatternRequest(BaseModel):
     ticker: str = Field(..., description="Stock ticker symbol (e.g., AAPL, TSLA, SPY)", example="AAPL")
     interval: str = Field("1day", description="Time interval: 1min, 5min, 15min, 30min, 1h, 4h, 1day, 1week", example="1day")
     use_yahoo_fallback: bool = Field(True, description="Use Yahoo Finance as fallback data source")
+    use_advanced_patterns: bool = Field(True, description="Use advanced pattern detection engine (recommended)")
 
     @field_validator("interval")
     @classmethod
@@ -69,6 +81,63 @@ class PatternResponse(BaseModel):
                 "processing_time": 1.23
             }
         }
+
+# --------------------------------------------------------------------------- #
+# New API request/response models
+# --------------------------------------------------------------------------- #
+class ScanTickersRequest(BaseModel):
+    tickers: List[str]
+    interval: str = Field("1day", description="Time interval such as 1day or 1h")
+    apply_filters: bool = Field(True, description="Apply PatternFilter to results")
+    min_score: float = Field(6.0, ge=0.0, le=10.0, description="Minimum score to include")
+    filter_config: Optional[Dict[str, Any]] = Field(None, description="Filter configuration to forward to PatternFilter")
+
+
+class ScanTickersResponse(BaseModel):
+    success: bool
+    as_of: datetime
+    results: List[Dict[str, Any]]
+    errors: Dict[str, Any] = Field(default_factory=dict)
+    count: int
+    meta: Optional[Dict[str, Any]] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class FilterRequest(BaseModel):
+    patterns: List[Dict[str, Any]]
+    filter_config: Optional[Dict[str, Any]] = None
+
+
+class FilterResponse(BaseModel):
+    results: List[Dict[str, Any]]
+    count: int
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class ScoreRequest(BaseModel):
+    pattern: Dict[str, Any]
+
+
+class ScoreResponse(BaseModel):
+    score: float
+    components: Dict[str, float]
+
+
+class ExportRequest(BaseModel):
+    patterns: List[Dict[str, Any]]
+    format: str = Field("csv", description="csv | json | excel | clipboard")
+    filename: Optional[str] = None
+    output_dir: Optional[str] = None
+
+
+class ExportResponse(BaseModel):
+    success: bool
+    location: Optional[str] = None
+    copied: bool = False
 
 
 @router.post("/detect",
@@ -287,13 +356,57 @@ async def detect_pattern(request: PatternRequest):
             outputsize=500
         )
 
-        # Run pattern detection
-        detector = PatternDetector()
-        result = await detector.analyze_ticker(
-            ticker=ticker,
-            price_data=price_data,
-            spy_data=spy_data
-        )
+        # Run pattern detection - use advanced engine by default
+        if request.use_advanced_patterns:
+            logger.info(f"Using Legend AI Pattern Engine for {ticker}")
+            advanced_detector = get_pattern_detector()
+            detected_patterns = advanced_detector.detect_all_patterns(price_data, ticker)
+            
+            if detected_patterns:
+                # Use the highest confidence pattern
+                best_pattern = max(detected_patterns, key=lambda p: p.get('confidence', 0))
+                
+                # Convert to PatternResult format
+                from datetime import datetime
+                result = PatternResult(
+                    ticker=ticker,
+                    pattern=best_pattern['pattern'],
+                    score=best_pattern['score'],
+                    entry=best_pattern['entry'],
+                    stop=best_pattern['stop'],
+                    target=best_pattern['target'],
+                    risk_reward=best_pattern['risk_reward'],
+                    criteria_met=[
+                        f"✓ {best_pattern['pattern']} confirmed" if best_pattern.get('confirmed') else f"⚠ {best_pattern['pattern']} pending confirmation",
+                        f"✓ Confidence: {best_pattern['confidence']*100:.1f}%",
+                        f"✓ Risk/Reward: {best_pattern['risk_reward']:.2f}:1"
+                    ],
+                    analysis=f"Legend AI detected {best_pattern['pattern']} with {best_pattern['confidence']*100:.0f}% confidence. Pattern width: {best_pattern.get('width', 0)} bars.",
+                    timestamp=datetime.now(),
+                    current_price=best_pattern.get('current_price'),
+                    support_start=best_pattern.get('metadata', {}).get('bottom1') or best_pattern.get('metadata', {}).get('bottom'),
+                    support_end=best_pattern.get('metadata', {}).get('bottom2') or best_pattern.get('metadata', {}).get('bottom'),
+                )
+                
+                logger.info(f"✅ Legend AI detected {len(detected_patterns)} patterns, using best: {result.pattern} (score: {result.score})")
+            else:
+                logger.info(f"No advanced patterns found for {ticker}, falling back to basic detector")
+                # Fallback to original detector
+                detector = PatternDetector()
+                result = await detector.analyze_ticker(
+                    ticker=ticker,
+                    price_data=price_data,
+                    spy_data=spy_data
+                )
+        else:
+            # Use original Minervini-style detector
+            logger.info(f"Using basic pattern detection for {ticker}")
+            detector = PatternDetector()
+            result = await detector.analyze_ticker(
+                ticker=ticker,
+                price_data=price_data,
+                spy_data=spy_data
+            )
 
         if not result:
             raise HTTPException(
@@ -400,3 +513,126 @@ async def cache_stats():
             "status": "error",
             "error": str(e)
         }
+
+
+def _parse_as_of(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except Exception:
+            pass
+    return datetime.utcnow()
+
+
+def _catalog_description(name: str) -> str:
+    return {
+        "Cup & Handle": "Rounded base with shallow handle forming below highs.",
+        "Double Bottom": "Two swing lows forming a W near support.",
+        "Triangle Ascending": "Rising higher lows against horizontal resistance.",
+        "Triangle Descending": "Lower highs pressing against support.",
+        "Triangle Symmetrical": "Converging highs/lows signaling volatility compression.",
+        "VCP (Volatility Contraction)": "Mark Minervini style contraction leading to breakout.",
+    }.get(name, "Pattern generated by the Legend AI detection engine.")
+
+
+@router.post("/scan", response_model=ScanTickersResponse)
+async def scan_tickers(
+    request: ScanTickersRequest,
+) -> ScanTickersResponse:
+    """Scan multiple tickers for patterns using the pattern engine + scoring."""
+    if not request.tickers:
+        raise HTTPException(status_code=400, detail="tickers list is required")
+
+    try:
+        payload = await pattern_scanner_service.scan_with_pattern_engine(
+            tickers=request.tickers,
+            interval=request.interval,
+            apply_filters=request.apply_filters,
+            min_score=request.min_score,
+            filter_config=request.filter_config,
+        )
+    except Exception as exc:
+        logger.exception("scan_tickers_failed: %s", exc)
+        raise HTTPException(status_code=500, detail="scan_failed") from exc
+
+    results = payload.get("results", [])
+    return ScanTickersResponse(
+        success=True,
+        as_of=_parse_as_of(payload.get("as_of")),
+        results=results,
+        errors=payload.get("errors", {}),
+        count=len(results),
+        meta=payload.get("meta"),
+    )
+
+
+@router.post("/filter", response_model=FilterResponse)
+async def filter_patterns(
+    request: FilterRequest,
+) -> FilterResponse:
+    """Apply filters to pattern results."""
+    filtered = _pattern_filter.apply_filters(request.patterns, request.filter_config)
+    return FilterResponse(results=filtered, count=len(filtered))
+
+
+@router.post("/score", response_model=ScoreResponse)
+async def score_pattern(
+    request: ScoreRequest,
+) -> ScoreResponse:
+    """Return a score breakdown for a pattern."""
+    components, total = _pattern_scorer.score_pattern(request.pattern)
+    return ScoreResponse(score=total, components=components.to_dict())
+
+
+@router.post("/export", response_model=ExportResponse)
+async def export_patterns(
+    request: ExportRequest,
+) -> ExportResponse:
+    """Export pattern results to disk or clipboard."""
+    if not request.patterns:
+        raise HTTPException(status_code=400, detail="No patterns provided for export")
+
+    fmt = request.format.lower()
+    output_dir = Path(request.output_dir or "exports")
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    def _resolve_filename(ext: str) -> Path:
+        if request.filename:
+            return output_dir / request.filename
+        return output_dir / f"patterns_{timestamp}.{ext}"
+
+    if fmt == "csv":
+        location = _pattern_exporter.to_csv(request.patterns, str(_resolve_filename("csv")))
+        return ExportResponse(success=True, location=location)
+    if fmt == "json":
+        location = _pattern_exporter.to_json(request.patterns, str(_resolve_filename("json")))
+        return ExportResponse(success=True, location=location)
+    if fmt in {"excel", "xlsx"}:
+        location = _pattern_exporter.to_excel(request.patterns, str(_resolve_filename("xlsx")))
+        return ExportResponse(success=True, location=location)
+    if fmt == "clipboard":
+        text = _pattern_exporter.to_clipboard(request.patterns)
+        return ExportResponse(success=True, location=text, copied=True)
+
+    raise HTTPException(status_code=400, detail=f"Unsupported export format: {request.format}")
+
+
+@router.get("/catalog")
+async def get_pattern_catalog() -> Dict[str, Any]:
+    """List all available patterns with short descriptions."""
+    catalog = []
+    for pattern_type in PatternType:
+        name = pattern_type.value
+        catalog.append({"name": name, "description": _catalog_description(name)})
+
+    # Frequently requested swing pattern
+    catalog.append(
+        {
+            "name": "MMU VCP",
+            "description": "Minervini style volatility contraction pivot (most requested swing setup).",
+        }
+    )
+
+    return {"count": len(catalog), "patterns": catalog}
