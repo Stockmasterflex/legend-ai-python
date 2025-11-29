@@ -2,12 +2,13 @@
 Error monitoring and statistics API endpoints.
 """
 
-from fastapi import APIRouter
-from typing import Dict, Any, List
 import logging
+from typing import Any, Dict, List
 
-from app.core.errors import error_aggregator, ErrorGroup
+from fastapi import APIRouter
+
 from app.core.error_recovery import _circuit_breakers, health_monitor
+from app.core.errors import error_aggregator
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/errors", tags=["errors"])
@@ -58,10 +59,7 @@ async def get_circuit_breakers() -> Dict[str, Any]:
 
     Shows which external services are healthy, degraded, or unavailable.
     """
-    return {
-        name: breaker.get_state()
-        for name, breaker in _circuit_breakers.items()
-    }
+    return {name: breaker.get_state() for name, breaker in _circuit_breakers.items()}
 
 
 @router.get("/health")

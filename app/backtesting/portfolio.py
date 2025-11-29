@@ -6,12 +6,14 @@ Handles positions, cash, and portfolio-level operations
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
+
 import pandas as pd
 
 
 @dataclass
 class Position:
     """Represents a position in a security"""
+
     ticker: str
     quantity: int
     entry_price: float
@@ -285,12 +287,16 @@ class Portfolio:
         # Calculate P&L
         gross_pnl = gross_proceeds - (position.quantity * position.entry_price)
         net_pnl = net_proceeds - position.cost_basis - slippage
-        pnl_pct = (net_pnl / position.cost_basis) * 100 if position.cost_basis > 0 else 0.0
+        pnl_pct = (
+            (net_pnl / position.cost_basis) * 100 if position.cost_basis > 0 else 0.0
+        )
 
         # Calculate R-multiple if stop loss was set
         r_multiple = None
         if position.stop_loss:
-            initial_risk = abs(position.entry_price - position.stop_loss) * position.quantity
+            initial_risk = (
+                abs(position.entry_price - position.stop_loss) * position.quantity
+            )
             if initial_risk > 0:
                 r_multiple = net_pnl / initial_risk
 
@@ -377,7 +383,11 @@ class Portfolio:
         # Calculate daily return
         if len(self.equity_curve) > 1:
             prev_value = self.equity_curve[-2]["total_value"]
-            daily_return = ((total_value - prev_value) / prev_value) * 100 if prev_value > 0 else 0.0
+            daily_return = (
+                ((total_value - prev_value) / prev_value) * 100
+                if prev_value > 0
+                else 0.0
+            )
             self.daily_returns.append(daily_return)
 
     def get_position(self, ticker: str) -> Optional[Position]:
@@ -423,10 +433,20 @@ class Portfolio:
 
         winning_trades = len(trades_df[trades_df["net_pnl"] > 0])
         losing_trades = len(trades_df[trades_df["net_pnl"] < 0])
-        win_rate = (winning_trades / len(trades_df)) * 100 if len(trades_df) > 0 else 0.0
+        win_rate = (
+            (winning_trades / len(trades_df)) * 100 if len(trades_df) > 0 else 0.0
+        )
 
-        avg_win = trades_df[trades_df["net_pnl"] > 0]["net_pnl"].mean() if winning_trades > 0 else 0.0
-        avg_loss = trades_df[trades_df["net_pnl"] < 0]["net_pnl"].mean() if losing_trades > 0 else 0.0
+        avg_win = (
+            trades_df[trades_df["net_pnl"] > 0]["net_pnl"].mean()
+            if winning_trades > 0
+            else 0.0
+        )
+        avg_loss = (
+            trades_df[trades_df["net_pnl"] < 0]["net_pnl"].mean()
+            if losing_trades > 0
+            else 0.0
+        )
         profit_factor = abs(avg_win / avg_loss) if avg_loss != 0 else 0.0
 
         return {
@@ -448,5 +468,7 @@ class Portfolio:
             "total_slippage": self.total_slippage,
             "largest_win": trades_df["net_pnl"].max() if len(trades_df) > 0 else 0.0,
             "largest_loss": trades_df["net_pnl"].min() if len(trades_df) > 0 else 0.0,
-            "avg_days_held": trades_df["days_held"].mean() if len(trades_df) > 0 else 0.0,
+            "avg_days_held": (
+                trades_df["days_held"].mean() if len(trades_df) > 0 else 0.0
+            ),
         }

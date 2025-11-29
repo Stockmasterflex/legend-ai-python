@@ -8,32 +8,22 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-dark: #09090b;
-            /* Zinc 950 */
             --bg-card: rgba(24, 24, 27, 0.6);
-            /* Zinc 900 with opacity */
             --bg-hover: rgba(39, 39, 42, 0.8);
-            /* Zinc 800 */
             --text-primary: #f4f4f5;
-            /* Zinc 100 */
             --text-secondary: #a1a1aa;
-            /* Zinc 400 */
             --accent-blue: #3b82f6;
-            /* Blue 500 */
             --accent-purple: #8b5cf6;
-            /* Violet 500 */
             --accent-green: #10b981;
-            /* Emerald 500 */
             --accent-red: #ef4444;
-            /* Red 500 */
             --border-color: rgba(255, 255, 255, 0.1);
             --glass-bg: rgba(9, 9, 11, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.08);
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
 
         * {
@@ -43,8 +33,6 @@
             scrollbar-width: thin;
             scrollbar-color: var(--border-color) transparent;
         }
-
-        /* ... scrollbar ... */
 
         body {
             font-family: 'Inter', sans-serif;
@@ -58,13 +46,10 @@
             min-height: 100vh;
         }
 
-        /* ... animations ... */
-
         /* Navigation */
         nav {
             background: var(--glass-bg);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
@@ -88,13 +73,11 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            letter-spacing: -0.02em;
         }
 
         .nav-links {
             display: flex;
             gap: 8px;
-            align-items: center;
         }
 
         .nav-tab {
@@ -105,1909 +88,614 @@
             font-size: 0.9rem;
             font-weight: 500;
             transition: all 0.2s;
-            text-decoration: none;
         }
 
-        .nav-tab:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
+        .nav-tab:hover,
         .nav-tab.active {
             color: var(--text-primary);
             background: rgba(255, 255, 255, 0.1);
         }
-
-        /* ... */
 
         /* Layout */
         .container {
             max-width: 1600px;
             margin: 0 auto;
             padding: 24px;
-            animation: fadeIn 0.5s ease-out;
         }
 
         .grid {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
             gap: 24px;
-            margin-bottom: 24px;
         }
 
-        /* Widgets */
         .widget {
             background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-color);
             border-radius: 16px;
             padding: 24px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .full-width { grid-column: span 12; }
+        .half-width { grid-column: span 6; }
+        .third-width { grid-column: span 4; }
+        .two-thirds-width { grid-column: span 8; }
+
+        /* Scanner Layout */
+        .scanner-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            height: calc(100vh - 140px);
+        }
+
+        .scanner-sidebar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: var(--shadow-md);
-            transition: border-color 0.2s, transform 0.2s;
         }
 
-        .widget:hover {
-            border-color: rgba(255, 255, 255, 0.2);
+        .scanner-content {
+            overflow-y: auto;
+            padding-right: 5px;
         }
 
-        .widget-header {
+        .scanner-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            background: rgba(0,0,0,0.2);
         }
 
-        .widget-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
+        /* Accordion Filters */
+        .accordion-item {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .accordion-header {
+            padding: 15px 20px;
+            cursor: pointer;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.02);
+            transition: background 0.2s;
         }
 
-        .widget-icon {
-            color: var(--accent-blue);
-            background: rgba(59, 130, 246, 0.1);
-            padding: 6px;
-            border-radius: 6px;
-            font-size: 1.1rem;
+        .accordion-header:hover {
+            background: rgba(255,255,255,0.05);
         }
 
-        /* Specific Grid Areas */
-        .full-width {
-            grid-column: span 12;
+        .accordion-content {
+            padding: 15px 20px;
+            display: none;
+            background: rgba(0,0,0,0.1);
         }
 
-        .half-width {
-            grid-column: span 6;
-        }
-
-        .third-width {
-            grid-column: span 4;
-        }
-
-        .quarter-width {
-            grid-column: span 3;
-        }
-
-        .two-thirds-width {
-            grid-column: span 8;
-        }
-
-        /* Interactive Elements */
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-label {
+        .accordion-content.active {
             display: block;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            font-weight: 500;
         }
 
-        input[type="text"],
-        input[type="number"],
-        input[type="date"],
-        select {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-family: 'Inter', sans-serif;
+        /* Form Elements */
+        .filter-group { margin-bottom: 15px; }
+        .filter-label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; }
+
+        input[type="range"] {
             width: 100%;
-            transition: all 0.2s;
-            font-size: 0.9rem;
-        }
-
-        input:focus,
-        select:focus {
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
             outline: none;
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            -webkit-appearance: none;
         }
 
-        button {
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
             background: var(--accent-blue);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 50%;
             cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            box-shadow: var(--shadow-sm);
         }
 
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        button.secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        button.secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 0.9rem;
-        }
-
-        th {
-            text-align: left;
-            color: var(--text-secondary);
-            font-weight: 600;
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
+        .range-value {
             font-family: 'JetBrains Mono', monospace;
-            transition: background 0.1s;
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+            float: right;
         }
 
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        /* Badges */
-        .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-
-        .badge-green {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-
-        .badge-red {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .badge-blue {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.2);
-        }
-
-        .badge-purple {
-            background: rgba(139, 92, 246, 0.15);
-            color: #a78bfa;
-            border: 1px solid rgba(139, 92, 246, 0.2);
-        }
-
-        /* Tabs */
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Pattern Selection Grid */
-        .pattern-checkbox {
+        .toggle-switch {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
             cursor: pointer;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            transition: all 0.2s;
-            user-select: none;
         }
 
-        .pattern-checkbox:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.2);
+        .toggle-track {
+            width: 40px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
         }
 
-        .pattern-checkbox input {
-            display: none;
+        .toggle-thumb {
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
         }
 
-        .pattern-checkbox .checkmark {
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--text-secondary);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
+        input:checked + .toggle-track { background: var(--accent-green); }
+        input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
 
-        .pattern-checkbox input:checked+.checkmark {
-            background: var(--accent-blue);
-            border-color: var(--accent-blue);
-        }
-
-        .pattern-checkbox input:checked+.checkmark::after {
-            content: '✓';
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .pattern-checkbox input:checked~.label-text {
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .pattern-checkbox .label-text {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-
-        /* Cards Grid for Scanner */
-        .card-grid {
+        /* Results Grid */
+        .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 20px;
+            padding-bottom: 40px;
         }
 
-        .scan-card {
-            background: rgba(255, 255, 255, 0.02);
+        .result-card {
+            background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 20px;
             transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
         }
 
-        .scan-card:hover {
+        .result-card:hover {
             transform: translateY(-4px);
             border-color: var(--accent-blue);
-            background: rgba(255, 255, 255, 0.04);
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow-md);
         }
 
-        .scan-card-header {
+        .result-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 15px;
         }
 
-        /* System Status */
-        .system-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            padding: 6px 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-secondary);
-        }
-
-        .status-dot.online {
-            background: var(--accent-green);
-            box-shadow: 0 0 8px var(--accent-green);
-            animation: pulse 2s infinite;
-        }
-
-
-        .scan-ticker {
-            font-size: 1.2rem;
+        .ticker-symbol {
+            font-size: 1.4rem;
             font-weight: 700;
             color: var(--text-primary);
         }
 
-        .scan-score {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-green);
+        .pattern-tag {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
         }
 
-        /* Analysis Result */
-        #analysis-result {
-            margin-top: 15px;
-            padding: 15px;
-            background: var(--bg-dark);
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
+        .pattern-tag.bullish { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+        .pattern-tag.bearish { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
             font-size: 0.85rem;
-            white-space: pre-wrap;
-            display: none;
-            max-height: 300px;
-            overflow-y: auto;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
         }
 
-        /* Heatmap Card */
-        .heatmap-card {
-            padding: 15px;
+        .metric-val {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .analyze-btn {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px;
             border-radius: 8px;
-            text-align: center;
-            background: var(--bg-hover);
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
         }
 
-        .heatmap-card.bullish {
-            border: 1px solid var(--accent-green);
-            background: rgba(16, 185, 129, 0.1);
+        .analyze-btn:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
         }
 
-        .heatmap-card.bearish {
-            border: 1px solid var(--accent-red);
-            background: rgba(239, 68, 68, 0.1);
+        /* Checkbox List */
+        .checkbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .heatmap-card.neutral {
-            border: 1px solid var(--text-secondary);
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: background 0.2s;
         }
 
-        /* Mobile Responsiveness */
-        @media (max-width: 1024px) {
-
-            .half-width,
-            .third-width,
-            .two-thirds-width,
-            .quarter-width {
-                grid-column: span 12;
-            }
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        @media (max-width: 768px) {
-            .nav-content {
-                padding: 0 10px;
-                overflow-x: auto;
-            }
-
-            .nav-links {
-                gap: 5px;
-            }
-
-            .nav-tab {
-                padding: 6px 10px;
-                font-size: 0.8rem;
-                white-space: nowrap;
-            }
-
-            .grid {
-                display: flex;
-                flex-direction: column;
-            }
-
-            .widget {
-                min-height: 300px;
-            }
+        .checkbox-item input {
+            accent-color: var(--accent-blue);
+            width: 16px;
+            height: 16px;
         }
+
+        /* Tab Content Control */
+        .tab-content { display: none; animation: fadeIn 0.3s ease-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 
 <body>
     <nav>
         <div class="nav-content">
-            <div class="logo">
-                <span>⚡</span> Legend AI
-            </div>
-            <div class="system-status" id="system-status">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="status-text">Connecting...</span>
-            </div>
+            <div class="logo"><span>⚡</span> Legend AI</div>
             <div class="nav-links">
-                <div class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</div>
-                <div class="nav-tab" onclick="switchTab('scanner')">Scanner</div>
+                <div class="nav-tab" onclick="switchTab('dashboard')">Dashboard</div>
+                <div class="nav-tab active" onclick="switchTab('scanner')">Scanner</div>
                 <div class="nav-tab" onclick="switchTab('top-setups')">Top Setups</div>
-                <div class="nav-tab" onclick="switchTab('multi-tf')">Multi-TF</div>
-                <div class="nav-tab" onclick="switchTab('planner')">Trade Planner</div>
                 <div class="nav-tab" onclick="switchTab('ai-assistant')">AI Assistant</div>
                 <div class="nav-tab" onclick="switchTab('portfolio')">Portfolio</div>
-                <div class="nav-tab" onclick="switchTab('backtest')">Backtest</div>
-                <div class="nav-tab" onclick="switchTab('backtest')">Backtest</div>
-                <!-- Pattern Catalog Moved to Scanner -->
-                <a href="/docs" class="nav-tab" target="_blank" style="border:none;">API Docs</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <!-- Ticker Tape (Always Visible) -->
-        <div class="grid">
-            <div class="widget full-width" style="padding: 0; border: none; background: transparent; height: 72px;">
-                <div class="tradingview-widget-container">
-                    <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript"
-                        src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                            {
-                                "symbols": [
-                                    { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
-                                    { "proName": "NASDAQ:QQQ", "title": "NASDAQ 100" },
-                                    { "proName": "AMEX:IWM", "title": "Russell 2000" },
-                                    { "proName": "CBOE:VIX", "title": "VIX" },
-                                    { "description": "NVDA", "proName": "NASDAQ:NVDA" },
-                                    { "description": "AAPL", "proName": "NASDAQ:AAPL" },
-                                    { "description": "TSLA", "proName": "NASDAQ:TSLA" }
-                                ],
-                                    "showSymbolLogo": true,
-                                        "isTransparent": true,
-                                            "displayMode": "adaptive",
-                                                "colorTheme": "dark",
-                                                    "locale": "en"
-                            }
-                        </script>
+
+        <!-- DASHBOARD TAB (Placeholder for structure) -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="grid">
+                <div class="widget full-width" style="text-align: center; padding: 100px;">
+                    <h2>Dashboard View</h2>
+                    <p style="color: var(--text-secondary);">Switch to Scanner tab for the new interface.</p>
                 </div>
             </div>
         </div>
 
-        <!-- TAB: DASHBOARD -->
-        <div id="tab-dashboard" class="tab-content active">
-            <div class="grid">
-                <!-- Quick Analysis Tool -->
-                <div class="widget third-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">🔍</span> Quick Analysis</div>
-                    </div>
-                    <div class="input-group">
-                        <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g. NVDA)">
-                        <button onclick="runAnalysis()" id="analyze-btn">Analyze</button>
-                    </div>
-                    <div id="analysis-result"></div>
-                </div>
+        <!-- SCANNER TAB (New Implementation) -->
+        <div id="tab-scanner" class="tab-content active">
+            <div class="scanner-layout">
 
-                <!-- Recent Trades (Journal) -->
-                <div class="widget two-thirds-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">📓</span> Recent Trades</div>
-                        <button onclick="loadTrades()" class="secondary"
-                            style="padding: 4px 12px; font-size: 0.8rem;">Refresh</button>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table id="trades-table">
-                            <thead>
-                                <tr>
-                                    <th>Ticker</th>
-                                    <th>Pattern</th>
-                                    <th>Entry</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">Loading...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid">
-                <!-- Market Overview -->
-                <div class="widget half-width" style="height: 500px;">
-                    <div class="widget-header">
-                        <div class="widget-title">Market Overview</div>
-                    </div>
-                    <div class="tradingview-widget-container" style="height:100%;width:100%">
-                        <div class="tradingview-widget-container__widget"></div>
-                        <script type="text/javascript"
-                            src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
-                                {
-                                    "colorTheme": "dark",
-                                        "dateRange": "12M",
-                                            "showChart": true,
-                                                "locale": "en",
-                                                    "width": "100%",
-                                                        "height": "100%",
-                                                            "largeChartUrl": "",
-                                                                "isTransparent": true,
-                                                                    "showSymbolLogo": true,
-                                                                        "tabs": [
-                                                                            {
-                                                                                "title": "Indices",
-                                                                                "symbols": [
-                                                                                    { "s": "FOREXCOM:SPXUSD", "d": "S&P 500" },
-                                                                                    { "s": "NASDAQ:QQQ", "d": "NASDAQ 100" },
-                                                                                    { "s": "AMEX:IWM", "d": "Russell 2000" },
-                                                                                    { "s": "CBOE:VIX", "d": "VIX" }
-                                                                                ]
-                                                                            }
-                                                                        ]
-                                }
-                            </script>
-                    </div>
-                </div>
-
-                <!-- Market News Widget (TradingView) -->
-                <div class="widget half-width" style="height: 500px;">
-                    <div class="widget-header">
-                        <div class="widget-title">Market News</div>
-                    </div>
-                    <div class="tradingview-widget-container" style="height:100%;width:100%">
-                        <div class="tradingview-widget-container__widget"></div>
-                        <script type="text/javascript"
-                            src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
-                                {
-                                    "feedMode": "market",
-                                        "market": "stock",
-                                            "isTransparent": true,
-                                                "displayMode": "regular",
-                                                    "width": "100%",
-                                                        "height": "100%",
-                                                            "colorTheme": "dark",
-                                                                "locale": "en"
-                                }
-                            </script>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid">
-                <!-- Sector Heatmap -->
-                <div class="widget full-width" style="height: 500px;">
-                    <div class="widget-header">
-                        <div class="widget-title">Sector Heatmap</div>
-                    </div>
-                    <div class="tradingview-widget-container" style="height:100%;width:100%">
-                        <div class="tradingview-widget-container__widget"></div>
-                        <script type="text/javascript"
-                            src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-                                {
-                                    "exchanges": [],
-                                        "dataSource": "SPX500",
-                                            "grouping": "sector",
-                                                "blockSize": "market_cap_basic",
-                                                    "blockColor": "change",
-                                                        "locale": "en",
-                                                            "symbolUrl": "",
-                                                                "colorTheme": "dark",
-                                                                    "hasTopBar": false,
-                                                                        "isDataSetEnabled": false,
-                                                                            "isZoomEnabled": true,
-                                                                                "hasSymbolTooltip": true,
-                                                                                    "width": "100%",
-                                                                                        "height": "100%"
-                                }
-                            </script>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: SCANNER -->
-        <div id="tab-scanner" class="tab-content">
-            <div class="grid">
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">📡</span> Advanced Pattern Scanner</div>
-                        <button onclick="triggerScan()" id="scan-btn">Run New Scan</button>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                        Scans the S&P 500 and NASDAQ 100 for high-probability setups.
-                    </p>
-
-                    <!-- Filters -->
-                    <!-- Pattern Selection -->
-                    <div style="margin-bottom: 24px;">
-                        <h3
-                            style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
-                            Select Patterns to Scan</h3>
-                        <div
-                            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
-                            <!-- Bullish Patterns -->
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="VCP" checked>
-                                <span class="checkmark"></span>
-                                <span class="label-text">VCP (Volatility Contraction)</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Cup & Handle">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Cup & Handle</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Double Bottom">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Double Bottom</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Ascending Triangle">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Ascending Triangle</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Bull Flag">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Bull Flag</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Falling Wedge">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Falling Wedge</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Inverse Head & Shoulders">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Inv. Head & Shoulders</span>
-                            </label>
-
-                            <!-- Bearish Patterns -->
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Double Top">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Double Top</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Descending Triangle">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Descending Triangle</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Bear Flag">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Bear Flag</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Rising Wedge">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Rising Wedge</span>
-                            </label>
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" value="Head & Shoulders">
-                                <span class="checkmark"></span>
-                                <span class="label-text">Head & Shoulders</span>
-                            </label>
-                        </div>
-
-                        <!-- Additional Filters -->
-                        <div
-                            style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 20px;">
-                            <label class="pattern-checkbox">
-                                <input type="checkbox" id="filter-trend" checked>
-                                <span class="checkmark"></span>
-                                <span class="label-text">Minervini Trend Template (RS > 70)</span>
-                            </label>
-                        </div>
+                <!-- LEFT SIDEBAR: FILTERS -->
+                <div class="scanner-sidebar">
+                    <div class="scanner-header">
+                        <span style="font-weight: 600;">Filters</span>
+                        <button onclick="resetFilters()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem;">Reset</button>
                     </div>
 
-                    <div id="scanner-results" class="card-grid">
-                        <!-- Results will populate here -->
-                        <div
-                            style="grid-column: span 3; text-align: center; color: var(--text-secondary); padding: 40px;">
-                            Click "Run New Scan" to start or wait for EOD results.
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <div class="scanner-content" style="flex: 1; padding: 0;">
 
-            <!-- Pattern Catalog Section (Moved from separate tab) -->
-            <div class="grid" style="margin-top: 40px;">
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">📚</span> Pattern Catalog</div>
-                    </div>
-                    <div class="card-grid">
-                        <!-- VCP -->
-                        <div class="scan-card">
-                            <div class="scan-card-header">
-                                <span class="scan-ticker">VCP</span>
-                                <span class="badge badge-green">Bullish</span>
+                        <!-- 1. PATTERNS -->
+                        <div class="accordion-item">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                                <span>Pattern Types</span>
+                                <span>▼</span>
                             </div>
-                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
-                                Volatility Contraction Pattern. A series of contractions in price volatility.
-                            </p>
-                        </div>
-                        <!-- Cup & Handle -->
-                        <div class="scan-card">
-                            <div class="scan-card-header">
-                                <span class="scan-ticker">Cup & Handle</span>
-                                <span class="badge badge-green">Bullish</span>
-                            </div>
-                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
-                                A U-shaped cup followed by a short handle. Classic breakout pattern.
-                            </p>
-                        </div>
-                        <!-- Ascending Triangle -->
-                        <div class="scan-card">
-                            <div class="scan-card-header">
-                                <span class="scan-ticker">Ascending Triangle</span>
-                                <span class="badge badge-green">Bullish</span>
-                            </div>
-                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
-                                Flat top resistance with higher lows. Indicates accumulation.
-                            </p>
-                        </div>
-                        <!-- Bull Flag -->
-                        <div class="scan-card">
-                            <div class="scan-card-header">
-                                <span class="scan-ticker">Bull Flag</span>
-                                <span class="badge badge-green">Bullish</span>
-                            </div>
-                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
-                                Short consolidation after a strong move up. Continuation pattern.
-                            </p>
-                        </div>
-                        <!-- Double Bottom -->
-                        <div class="scan-card">
-                            <div class="scan-card-header">
-                                <span class="scan-ticker">Double Bottom</span>
-                                <span class="badge badge-green">Reversal</span>
-                            </div>
-                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
-                                "W" shape indicating support at a key level. Reversal pattern.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: TOP SETUPS -->
-        <div id="tab-top-setups" class="tab-content">
-            <div class="grid">
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">⭐</span> Top Setups (Daily Picks)</div>
-                        <button onclick="loadTopSetups()" class="secondary">Refresh</button>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table id="top-setups-table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>Ticker</th>
-                                    <th>Pattern</th>
-                                    <th>Score</th>
-                                    <th>Sector</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="6" style="text-align: center;">Loading...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: MULTI-TF -->
-        <div id="tab-multi-tf" class="tab-content">
-            <div class="grid">
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">🔥</span> Multi-Timeframe Heatmap</div>
-                    </div>
-                    <div class="input-group">
-                        <input type="text" id="mtf-ticker-input" placeholder="Enter Ticker (e.g. NVDA)">
-                        <button onclick="runMultiTFAnalysis()" id="mtf-btn">Analyze Multi-TF</button>
-                    </div>
-                    <div id="mtf-results" style="display: none; margin-top: 20px;">
-                        <div style="margin-bottom: 20px; display: flex; align-items: baseline; gap: 15px;">
-                            <span style="font-size: 1.5rem; font-weight: 700;" id="mtf-signal">STRONG BUY</span>
-                            <span style="color: var(--text-secondary);" id="mtf-confluence">Confluence: 85%</span>
-                        </div>
-                        <div class="grid" style="margin-bottom: 0;">
-                            <!-- 4 Cards for Timeframes -->
-                            <div class="widget quarter-width heatmap-card" id="tf-weekly">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Weekly</div>
-                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
-                                    Uptrend</div>
-                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 80%</div>
-                            </div>
-                            <div class="widget quarter-width heatmap-card" id="tf-daily">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Daily</div>
-                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
-                                    VCP</div>
-                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 90%</div>
-                            </div>
-                            <div class="widget quarter-width heatmap-card" id="tf-4h">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">4-Hour</div>
-                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
-                                    Breakout</div>
-                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 85%</div>
-                            </div>
-                            <div class="widget quarter-width heatmap-card" id="tf-1h">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">1-Hour</div>
-                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
-                                    Consolidation</div>
-                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 60%</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="mtf-error" style="color: var(--accent-red); margin-top: 10px; display: none;"></div>
-
-                    <!-- TradingView Chart Container -->
-                    <div class="widget full-width" style="margin-top: 20px; height: 600px;">
-                        <div class="widget-header">
-                            <div class="widget-title"><span class="widget-icon">📈</span> Technical Chart</div>
-                        </div>
-                        <div id="tv-chart-container" style="height: 500px; width: 100%;">
-                            <!-- Chart will be injected here -->
-                            <div style="text-align: center; color: var(--text-secondary); padding-top: 200px;">
-                                Enter a ticker to load the chart.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: TRADE PLANNER -->
-        <div id="tab-planner" class="tab-content">
-            <div class="grid">
-                <div class="widget half-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">📐</span> Plan a Trade</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Ticker Symbol</label>
-                        <input type="text" id="plan-ticker" placeholder="e.g. TSLA">
-                    </div>
-                    <div class="grid" style="margin-bottom: 0;">
-                        <div class="form-group half-width" style="grid-column: span 6;">
-                            <label class="form-label">Account Size ($)</label>
-                            <input type="number" id="plan-account" value="10000">
-                        </div>
-                        <div class="form-group half-width" style="grid-column: span 6;">
-                            <label class="form-label">Risk %</label>
-                            <input type="number" id="plan-risk" value="1.0" step="0.1">
-                        </div>
-                    </div>
-                    <div class="grid" style="margin-bottom: 0;">
-                        <div class="form-group half-width" style="grid-column: span 6;">
-                            <label class="form-label">Entry Price ($)</label>
-                            <input type="number" id="plan-entry" step="0.01">
-                        </div>
-                        <div class="form-group half-width" style="grid-column: span 6;">
-                            <label class="form-label">Stop Loss ($)</label>
-                            <input type="number" id="plan-stop" step="0.01">
-                        </div>
-                    </div>
-                    <button onclick="calculatePlan()" style="width: 100%; margin-top: 10px;">Calculate Position
-                        Size</button>
-                </div>
-
-                <div class="widget half-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">📊</span> Plan Results</div>
-                    </div>
-                    <div id="plan-results" style="display: none;">
-                        <div
-                            style="margin-bottom: 20px; padding: 15px; background: var(--bg-dark); border-radius: 8px;">
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Position Size</div>
-                            <div style="font-size: 2rem; font-weight: 700; color: var(--accent-blue);" id="res-shares">0
-                                shares</div>
-                            <div style="font-size: 0.9rem; color: var(--text-primary);" id="res-value">$0.00 total value
+                            <div class="accordion-content active" id="pattern-filters-container">
+                                <div style="color: var(--text-secondary); font-size: 0.9rem; padding: 10px;">Loading patterns...</div>
                             </div>
                         </div>
 
-                        <div class="grid" style="margin-bottom: 0;">
-                            <div
-                                style="grid-column: span 6; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Risk Amount</div>
-                                <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-red);"
-                                    id="res-risk">-$0.00</div>
+                        <!-- 2. TECHNICALS -->
+                        <div class="accordion-item">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                                <span>Technicals</span>
+                                <span>▼</span>
                             </div>
-                            <div
-                                style="grid-column: span 6; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Reward (3R)</div>
-                                <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-green);"
-                                    id="res-reward">+$0.00</div>
+                            <div class="accordion-content">
+                                <!-- Minervini Trend -->
+                                <div class="filter-group">
+                                    <label class="toggle-switch">
+                                        <span class="filter-label" style="margin:0;">Minervini Trend Template</span>
+                                        <input type="checkbox" id="filter-minervini" style="display:none;">
+                                        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                                    </label>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 5px;">
+                                        Price > 50SMA > 200SMA
+                                    </div>
+                                </div>
+
+                                <!-- RS Slider -->
+                                <div class="filter-group">
+                                    <span class="filter-label">Relative Strength (RS) <span class="range-value" id="rs-val">70+</span></span>
+                                    <input type="range" id="filter-rs" min="0" max="99" value="70" oninput="document.getElementById('rs-val').textContent = this.value + '+'">
+                                </div>
+
+                                <!-- MA Filters -->
+                                <div class="filter-group">
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" id="filter-above200">
+                                        <span>Price > 200 SMA</span>
+                                    </label>
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" id="filter-above50">
+                                        <span>Price > 50 SMA</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
-                        <div style="margin-top: 20px;">
-                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 10px;">Targets:</div>
-                            <div
-                                style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace;">
-                                <span>2R: <span id="res-2r" style="color: var(--accent-green)">$0.00</span></span>
-                                <span>3R: <span id="res-3r" style="color: var(--accent-green)">$0.00</span></span>
-                                <span>4R: <span id="res-4r" style="color: var(--accent-green)">$0.00</span></span>
+                        <!-- 3. FUNDAMENTALS -->
+                        <div class="accordion-item">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                                <span>Price & Volume</span>
+                                <span>▼</span>
+                            </div>
+                            <div class="accordion-content">
+                                <div class="filter-group">
+                                    <span class="filter-label">Min Price ($)</span>
+                                    <input type="number" id="filter-min-price" value="10" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; color: white;">
+                                </div>
+                                <div class="filter-group">
+                                    <span class="filter-label">Min Volume (Avg)</span>
+                                    <select id="filter-min-vol" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; color: white;">
+                                        <option value="0">Any</option>
+                                        <option value="100000">100K+</option>
+                                        <option value="500000" selected>500K+</option>
+                                        <option value="1000000">1M+</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <span class="filter-label">Market Cap</span>
+                                    <select id="filter-mcap" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; color: white;">
+                                        <option value="any">Any</option>
+                                        <option value="small">Small ($300M+)</option>
+                                        <option value="mid">Mid ($2B+)</option>
+                                        <option value="large" selected>Large ($10B+)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div id="plan-placeholder" style="text-align: center; color: var(--text-secondary); padding: 40px;">
-                        Enter trade details to see position sizing and risk analysis.
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- TAB: AI ASSISTANT -->
-        <div id="tab-ai-assistant" class="tab-content">
-            <div class="grid">
-                <div class="widget two-thirds-width" style="height: 600px; display: flex; flex-direction: column;">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">🤖</span> AI Trading Assistant</div>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Powered by GPT-4 / Claude 3.5
-                        </div>
-                    </div>
-                    <div id="chat-history"
-                        style="flex: 1; overflow-y: auto; padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
-                        <div style="text-align: center; color: var(--text-secondary); margin-top: 20px;">
-                            <p>👋 Hi! I'm Legend AI. Ask me about market trends, specific stocks, or trading strategies.
-                            </p>
-                            <p style="font-size: 0.8rem; margin-top: 10px;">Example: "Analyze NVDA for me" or "Explain
-                                the Cup and Handle pattern"</p>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <input type="text" id="chat-input" placeholder="Ask something..."
-                            onkeypress="if(event.key === 'Enter') sendMessage()">
-                        <button onclick="sendMessage()" id="chat-btn">Send</button>
-                    </div>
-                </div>
-                <div class="widget third-width">
-                    <div class="widget-header">
-                        <div class="widget-title">Capabilities</div>
-                    </div>
-                    <ul style="list-style: none; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8;">
-                        <li>✅ Real-time Market Data Analysis</li>
-                        <li>✅ Technical Pattern Explanation</li>
-                        <li>✅ Risk Management Advice</li>
-                        <li>✅ Multi-Ticker Comparison</li>
-                        <li>⚠️ Not Financial Advice</li>
-                    </ul>
-                    <div
-                        style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
-                        <div style="font-weight: 600; color: var(--accent-blue); margin-bottom: 5px;">Pro Tip</div>
-                        <div style="font-size: 0.85rem;">Ask for a "Comprehensive Analysis" of a ticker to get a full
-                            technical breakdown including support/resistance levels.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- TAB: PATTERN CATALOG -->
-        <div id="tab-patterns" class="tab-content">
-            <div class="grid">
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">📚</span> Pattern Catalog (50+ Patterns)
-                        </div>
-                        <button onclick="loadPatterns()" class="secondary">Refresh Catalog</button>
                     </div>
-                    <div id="pattern-catalog-content" style="columns: 3; column-gap: 20px;">
-                        <div style="text-align: center; color: var(--text-secondary); padding: 40px;">Loading
-                            patterns...</div>
+
+                    <div style="padding: 20px; border-top: 1px solid var(--border-color);">
+                        <button onclick="runScan()" id="scan-btn" style="width: 100%; padding: 12px; background: var(--accent-blue); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;">
+                            Run Scan
+                        </button>
                     </div>
                 </div>
-            </div>
-        </div>
-        <!-- TAB: PORTFOLIO -->
-        <div id="tab-portfolio" class="tab-content">
-            <div class="grid">
-                <!-- Portfolio Summary -->
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">💼</span> Portfolio Overview</div>
+
+                <!-- RIGHT CONTENT: RESULTS -->
+                <div style="display: flex; flex-direction: column;">
+                    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
-                            <button onclick="createPortfolio()" class="secondary" id="create-portfolio-btn"
-                                style="display:none;">Create Portfolio</button>
-                            <button onclick="loadPortfolio()" class="secondary">Refresh</button>
+                            <h2 style="font-size: 1.5rem; font-weight: 700;">Market Scanner</h2>
+                            <div style="color: var(--text-secondary); font-size: 0.9rem;" id="results-count">Ready to scan.</div>
                         </div>
-                    </div>
-                    <div id="portfolio-summary"
-                        style="display: flex; justify-content: space-around; padding: 20px; text-align: center;">
-                        <div>
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Value</div>
-                            <div id="port-total-value" style="font-size: 1.5rem; font-weight: 700;">$0.00</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Cash Balance</div>
-                            <div id="port-cash" style="font-size: 1.2rem;">$0.00</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Total P&L</div>
-                            <div id="port-pnl" style="font-size: 1.2rem;">$0.00 (0.00%)</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Positions</div>
-                            <div id="port-positions-count" style="font-size: 1.2rem;">0</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Positions Table -->
-                <div class="widget two-thirds-width">
-                    <div class="widget-header">
-                        <div class="widget-title">Holdings</div>
-                        <button onclick="showAddPositionModal()" class="primary"
-                            style="padding: 4px 12px; font-size: 0.8rem;">+ Add Position</button>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr
-                                    style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; text-align: left;">
-                                    <th style="padding: 10px;">Symbol</th>
-                                    <th style="padding: 10px;">Qty</th>
-                                    <th style="padding: 10px;">Avg Cost</th>
-                                    <th style="padding: 10px;">Price</th>
-                                    <th style="padding: 10px;">Value</th>
-                                    <th style="padding: 10px;">P&L</th>
-                                    <th style="padding: 10px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="positions-table-body">
-                                <tr>
-                                    <td colspan="7"
-                                        style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading
-                                        positions...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Allocation Chart -->
-                <div class="widget third-width">
-                    <div class="widget-header">
-                        <div class="widget-title">Allocation</div>
-                    </div>
-                    <div id="allocation-chart"
-                        style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
-                        Chart coming soon...
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- TAB: BACKTEST -->
-        <div id="tab-backtest" class="tab-content">
-            <div class="grid">
-                <div class="widget full-width">
-                    <div class="widget-header">
-                        <div class="widget-title"><span class="widget-icon">🧪</span> Strategy Backtester</div>
-                    </div>
-                    <div
-                        style="display: flex; gap: 20px; align-items: flex-end; padding: 20px; background: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border-color);">
-                        <div class="form-group" style="flex: 1;">
-                            <label
-                                style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Strategy</label>
-                            <select id="bt-strategy"
-                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-                                <option value="VCP_Breakout">VCP Breakout</option>
-                                <option value="SMA_Crossover">SMA Crossover</option>
-                                <option value="RSI_MeanReversion">RSI Mean Reversion</option>
+                        <div style="display: flex; gap: 10px;">
+                            <select style="padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);">
+                                <option>Sort by Score</option>
+                                <option>Sort by RS</option>
+                                <option>Sort by Volume</option>
                             </select>
                         </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label
-                                style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Ticker</label>
-                            <input type="text" id="bt-ticker" value="NVDA"
-                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Start
-                                Date</label>
-                            <input type="date" id="bt-start" value="2024-01-01"
-                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Initial
-                                Capital</label>
-                            <input type="number" id="bt-capital" value="100000"
-                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-                        </div>
-                        <button onclick="runBacktest()" class="primary" style="height: 38px;">Run Backtest</button>
                     </div>
 
-                    <div id="bt-results" style="margin-top: 20px; display: none;">
-                        <div
-                            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
-                            <div class="card" style="text-align: center; padding: 15px;">
-                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Return</div>
-                                <div id="bt-return" style="font-size: 1.5rem; font-weight: 700;">0.00%</div>
-                            </div>
-                            <div class="card" style="text-align: center; padding: 15px;">
-                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Win Rate</div>
-                                <div id="bt-winrate" style="font-size: 1.5rem; font-weight: 700;">0.00%</div>
-                            </div>
-                            <div class="card" style="text-align: center; padding: 15px;">
-                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Max Drawdown</div>
-                                <div id="bt-drawdown"
-                                    style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);">0.00%</div>
-                            </div>
-                            <div class="card" style="text-align: center; padding: 15px;">
-                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Sharpe Ratio</div>
-                                <div id="bt-sharpe" style="font-size: 1.5rem; font-weight: 700;">0.00</div>
-                            </div>
-                        </div>
-                        <div
-                            style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h4 style="margin-top: 0;">Equity Curve</h4>
-                            <div
-                                style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
-                                Chart visualization coming soon...
-                            </div>
+                    <!-- Results Area -->
+                    <div id="scan-results" class="results-grid" style="flex: 1; overflow-y: auto;">
+                        <!-- Placeholder -->
+                        <div class="full-width" style="text-align: center; padding: 60px; color: var(--text-secondary); background: var(--bg-card); border-radius: 16px; border: 1px dashed var(--border-color);">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">🔭</div>
+                            <p>Select filters and click "Run Scan" to find setups.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Add Position Modal (Hidden) -->
-    <div id="add-position-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
-        <div
-            style="background: var(--bg-card); padding: 25px; border-radius: 12px; width: 400px; border: 1px solid var(--border-color);">
-            <h3 style="margin-top: 0; margin-bottom: 20px;">Add Position</h3>
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Symbol</label>
-                <input type="text" id="pos-symbol"
-                    style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-            </div>
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Quantity</label>
-                <input type="number" id="pos-qty"
-                    style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-            </div>
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Entry Price</label>
-                <input type="number" id="pos-price"
-                    style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button onclick="document.getElementById('add-position-modal').style.display='none'"
-                    class="secondary">Cancel</button>
-                <button onclick="submitAddPosition()" class="primary">Add Position</button>
-            </div>
-        </div>
+        <!-- OTHER TABS (Placeholders) -->
+        <div id="tab-top-setups" class="tab-content"></div>
+        <div id="tab-ai-assistant" class="tab-content"></div>
+        <div id="tab-portfolio" class="tab-content"></div>
+
     </div>
 
     <script>
         // --- Navigation ---
         function switchTab(tabId) {
-            // Update Tab Buttons
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Update Tab Content
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            // Find tab button by content - simple hack for now
+            const tabs = document.querySelectorAll('.nav-tab');
+            if(tabId === 'dashboard') tabs[0].classList.add('active');
+            if(tabId === 'scanner') tabs[1].classList.add('active');
+            if(tabId === 'top-setups') tabs[2].classList.add('active');
+            if(tabId === 'ai-assistant') tabs[3].classList.add('active');
+            if(tabId === 'portfolio') tabs[4].classList.add('active');
+
             document.getElementById(`tab-${tabId}`).classList.add('active');
-
-            // Load data if needed
-            if (tabId === 'scanner') loadScanner();
-            if (tabId === 'top-setups') loadTopSetups();
-            if (tabId === 'patterns') loadPatterns();
-            if (tabId === 'portfolio') loadPortfolio();
         }
 
-        // --- Portfolio ---
-        let currentPortfolioId = null;
+        function toggleAccordion(header) {
+            const content = header.nextElementSibling;
+            content.classList.toggle('active');
+            header.querySelector('span:last-child').textContent = content.classList.contains('active') ? '▲' : '▼';
+        }
 
-        async function loadPortfolio() {
+        // --- Scanner Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPatternMetadata();
+            // Restore previous filters if implemented
+        });
+
+        async function loadPatternMetadata() {
+            const container = document.getElementById('pattern-filters-container');
             try {
-                // 1. Get List of Portfolios
-                const listRes = await fetch('/api/portfolio/list?user_id=1');
-                const listData = await listRes.json();
-
-                if (!listData.success || listData.portfolios.length === 0) {
-                    document.getElementById('create-portfolio-btn').style.display = 'inline-block';
-                    document.getElementById('portfolio-summary').innerHTML = '<div style="padding: 20px; color: var(--text-secondary);">No portfolio found. Create one to get started.</div>';
-                    document.getElementById('positions-table-body').innerHTML = '';
-                    return;
-                }
-
-                document.getElementById('create-portfolio-btn').style.display = 'none';
-                currentPortfolioId = listData.portfolios[0].id;
-
-                // 2. Get Details & Metrics
-                const detailRes = await fetch(`/api/portfolio/${currentPortfolioId}`);
-                const detailData = await detailRes.json();
-                const metrics = detailData.metrics;
-
-                // Update Summary
-                document.getElementById('port-total-value').innerText = `$${metrics.total_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                document.getElementById('port-cash').innerText = `$${metrics.cash_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-
-                const pnlClass = metrics.total_pnl >= 0 ? 'text-green' : 'text-red';
-                document.getElementById('port-pnl').innerHTML = `<span class="${pnlClass}">$${metrics.total_pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })} (${metrics.total_return_pct.toFixed(2)}%)</span>`;
-                document.getElementById('port-positions-count').innerText = metrics.num_positions;
-
-                // 3. Get Positions
-                const posRes = await fetch(`/api/portfolio/${currentPortfolioId}/positions`);
-                const posData = await posRes.json();
-
-                const tbody = document.getElementById('positions-table-body');
-                if (posData.positions.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">No open positions.</td></tr>';
-                } else {
-                    tbody.innerHTML = posData.positions.map(p => {
-                        const pnlClass = p.unrealized_pnl >= 0 ? 'text-green' : 'text-red';
-                        return `
-                            <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 10px; font-weight: 500;">${p.symbol}</td>
-                                <td style="padding: 10px;">${p.quantity}</td>
-                                <td style="padding: 10px;">$${p.avg_cost_basis.toFixed(2)}</td>
-                                <td style="padding: 10px;">$${(p.current_price || 0).toFixed(2)}</td>
-                                <td style="padding: 10px;">$${(p.current_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                <td style="padding: 10px;" class="${pnlClass}">$${(p.unrealized_pnl || 0).toFixed(2)} (${(p.unrealized_pnl_pct || 0).toFixed(2)}%)</td>
-                                <td style="padding: 10px;">
-                                    <button onclick="closePosition(${p.id})" style="padding: 2px 8px; font-size: 0.75rem; background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; cursor: pointer;">Close</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-                }
-
-            } catch (e) {
-                console.error("Portfolio load error:", e);
-            }
-        }
-
-        async function createPortfolio() {
-            try {
-                await fetch('/api/portfolio/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: "Main Portfolio", initial_capital: 100000, user_id: 1 })
-                });
-                loadPortfolio();
-            } catch (e) {
-                alert("Failed to create portfolio: " + e.message);
-            }
-        }
-
-        function showAddPositionModal() {
-            if (!currentPortfolioId) {
-                alert("Please create a portfolio first.");
-                return;
-            }
-            document.getElementById('add-position-modal').style.display = 'flex';
-        }
-
-        async function submitAddPosition() {
-            const symbol = document.getElementById('pos-symbol').value.toUpperCase();
-            const qty = parseFloat(document.getElementById('pos-qty').value);
-            const price = parseFloat(document.getElementById('pos-price').value);
-
-            if (!symbol || !qty || !price) {
-                alert("Please fill all fields");
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/portfolio/position/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        portfolio_id: currentPortfolioId,
-                        symbol: symbol,
-                        quantity: qty,
-                        entry_price: price
-                    })
-                });
-
-                if (res.ok) {
-                    document.getElementById('add-position-modal').style.display = 'none';
-                    // Clear fields
-                    document.getElementById('pos-symbol').value = '';
-                    document.getElementById('pos-qty').value = '';
-                    document.getElementById('pos-price').value = '';
-                    loadPortfolio();
-                } else {
-                    const data = await res.json();
-                    alert("Error: " + data.detail);
-                }
-            } catch (e) {
-                alert("Failed to add position: " + e.message);
-            }
-        }
-
-        async function closePosition(posId) {
-            if (!confirm("Are you sure you want to close this position?")) return;
-
-            try {
-                const res = await fetch('/api/portfolio/position/remove', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ position_id: posId })
-                });
-
-                if (res.ok) {
-                    loadPortfolio();
-                } else {
-                    const data = await res.json();
-                    alert("Error: " + data.detail);
-                }
-            } catch (e) {
-                alert("Failed to close position: " + e.message);
-            }
-        }
-
-        // --- Backtest ---
-        async function runBacktest() {
-            const btn = event.target;
-            const originalText = btn.innerText;
-            btn.innerText = "Running...";
-            btn.disabled = true;
-
-            document.getElementById('bt-results').style.display = 'none';
-
-            try {
-                const payload = {
-                    strategy: document.getElementById('bt-strategy').value,
-                    symbol: document.getElementById('bt-ticker').value,
-                    start_date: document.getElementById('bt-start').value,
-                    initial_capital: parseFloat(document.getElementById('bt-capital').value)
-                };
-
-                const res = await fetch('/api/backtest/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
+                const res = await fetch('/api/patterns/catalog');
                 const data = await res.json();
 
-                if (data.success) {
-                    document.getElementById('bt-results').style.display = 'block';
-                    document.getElementById('bt-return').innerText = data.metrics.total_return_pct.toFixed(2) + "%";
-                    document.getElementById('bt-winrate').innerText = data.metrics.win_rate.toFixed(2) + "%";
-                    document.getElementById('bt-drawdown').innerText = data.metrics.max_drawdown.toFixed(2) + "%";
-                    document.getElementById('bt-sharpe').innerText = data.metrics.sharpe_ratio.toFixed(2);
-                } else {
-                    alert("Backtest failed: " + (data.detail || "Unknown error"));
-                }
+                if(!data.categories) throw new Error("Invalid catalog format");
 
-            } catch (e) {
-                alert("Backtest error: " + e.message);
-            } finally {
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        // --- AI Assistant ---
-        async function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const history = document.getElementById('chat-history');
-            const btn = document.getElementById('chat-btn');
-            const message = input.value.trim();
-
-            if (!message) return;
-
-            // Add User Message
-            history.innerHTML += `
-                <div style="margin-bottom: 15px; text-align: right;">
-                    <div style="display: inline-block; background: var(--accent-blue); color: white; padding: 8px 12px; border-radius: 12px 12px 0 12px; max-width: 80%;">
-                        ${message}
-                    </div>
-                </div>
-            `;
-            input.value = '';
-            history.scrollTop = history.scrollHeight;
-
-            // Loading State
-            btn.disabled = true;
-            const loadingId = 'loading-' + Date.now();
-            history.innerHTML += `
-                <div id="${loadingId}" style="margin-bottom: 15px; text-align: left;">
-                    <div style="display: inline-block; background: var(--bg-hover); color: var(--text-secondary); padding: 8px 12px; border-radius: 12px 12px 12px 0; max-width: 80%;">
-                        Thinking...
-                    </div>
-                </div>
-            `;
-            history.scrollTop = history.scrollHeight;
-
-            try {
-                const response = await fetch('/api/ai/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message, include_market_data: true })
-                });
-                const data = await response.json();
-
-                // Remove Loading
-                document.getElementById(loadingId).remove();
-
-                if (response.ok) {
-                    history.innerHTML += `
-                        <div style="margin-bottom: 15px; text-align: left;">
-                            <div style="display: inline-block; background: var(--bg-hover); color: var(--text-primary); padding: 12px; border-radius: 12px 12px 12px 0; max-width: 80%; white-space: pre-wrap;">${data.response}</div>
-                        </div>
-                    `;
-                } else {
-                    // Handle specific 503 error for missing key
-                    const errorMsg = response.status === 503
-                        ? "⚠️ AI Service Unavailable: Please configure OPENROUTER_API_KEY or OPENAI_API_KEY in your environment variables."
-                        : `Error: ${data.detail || 'Failed to get response'}`;
-
-                    history.innerHTML += `
-                        <div style="margin-bottom: 15px; text-align: left;">
-                            <div style="display: inline-block; background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 12px; border-radius: 12px 12px 12px 0; max-width: 80%;">
-                                ${errorMsg}
+                let html = '';
+                data.categories.forEach(cat => {
+                    html += `
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--accent-blue); font-weight: 700; margin-bottom: 8px; letter-spacing: 0.05em;">${cat.category}</div>
+                            <div class="checkbox-list">
+                                ${cat.patterns.map(p => `
+                                    <label class="checkbox-item" title="${p.description}">
+                                        <input type="checkbox" name="pattern" value="${p.name}" ${['VCP', 'Cup & Handle'].includes(p.name) ? 'checked' : ''}>
+                                        <span style="font-size: 0.9rem;">${p.name}</span>
+                                        ${p.type === 'Bullish' ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);margin-left:auto;"></span>' : ''}
+                                        ${p.type === 'Bearish' ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-red);margin-left:auto;"></span>' : ''}
+                                    </label>
+                                `).join('')}
                             </div>
                         </div>
                     `;
-                }
-            } catch (e) {
-                document.getElementById(loadingId).remove();
-                history.innerHTML += `
-                    <div style="margin-bottom: 15px; text-align: left;">
-                        <div style="display: inline-block; background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 12px; border-radius: 12px 12px 12px 0; max-width: 80%;">
-                            Network Error: ${e.message}
-                        </div>
-                    </div>
-                `;
-            } finally {
-                btn.disabled = false;
-                history.scrollTop = history.scrollHeight;
-            }
-        }
-
-        // --- Pattern Catalog ---
-        let patternsLoaded = false;
-        async function loadPatterns() {
-            if (patternsLoaded) return;
-
-            const container = document.getElementById('pattern-catalog-content');
-
-            try {
-                const response = await fetch('/api/advanced/patterns/list');
-                const data = await response.json();
-
-                if (!data.patterns_by_category) throw new Error("Invalid data format");
-
-                let html = '';
-                for (const [category, patterns] of Object.entries(data.patterns_by_category)) {
-                    html += `
-                        <div style="break-inside: avoid; margin-bottom: 20px; background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h3 style="color: var(--accent-blue); text-transform: capitalize; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">${category}</h3>
-                            <ul style="list-style: none; padding-left: 0;">
-                                ${patterns.map(p => `<li style="margin-bottom: 5px; color: var(--text-secondary); font-size: 0.9rem;">• ${p}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
-
+                });
                 container.innerHTML = html;
-                patternsLoaded = true;
 
-            } catch (e) {
-                container.innerHTML = `<div style="color: var(--accent-red); text-align: center;">Failed to load patterns: ${e.message}</div>`;
+            } catch(e) {
+                container.innerHTML = `<div style="color: var(--accent-red);">Failed to load patterns: ${e.message}</div>`;
             }
         }
 
-        // --- Dashboard Tab ---
-        async function runAnalysis() {
-            const ticker = document.getElementById('ticker-input').value.trim();
-            const btn = document.getElementById('analyze-btn');
-            const resultDiv = document.getElementById('analysis-result');
-
-            if (!ticker) return;
-
-            btn.disabled = true;
-            btn.textContent = '...';
-            resultDiv.style.display = 'block';
-            resultDiv.textContent = 'Analyzing market data...';
-
-            try {
-                const response = await fetch(`/api/analyze?ticker=${ticker}`);
-                const data = await response.json();
-
-                if (response.ok) {
-                    const patterns = data.patterns || [];
-                    const patternText = patterns.length > 0
-                        ? patterns.map(p => `• ${p.name} (${p.score}%)`).join('\n')
-                        : 'No clear patterns detected.';
-
-                    resultDiv.textContent = `✅ Analysis Complete for ${ticker.toUpperCase()}\n\nPatterns:\n${patternText}\n\nTrend: ${data.trend || 'Neutral'}`;
-                } else {
-                    resultDiv.textContent = `❌ Error: ${data.detail || 'Analysis failed'}`;
-                }
-            } catch (e) {
-                resultDiv.textContent = `❌ Network Error: ${e.message}`;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Analyze';
-            }
-        }
-
-        async function loadTrades() {
-            const tbody = document.querySelector('#trades-table tbody');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading...</td></tr>';
-
-            try {
-                const response = await fetch('/api/journal/trades');
-                const data = await response.json();
-
-                if (!response.ok) {
-                    if (response.status === 503) {
-                        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">⚠️ ${data.detail}</td></tr>`;
-                        return;
-                    }
-                    throw new Error(data.detail || 'Failed to load trades');
-                }
-
-                const trades = data.trades || [];
-                if (trades.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No trades recorded yet.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = trades.map(t => `
-                    <tr>
-                        <td><strong>${t.ticker}</strong></td>
-                        <td>${t.pattern || '-'}</td>
-                        <td>$${t.entry_price}</td>
-                        <td><span class="badge ${t.status === 'Open' ? 'badge-green' : 'badge-red'}">${t.status}</span></td>
-                        <td>${new Date(t.created_at).toLocaleDateString()}</td>
-                    </tr>
-                `).join('');
-
-            } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">Error: ${e.message}</td></tr>`;
-            }
-        }
-
-        // --- Scanner Tab ---
-        async function triggerScan() {
+        async function runScan() {
             const btn = document.getElementById('scan-btn');
-            const container = document.getElementById('scanner-results');
+            const resultsContainer = document.getElementById('scan-results');
+            const countLabel = document.getElementById('results-count');
 
-            // Get Filter States
-            const trendFilter = document.getElementById('filter-trend').checked;
-
-            // Get Selected Patterns
-            const checkedPatterns = Array.from(document.querySelectorAll('.pattern-checkbox input[type="checkbox"]:checked'))
-                .filter(cb => cb.value !== 'on' && cb.id !== 'filter-trend') // Exclude trend filter and non-value checkboxes
-                .map(cb => cb.value);
+            // 1. Collect Filters
+            const selectedPatterns = Array.from(document.querySelectorAll('input[name="pattern"]:checked')).map(cb => cb.value);
+            const minervini = document.getElementById('filter-minervini').checked;
+            const rs = parseInt(document.getElementById('filter-rs').value);
+            const minPrice = parseFloat(document.getElementById('filter-min-price').value);
 
             btn.disabled = true;
             btn.textContent = 'Scanning...';
-
-            let statusMsg = 'Running market scan...';
-            if (checkedPatterns.length > 0) {
-                statusMsg += ` looking for ${checkedPatterns.length} pattern types.`;
-            }
-            container.innerHTML = `<div style="grid-column: span 3; text-align: center;">${statusMsg}</div>`;
+            resultsContainer.innerHTML = '<div class="full-width" style="text-align: center; padding: 40px;">Searching market data...</div>';
 
             try {
-                let url = '';
+                // Use the simpler endpoint for now which supports pattern list + min_score
+                // Ideally we use a POST endpoint with full filter body
+                const params = new URLSearchParams({
+                    limit: 50,
+                    min_score: 6.0, // Default threshold
+                    patterns: selectedPatterns.join(',')
+                });
 
-                if (checkedPatterns.length > 0) {
-                    // Use new multi-pattern endpoint
-                    const params = new URLSearchParams({
-                        limit: 50,
-                        min_score: 6.0,
-                        patterns: checkedPatterns.join(',')
-                    });
-                    url = `/api/scan/patterns?${params}`;
-                } else if (trendFilter) {
-                    // Fallback to old endpoint for just Trend
-                    const params = new URLSearchParams({
-                        limit: 50,
-                        minervini_trend: true,
-                        vcp: false
-                    });
-                    url = `/api/scan?${params}`;
-                } else {
-                    throw new Error("Please select at least one pattern or filter.");
-                }
+                // Add legacy params if supported or mapped
+                if(minervini) params.append('minervini_trend', 'true');
 
-                const response = await fetch(url);
+                // Construct query
+                const response = await fetch(`/api/scan/patterns?${params}`);
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Scan failed');
+                if(data.results && data.results.length > 0) {
+                    renderResults(data.results);
+                    countLabel.textContent = `Found ${data.results.length} matches across ${data.universe_size || 500} tickers.`;
+                } else {
+                    resultsContainer.innerHTML = `
+                        <div class="full-width" style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">🤷</div>
+                            <p>No patterns found matching criteria.</p>
+                            <button onclick="resetFilters()" style="margin-top:10px; background:none; border:1px solid var(--border-color); color:var(--text-primary); padding:6px 12px; border-radius:6px; cursor:pointer;">Clear Filters</button>
+                        </div>
+                    `;
+                    countLabel.textContent = '0 matches found.';
                 }
 
-                renderScanResults(data.results);
-
-            } catch (e) {
-                container.innerHTML = `<div style="color: var(--accent-red); grid-column: span 3; text-align: center;">Scan failed: ${e.message}</div>`;
+            } catch(e) {
+                resultsContainer.innerHTML = `<div class="full-width" style="color: var(--accent-red); text-align: center;">Error: ${e.message}</div>`;
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Run New Scan';
+                btn.textContent = 'Run Scan';
             }
         }
 
-        function renderScanResults(results) {
-            const container = document.getElementById('scanner-results');
-
-            if (!results || results.length === 0) {
-                container.innerHTML = '<div style="grid-column: span 3; text-align: center; color: var(--text-secondary);">No setups found matching criteria.</div>';
-                return;
-            }
-
+        function renderResults(results) {
+            const container = document.getElementById('scan-results');
             container.innerHTML = results.map(item => `
-                <div class="scan-card">
-                    <div class="scan-card-header">
-                        <span class="scan-ticker">${item.symbol || item.ticker}</span>
-                        <span class="badge badge-blue">${item.pattern || 'Setup'}</span>
+                <div class="result-card">
+                    <div class="result-header">
+                        <div>
+                            <div class="ticker-symbol">${item.ticker || item.symbol}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">Technology</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-family: 'JetBrains Mono'; font-weight: 700; color: var(--accent-green); font-size: 1.2rem;">${item.score}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary);">SCORE</div>
+                        </div>
                     </div>
-                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
-                        Score: <span class="scan-score">${item.legend_score || item.score || 0}</span>
+
+                    <div style="margin-bottom: 15px; display: flex; gap: 6px; flex-wrap: wrap;">
+                        <span class="pattern-tag ${item.pattern.includes('Bull') || item.pattern.includes('Cup') || item.pattern.includes('Asc') ? 'bullish' : 'bearish'}">${item.pattern}</span>
+                        ${item.strong ? '<span class="pattern-tag" style="background:rgba(255,215,0,0.15); color:#ffd700; border-color:rgba(255,215,0,0.3);">Strong</span>' : ''}
                     </div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
-                        ${(item.reasons || []).slice(0, 2).join(' • ')}
+
+                    <div style="margin-bottom: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
+                        <div class="metric-row">
+                            <span>Entry</span>
+                            <span class="metric-val">$${item.entry?.toFixed(2) || '-'}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Target</span>
+                            <span class="metric-val" style="color: var(--accent-green)">$${item.target?.toFixed(2) || '-'}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Stop</span>
+                            <span class="metric-val" style="color: var(--accent-red)">$${item.stop?.toFixed(2) || '-'}</span>
+                        </div>
+                        <div class="metric-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                            <span>R/R Ratio</span>
+                            <span class="metric-val">${item.risk_reward || '-'}</span>
+                        </div>
                     </div>
-                    <button onclick="switchTab('dashboard'); document.getElementById('ticker-input').value='${item.symbol || item.ticker}'; runAnalysis();" style="width:100%; font-size:0.8rem; padding: 6px;">Analyze</button>
+
+                    <button class="analyze-btn" onclick="analyzeTicker('${item.ticker || item.symbol}')">Analyze Details</button>
                 </div>
             `).join('');
         }
 
-        async function loadScanner() {
-            // Initial load - maybe just show empty state or last cached
-            // For now, let's leave it empty until user scans
+        function resetFilters() {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('filter-rs').value = 70;
+            document.getElementById('rs-val').textContent = '70+';
+            // Reset defaults
+            document.querySelectorAll('input[value="VCP"], input[value="Cup & Handle"]').forEach(cb => cb.checked = true);
         }
 
-        // --- Top Setups Tab ---
-        async function loadTopSetups() {
-            const tbody = document.querySelector('#top-setups-table tbody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading...</td></tr>';
-
-            try {
-                const response = await fetch('/api/top-setups');
-                const data = await response.json();
-
-                if (!data.success || !data.setups || data.setups.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No top setups identified today.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = data.setups.map((s, index) => `
-                    <tr>
-                        <td>#${index + 1}</td>
-                        <td><strong>${s.ticker}</strong></td>
-                        <td><span class="badge badge-blue">${s.pattern}</span></td>
-                        <td style="color: var(--accent-green); font-weight: 700;">${s.score}</td>
-                        <td>${s.sector || '-'}</td>
-                        <td>
-                            <button onclick="switchTab('dashboard'); document.getElementById('ticker-input').value='${s.ticker}'; runAnalysis();" style="padding: 4px 8px; font-size: 0.75rem;">Analyze</button>
-                        </td>
-                    </tr>
-                `).join('');
-
-            } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--accent-red);">Error: ${e.message}</td></tr>`;
-            }
+        function analyzeTicker(symbol) {
+            // switchTab('dashboard');
+            // document.getElementById('ticker-input').value = symbol;
+            // Trigger analysis...
+            alert(`Analyzing ${symbol}... (Feature to be linked to Analyze Dashboard)`);
         }
-
-        // --- Multi-TF Tab ---
-        async function runMultiTFAnalysis() {
-            const ticker = document.getElementById('mtf-ticker-input').value.trim();
-            const btn = document.getElementById('mtf-btn');
-            const results = document.getElementById('mtf-results');
-            const errorDiv = document.getElementById('mtf-error');
-
-            if (!ticker) return;
-
-            btn.disabled = true;
-            btn.textContent = 'Analyzing...';
-            results.style.display = 'none';
-            errorDiv.style.display = 'none';
-
-            try {
-                const response = await fetch(`/api/analyze?ticker=${ticker}&multi_timeframe=true`);
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.detail || 'Analysis failed');
-
-                const mtf = data.multi_timeframe;
-                if (!mtf) throw new Error('No multi-timeframe data returned');
-
-                // Update Header
-                const signalEl = document.getElementById('mtf-signal');
-                signalEl.textContent = mtf.signal_quality.toUpperCase().replace('_', ' ');
-                signalEl.style.color = mtf.strong_signal ? 'var(--accent-green)' : 'var(--text-primary)';
-
-                document.getElementById('mtf-confluence').textContent = `Confluence: ${Math.round(mtf.overall_confluence * 100)}%`;
-
-                // Update Cards
-                const updateCard = (id, data) => {
-                    const card = document.getElementById(id);
-                    const patternEl = card.querySelector('.tf-pattern');
-                    const confEl = card.querySelector('.tf-conf');
-
-                    patternEl.textContent = data.pattern || 'None';
-                    confEl.textContent = `Conf: ${Math.round(data.confidence * 100)}%`;
-
-                    card.className = 'widget quarter-width heatmap-card'; // reset
-                    if (data.detected) {
-                        card.classList.add('bullish'); // Simplified assumption: detection = bullish for MVP
-                    } else {
-                        card.classList.add('neutral');
-                    }
-                };
-
-                updateCard('tf-weekly', mtf.timeframes.weekly);
-                updateCard('tf-daily', mtf.timeframes.daily);
-                updateCard('tf-4h', mtf.timeframes['4h']);
-                updateCard('tf-1h', mtf.timeframes['1h']);
-
-                results.style.display = 'block';
-
-                // Update Chart
-                updateChart(ticker);
-
-            } catch (e) {
-                errorDiv.textContent = `Error: ${e.message}`;
-                errorDiv.style.display = 'block';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Analyze Multi-TF';
-            }
-        }
-
-        function updateChart(symbol) {
-            const container = document.getElementById('tv-chart-container');
-            container.innerHTML = ''; // Clear previous chart
-
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-            script.async = true;
-            script.innerHTML = JSON.stringify({
-                "autosize": true,
-                "symbol": symbol,
-                "interval": "D",
-                "timezone": "Etc/UTC",
-                "theme": "dark",
-                "style": "1",
-                "locale": "en",
-                "enable_publishing": false,
-                "allow_symbol_change": true,
-                "calendar": false,
-                "support_host": "https://www.tradingview.com"
-            });
-
-            // We need a wrapper for the widget to render correctly with the script injection
-            const widgetContainer = document.createElement('div');
-            widgetContainer.className = 'tradingview-widget-container';
-            widgetContainer.style.height = '100%';
-            widgetContainer.style.width = '100%';
-
-            const widgetChild = document.createElement('div');
-            widgetChild.className = 'tradingview-widget-container__widget';
-            widgetChild.style.height = '100%';
-            widgetChild.style.width = '100%';
-
-            widgetContainer.appendChild(widgetChild);
-            widgetContainer.appendChild(script);
-
-            container.appendChild(widgetContainer);
-        }
-
-        // --- Trade Planner Tab ---
-        function calculatePlan() {
-            const account = parseFloat(document.getElementById('plan-account').value);
-            const riskPct = parseFloat(document.getElementById('plan-risk').value);
-            const entry = parseFloat(document.getElementById('plan-entry').value);
-            const stop = parseFloat(document.getElementById('plan-stop').value);
-
-            if (!account || !riskPct || !entry || !stop) {
-                alert('Please fill in all fields.');
-                return;
-            }
-
-            if (stop >= entry) {
-                alert('Stop loss must be below entry price for long trades.');
-                return;
-            }
-
-            const riskAmount = account * (riskPct / 100);
-            const riskPerShare = entry - stop;
-            const shares = Math.floor(riskAmount / riskPerShare);
-            const totalValue = shares * entry;
-
-            // Update UI
-            document.getElementById('res-shares').textContent = `${shares} shares`;
-            document.getElementById('res-value').textContent = `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total value`;
-            document.getElementById('res-risk').textContent = `-$${riskAmount.toFixed(2)}`;
-            document.getElementById('res-reward').textContent = `+$${(riskAmount * 3).toFixed(2)}`;
-
-            document.getElementById('res-2r').textContent = `$${(entry + (riskPerShare * 2)).toFixed(2)}`;
-            document.getElementById('res-3r').textContent = `$${(entry + (riskPerShare * 3)).toFixed(2)}`;
-            document.getElementById('res-4r').textContent = `$${(entry + (riskPerShare * 4)).toFixed(2)}`;
-
-            document.getElementById('plan-placeholder').style.display = 'none';
-            document.getElementById('plan-results').style.display = 'block';
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            checkSystemStatus();
-            loadTrades();
-            // loadNews(); // Removed in favor of TradingView Widget
-
-            // Periodic status check
-            setInterval(checkSystemStatus, 30000);
-        });
-
-        async function checkSystemStatus() {
-            const dot = document.getElementById('status-dot');
-            const text = document.getElementById('status-text');
-            try {
-                const res = await fetch('/health'); // Use health endpoint
-                if (res.ok) {
-                    dot.classList.add('online');
-                    text.innerText = "System Online";
-                } else {
-                    dot.classList.remove('online');
-                    text.innerText = "System Issues";
-                }
-            } catch (e) {
-                dot.classList.remove('online');
-                text.innerText = "Offline";
-            }
-        }
-
-        // --- News (Deprecated: Using TradingView Widget) ---
-        // function loadNews() { ... }
     </script>
 </body>
-
 </html>

@@ -2,16 +2,19 @@
 Double Top/Bottom Pattern Detector
 Implements double top (bearish) and double bottom (bullish) reversal patterns
 """
-from typing import List, Optional, Dict, Any
-import pandas as pd
-import numpy as np
-from datetime import datetime
 
-from app.core.detector_base import (
-    Detector, PatternResult, PatternType, PricePoint, LineSegment,
-    GeometryHelper, StatsHelper
-)
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+
+from app.core.detector_base import (Detector, PatternResult, PatternType,
+                                    StatsHelper)
 from app.core.detector_config import DoubleTopBottomConfig
+
+logger = logging.getLogger(__name__)
 
 
 class DoubleTopBottomDetector(Detector):
@@ -31,7 +34,9 @@ class DoubleTopBottomDetector(Detector):
             if hasattr(self.cfg, key.upper()):
                 setattr(self.cfg, key.upper(), value)
 
-    def find(self, ohlcv: pd.DataFrame, timeframe: str, symbol: str) -> List[PatternResult]:
+    def find(
+        self, ohlcv: pd.DataFrame, timeframe: str, symbol: str
+    ) -> List[PatternResult]:
         """Detect double top/bottom patterns in OHLCV data"""
         if len(ohlcv) < 20:  # Minimum length for pattern
             return []
@@ -40,25 +45,31 @@ class DoubleTopBottomDetector(Detector):
 
         try:
             # Calculate ATR
-            high = ohlcv['high'].values
-            low = ohlcv['low'].values
-            close = ohlcv['close'].values
+            high = ohlcv["high"].values
+            low = ohlcv["low"].values
+            close = ohlcv["close"].values
             atr = StatsHelper.atr(high, low, close)
 
             # Get pivots with tight threshold for double tops/bottoms
             pivots_tuples = StatsHelper.zigzag_pivots(high, low, close, atr)
-            pivots = [{'index': p[0], 'price': p[1], 'type': p[2]} for p in pivots_tuples]
+            pivots = [
+                {"index": p[0], "price": p[1], "type": p[2]} for p in pivots_tuples
+            ]
 
             if len(pivots) < 3:  # Need at least peak-valley-peak or valley-peak-valley
                 return []
 
             # Try double top
-            double_top = self._detect_double_top(ohlcv, pivots, atr[-1], timeframe, symbol)
+            double_top = self._detect_double_top(
+                ohlcv, pivots, atr[-1], timeframe, symbol
+            )
             if double_top:
                 results.append(double_top)
 
             # Try double bottom
-            double_bottom = self._detect_double_bottom(ohlcv, pivots, atr[-1], timeframe, symbol)
+            double_bottom = self._detect_double_bottom(
+                ohlcv, pivots, atr[-1], timeframe, symbol
+            )
             if double_bottom:
                 results.append(double_bottom)
 
@@ -73,13 +84,13 @@ class DoubleTopBottomDetector(Detector):
         pivots: List[Dict],
         atr: float,
         timeframe: str,
-        symbol: str
+        symbol: str,
     ) -> Optional[PatternResult]:
         """
         Double Top: Two peaks at similar prices
         """
-        peaks = [p for p in pivots if p['type'] == 'high']
-        valleys = [p for p in pivots if p['type'] == 'low']
+        peaks = [p for p in pivots if p["type"] == "high"]
+        valleys = [p for p in pivots if p["type"] == "low"]
 
         if len(peaks) < 2 or len(valleys) < 1:
             return None
@@ -90,7 +101,7 @@ class DoubleTopBottomDetector(Detector):
             peak2 = peaks[i + 1]
 
             # Check peaks are at similar levels (within tolerance)
-            price_diff_pct = abs(peak1['price'] - peak2['price']) / peak1['price']
+            price_diff_pct = abs(peak1["price"] - peak2["price"]) / peak1["price"]
 
             if price_diff_pct > self.cfg.PEAK_PRICE_TOLERANCE:
                 continue
@@ -98,16 +109,16 @@ class DoubleTopBottomDetector(Detector):
             # Find valley between peaks
             valley = None
             for v in valleys:
-                if peak1['index'] < v['index'] < peak2['index']:
-                    if valley is None or v['price'] < valley['price']:
+                if peak1["index"] < v["index"] < peak2["index"]:
+                    if valley is None or v["price"] < valley["price"]:
                         valley = v
 
             if not valley:
                 continue
 
             # Calculate pullback depth
-            avg_peak = (peak1['price'] + peak2['price']) / 2
-            pullback_depth = (avg_peak - valley['price']) / avg_peak
+            avg_peak = (peak1["price"] + peak2["price"]) / 2
+            pullback_depth = (avg_peak - valley["price"]) / avg_peak
 
             # Check minimum pullback (use INTERMEDIATE_SWING_ATR converted to percentage)
             min_pullback = self.cfg.INTERMEDIATE_SWING_ATR * atr / avg_peak
@@ -115,31 +126,39 @@ class DoubleTopBottomDetector(Detector):
                 continue
 
             # Check time separation
-            time_separation = peak2['index'] - peak1['index']
-            if time_separation < self.cfg.MIN_TIME_SEPARATION or time_separation > self.cfg.MAX_TIME_SEPARATION:
+            time_separation = peak2["index"] - peak1["index"]
+            if (
+                time_separation < self.cfg.MIN_TIME_SEPARATION
+                or time_separation > self.cfg.MAX_TIME_SEPARATION
+            ):
                 continue
 
             # Check second peak doesn't exceed first significantly (confirming pattern)
-            if peak2['price'] > peak1['price'] * 1.02:  # More than 2% higher
+            if peak2["price"] > peak1["price"] * 1.02:  # More than 2% higher
                 continue
 
             # Calculate confidence
             confidence = self._calculate_confidence(
-                price_diff_pct,
-                pullback_depth,
-                time_separation,
-                'top'
+                price_diff_pct, pullback_depth, time_separation, "top"
             )
 
             if confidence < 0.40:
                 continue
 
             # Build pattern
-            start_idx = peak1['index']
-            end_idx = peak2['index']
+            start_idx = peak1["index"]
+            end_idx = peak2["index"]
 
-            window_start = ohlcv.index[start_idx].isoformat() if hasattr(ohlcv.index[start_idx], 'isoformat') else str(ohlcv.index[start_idx])
-            window_end = ohlcv.index[end_idx].isoformat() if hasattr(ohlcv.index[end_idx], 'isoformat') else str(ohlcv.index[end_idx])
+            window_start = (
+                ohlcv.index[start_idx].isoformat()
+                if hasattr(ohlcv.index[start_idx], "isoformat")
+                else str(ohlcv.index[start_idx])
+            )
+            window_end = (
+                ohlcv.index[end_idx].isoformat()
+                if hasattr(ohlcv.index[end_idx], "isoformat")
+                else str(ohlcv.index[end_idx])
+            )
 
             return PatternResult(
                 symbol=symbol,
@@ -151,22 +170,19 @@ class DoubleTopBottomDetector(Detector):
                 window_start=window_start,
                 window_end=window_end,
                 lines={
-                    'peak1_price': peak1['price'],
-                    'peak2_price': peak2['price'],
-                    'valley_price': valley['price'],
-                    'resistance_level': avg_peak
+                    "peak1_price": peak1["price"],
+                    "peak2_price": peak2["price"],
+                    "valley_price": valley["price"],
+                    "resistance_level": avg_peak,
                 },
-                touches={
-                    'resistance': 2,
-                    'peaks': 2
-                },
+                touches={"resistance": 2, "peaks": 2},
                 breakout=None,
                 evidence={
-                    'price_similarity': 1.0 - price_diff_pct,
-                    'pullback_depth': pullback_depth,
-                    'time_separation': time_separation,
-                    'atr': atr
-                }
+                    "price_similarity": 1.0 - price_diff_pct,
+                    "pullback_depth": pullback_depth,
+                    "time_separation": time_separation,
+                    "atr": atr,
+                },
             )
 
         return None
@@ -177,13 +193,13 @@ class DoubleTopBottomDetector(Detector):
         pivots: List[Dict],
         atr: float,
         timeframe: str,
-        symbol: str
+        symbol: str,
     ) -> Optional[PatternResult]:
         """
         Double Bottom: Two troughs at similar prices
         """
-        troughs = [p for p in pivots if p['type'] == 'low']
-        peaks = [p for p in pivots if p['type'] == 'high']
+        troughs = [p for p in pivots if p["type"] == "low"]
+        peaks = [p for p in pivots if p["type"] == "high"]
 
         if len(troughs) < 2 or len(peaks) < 1:
             return None
@@ -194,7 +210,7 @@ class DoubleTopBottomDetector(Detector):
             trough2 = troughs[i + 1]
 
             # Check troughs are at similar levels
-            price_diff_pct = abs(trough1['price'] - trough2['price']) / trough1['price']
+            price_diff_pct = abs(trough1["price"] - trough2["price"]) / trough1["price"]
 
             if price_diff_pct > self.cfg.PEAK_PRICE_TOLERANCE:
                 continue
@@ -202,16 +218,16 @@ class DoubleTopBottomDetector(Detector):
             # Find peak between troughs
             peak = None
             for p in peaks:
-                if trough1['index'] < p['index'] < trough2['index']:
-                    if peak is None or p['price'] > peak['price']:
+                if trough1["index"] < p["index"] < trough2["index"]:
+                    if peak is None or p["price"] > peak["price"]:
                         peak = p
 
             if not peak:
                 continue
 
             # Calculate rally height
-            avg_trough = (trough1['price'] + trough2['price']) / 2
-            rally_height = (peak['price'] - avg_trough) / avg_trough
+            avg_trough = (trough1["price"] + trough2["price"]) / 2
+            rally_height = (peak["price"] - avg_trough) / avg_trough
 
             # Check minimum rally
             min_rally = self.cfg.INTERMEDIATE_SWING_ATR * atr / avg_trough
@@ -219,31 +235,39 @@ class DoubleTopBottomDetector(Detector):
                 continue
 
             # Check time separation
-            time_separation = trough2['index'] - trough1['index']
-            if time_separation < self.cfg.MIN_TIME_SEPARATION or time_separation > self.cfg.MAX_TIME_SEPARATION:
+            time_separation = trough2["index"] - trough1["index"]
+            if (
+                time_separation < self.cfg.MIN_TIME_SEPARATION
+                or time_separation > self.cfg.MAX_TIME_SEPARATION
+            ):
                 continue
 
             # Check second trough doesn't fall below first significantly
-            if trough2['price'] < trough1['price'] * 0.98:  # More than 2% lower
+            if trough2["price"] < trough1["price"] * 0.98:  # More than 2% lower
                 continue
 
             # Calculate confidence
             confidence = self._calculate_confidence(
-                price_diff_pct,
-                rally_height,
-                time_separation,
-                'bottom'
+                price_diff_pct, rally_height, time_separation, "bottom"
             )
 
             if confidence < 0.40:
                 continue
 
             # Build pattern
-            start_idx = trough1['index']
-            end_idx = trough2['index']
+            start_idx = trough1["index"]
+            end_idx = trough2["index"]
 
-            window_start = ohlcv.index[start_idx].isoformat() if hasattr(ohlcv.index[start_idx], 'isoformat') else str(ohlcv.index[start_idx])
-            window_end = ohlcv.index[end_idx].isoformat() if hasattr(ohlcv.index[end_idx], 'isoformat') else str(ohlcv.index[end_idx])
+            window_start = (
+                ohlcv.index[start_idx].isoformat()
+                if hasattr(ohlcv.index[start_idx], "isoformat")
+                else str(ohlcv.index[start_idx])
+            )
+            window_end = (
+                ohlcv.index[end_idx].isoformat()
+                if hasattr(ohlcv.index[end_idx], "isoformat")
+                else str(ohlcv.index[end_idx])
+            )
 
             return PatternResult(
                 symbol=symbol,
@@ -255,22 +279,19 @@ class DoubleTopBottomDetector(Detector):
                 window_start=window_start,
                 window_end=window_end,
                 lines={
-                    'trough1_price': trough1['price'],
-                    'trough2_price': trough2['price'],
-                    'peak_price': peak['price'],
-                    'support_level': avg_trough
+                    "trough1_price": trough1["price"],
+                    "trough2_price": trough2["price"],
+                    "peak_price": peak["price"],
+                    "support_level": avg_trough,
                 },
-                touches={
-                    'support': 2,
-                    'troughs': 2
-                },
+                touches={"support": 2, "troughs": 2},
                 breakout=None,
                 evidence={
-                    'price_similarity': 1.0 - price_diff_pct,
-                    'rally_height': rally_height,
-                    'time_separation': time_separation,
-                    'atr': atr
-                }
+                    "price_similarity": 1.0 - price_diff_pct,
+                    "rally_height": rally_height,
+                    "time_separation": time_separation,
+                    "atr": atr,
+                },
             )
 
         return None
@@ -280,7 +301,7 @@ class DoubleTopBottomDetector(Detector):
         price_diff_pct: float,
         depth_or_height: float,
         time_separation: int,
-        pattern_type: str
+        pattern_type: str,
     ) -> float:
         """Calculate double top/bottom confidence"""
 
@@ -300,10 +321,10 @@ class DoubleTopBottomDetector(Detector):
         structure_score = 0.7  # Baseline for double top/bottom
 
         confidence = (
-            0.35 * similarity_score +
-            0.35 * depth_score +
-            0.20 * sep_score +
-            0.10 * structure_score
+            0.35 * similarity_score
+            + 0.35 * depth_score
+            + 0.20 * sep_score
+            + 0.10 * structure_score
         )
 
         return np.clip(confidence, 0, 1)

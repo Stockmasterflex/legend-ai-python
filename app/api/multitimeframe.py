@@ -2,10 +2,12 @@
 Multi-Timeframe Confirmation API endpoints
 Provides multi-timeframe analysis and confluence scoring
 """
+
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-import logging
 
 from app.services.multitimeframe import get_multitf_service
 
@@ -16,11 +18,13 @@ router = APIRouter(prefix="/api/multitimeframe", tags=["multitimeframe"])
 
 class MultiTFRequest(BaseModel):
     """Request for multi-timeframe analysis"""
+
     ticker: str
 
 
 class MultiTFResponse(BaseModel):
     """Response with multi-timeframe analysis"""
+
     success: bool
     ticker: str
     confluence: float
@@ -35,7 +39,7 @@ async def multitf_health():
     return {
         "status": "healthy",
         "service": "multi-timeframe confirmation",
-        "timeframes": ["1D", "1W", "4H", "1H"]
+        "timeframes": ["1D", "1W", "4H", "1H"],
     }
 
 
@@ -104,26 +108,26 @@ async def analyze_multi_timeframe(request: MultiTFRequest):
                         "trend": result.daily_1d.trend_direction,
                         "entry": result.daily_1d.entry,
                         "stop": result.daily_1d.stop,
-                        "target": result.daily_1d.target
+                        "target": result.daily_1d.target,
                     },
                     "1W": {
                         "trend": result.weekly_1w.trend_direction,
                         "confidence": f"{result.weekly_1w.confidence:.1%}",
-                        "volume_trend": result.weekly_1w.volume_trend
+                        "volume_trend": result.weekly_1w.volume_trend,
                     },
                     "4H": {
                         "trend": result.four_hour_4h.trend_direction,
                         "confidence": f"{result.four_hour_4h.confidence:.1%}",
-                        "volume_trend": result.four_hour_4h.volume_trend
+                        "volume_trend": result.four_hour_4h.volume_trend,
                     },
                     "1H": {
                         "trend": result.one_hour_1h.trend_direction,
-                        "confidence": f"{result.one_hour_1h.confidence:.1%}"
-                    }
+                        "confidence": f"{result.one_hour_1h.confidence:.1%}",
+                    },
                 },
                 "alignment": result.alignment_details,
-                "recommendations": result.recommendations
-            }
+                "recommendations": result.recommendations,
+            },
         )
 
     except HTTPException:
@@ -156,12 +160,13 @@ async def quick_multitf_check(ticker: str):
             "confluence": f"{result.overall_confluence:.1%}",
             "signal_quality": result.signal_quality,
             "strong_signal": result.strong_signal,
-            "recommendation": result.recommendations[0] if result.recommendations else "Analysis complete"
+            "recommendation": (
+                result.recommendations[0]
+                if result.recommendations
+                else "Analysis complete"
+            ),
         }
 
     except Exception as e:
         logger.error(f"Quick check error: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}

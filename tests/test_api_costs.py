@@ -4,9 +4,10 @@ API Cost Monitoring Tests
 These tests ensure API usage stays within budget limits and caching is effective.
 Critical for keeping costs at $15-25/month instead of $50-75/month.
 """
+
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-from datetime import datetime, timedelta
 
 from app.services.cache import is_market_hours
 
@@ -40,10 +41,16 @@ class TestAPIUsageLimits:
         market_data_service.cache.set = AsyncMock(side_effect=mock_set)
 
         # Mock external API calls to avoid "Event loop is closed" or network errors
-        market_data_service._get_from_yahoo = AsyncMock(return_value={
-            "c": [100.0, 101.0], "o": [99.0, 100.0], "h": [102.0, 102.0],
-            "l": [98.0, 99.0], "v": [1000, 2000], "t": ["2024-01-01", "2024-01-02"]
-        })
+        market_data_service._get_from_yahoo = AsyncMock(
+            return_value={
+                "c": [100.0, 101.0],
+                "o": [99.0, 100.0],
+                "h": [102.0, 102.0],
+                "l": [98.0, 99.0],
+                "v": [1000, 2000],
+                "t": ["2024-01-01", "2024-01-02"],
+            }
+        )
 
         ticker = "AAPL"
         interval = "1day"
@@ -65,8 +72,8 @@ class TestAPIUsageLimits:
     @pytest.mark.asyncio
     async def test_dynamic_ttl_market_hours(self):
         """Verify TTL is shorter during market hours"""
-        from app.services.cache import CacheService
         from app.config import get_settings
+        from app.services.cache import CacheService
 
         settings = get_settings()
         cache_service = CacheService(settings.redis_url)
@@ -87,39 +94,35 @@ class TestAPIUsageLimits:
         with patch("app.services.cache.is_market_hours") as mock_market_hours:
             # Test during market hours
             mock_market_hours.return_value = True
-            result = await cache_service.set_pattern(
-                "AAPL", "1day", test_data
-            )
+            result = await cache_service.set_pattern("AAPL", "1day", test_data)
             assert result is True  # Should succeed
 
             # Test outside market hours
             mock_market_hours.return_value = False
-            result = await cache_service.set_pattern(
-                "AAPL", "1day", test_data
-            )
+            result = await cache_service.set_pattern("AAPL", "1day", test_data)
             assert result is True  # Should succeed
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_use_cache(self):
         """Verify concurrent requests for same data use cache"""
         import asyncio
+
         from app.services.market_data import market_data_service
 
         ticker = "NVDA"
 
         # Make 10 concurrent requests for the same ticker
         tasks = [
-            market_data_service.get_time_series(ticker, "1day", 100)
-            for _ in range(10)
+            market_data_service.get_time_series(ticker, "1day", 100) for _ in range(10)
         ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # All requests should succeed
         successful_results = [r for r in results if not isinstance(r, Exception)]
-        assert len(successful_results) >= 8, (
-            f"Only {len(successful_results)}/10 requests succeeded"
-        )
+        assert (
+            len(successful_results) >= 8
+        ), f"Only {len(successful_results)}/10 requests succeeded"
 
         # If multiple succeeded, they should have similar data
         if len(successful_results) >= 2:
@@ -136,24 +139,23 @@ class TestCostOptimizations:
     @pytest.mark.asyncio
     async def test_batch_scanning_efficiency(self):
         """Verify batch scanning is more efficient than individual scans"""
-        from app.services.pattern_scanner import pattern_scanner_service
         import time
+
+        from app.services.pattern_scanner import pattern_scanner_service
 
         symbols = ["AAPL", "NVDA", "MSFT"]
 
         # Batch scan
         start = time.perf_counter()
         batch_result = await pattern_scanner_service.scan_universe(
-            universe=symbols,
-            limit=10,
-            min_score=7.0
+            universe=symbols, limit=10, min_score=7.0
         )
         batch_duration = time.perf_counter() - start
 
         assert batch_result["success"] is True
-        assert batch_duration < 10.0, (
-            f"Batch scan took {batch_duration:.2f}s (should be < 10s)"
-        )
+        assert (
+            batch_duration < 10.0
+        ), f"Batch scan took {batch_duration:.2f}s (should be < 10s)"
 
     @pytest.mark.asyncio
     async def test_universe_scan_respects_limits(self):
@@ -165,9 +167,7 @@ class TestCostOptimizations:
 
         # Scan with limit
         result = await limited_scanner.scan_universe(
-            universe=None,  # Use default universe
-            limit=10,
-            min_score=7.0
+            universe=None, limit=10, min_score=7.0  # Use default universe
         )
 
         # Should return at most 10 results
@@ -187,7 +187,9 @@ class TestCachingEffectiveness:
         from app.services.market_data import market_data_service
 
         # Mock cache service in market data
-        market_data_service.cache.get = AsyncMock(return_value={"c": [100.0], "cached": True})
+        market_data_service.cache.get = AsyncMock(
+            return_value={"c": [100.0], "cached": True}
+        )
 
         ticker = "AAPL"
 
@@ -202,8 +204,8 @@ class TestCachingEffectiveness:
     @pytest.mark.asyncio
     async def test_cache_invalidation(self):
         """Verify cache invalidation works when needed"""
-        from app.services.cache import CacheService
         from app.config import get_settings
+        from app.services.cache import CacheService
 
         settings = get_settings()
         cache_service = CacheService(settings.redis_url)
@@ -239,9 +241,8 @@ class TestCachingEffectiveness:
     @pytest.mark.asyncio
     async def test_pattern_cache_reuse(self):
         """Verify pattern results are cached and reused"""
-        from app.services.cache import CacheService
         from app.config import get_settings
-        import json
+        from app.services.cache import CacheService
 
         settings = get_settings()
         cache_service = CacheService(settings.redis_url)
@@ -265,7 +266,7 @@ class TestCachingEffectiveness:
             "confidence": 0.85,
             "entry": 150.0,
             "stop": 145.0,
-            "target": 165.0
+            "target": 165.0,
         }
 
         # Cache pattern
@@ -292,25 +293,20 @@ class TestAPIUsageTracking:
 
         # Simulate daily usage
         twelvedata_calls = 500  # Pattern scans + price data
-        chartimg_calls = 50     # Chart generations
+        chartimg_calls = 50  # Chart generations
 
-        daily_cost = (
-            twelvedata_calls * 0.001 +
-            chartimg_calls * 0.002
-        )
+        daily_cost = twelvedata_calls * 0.001 + chartimg_calls * 0.002
 
         # Daily cost should be under $1.00
-        assert daily_cost < 1.00, (
-            f"Daily cost ${daily_cost:.2f} exceeds $1.00 target"
-        )
+        assert daily_cost < 1.00, f"Daily cost ${daily_cost:.2f} exceeds $1.00 target"
 
         # Monthly cost (30 days)
         monthly_cost = daily_cost * 30
 
         # Monthly cost should be under $30
-        assert monthly_cost < 30.00, (
-            f"Monthly cost ${monthly_cost:.2f} exceeds $30.00 budget"
-        )
+        assert (
+            monthly_cost < 30.00
+        ), f"Monthly cost ${monthly_cost:.2f} exceeds $30.00 budget"
 
     def test_cache_hit_savings(self):
         """Calculate potential savings from cache hits"""
@@ -328,9 +324,7 @@ class TestAPIUsageTracking:
         savings_pct = (savings / no_cache_cost) * 100
 
         # Should save at least 60%
-        assert savings_pct >= 60.0, (
-            f"Cache savings {savings_pct:.1f}% below 60% target"
-        )
+        assert savings_pct >= 60.0, f"Cache savings {savings_pct:.1f}% below 60% target"
 
 
 class TestProductionReadiness:
@@ -343,9 +337,7 @@ class TestProductionReadiness:
 
         # Try to fetch data for invalid ticker
         invalid_result = await market_data_service.get_time_series(
-            ticker="INVALID_TICKER_THAT_DOESNT_EXIST",
-            interval="1day",
-            outputsize=100
+            ticker="INVALID_TICKER_THAT_DOESNT_EXIST", interval="1day", outputsize=100
         )
 
         # Should handle gracefully without multiple retry attempts
@@ -362,9 +354,7 @@ class TestProductionReadiness:
 
         # This should respect concurrency limit
         result = await scanner.scan_universe(
-            universe=["AAPL", "NVDA", "MSFT", "GOOGL", "META"],
-            limit=5,
-            min_score=7.0
+            universe=["AAPL", "NVDA", "MSFT", "GOOGL", "META"], limit=5, min_score=7.0
         )
 
         assert result["success"] is True

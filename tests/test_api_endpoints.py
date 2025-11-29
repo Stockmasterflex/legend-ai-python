@@ -1,6 +1,6 @@
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import pytest
 
 from app.api import patterns as patterns_api
 
@@ -30,7 +30,12 @@ async def test_scan_endpoint(monkeypatch):
     client = _build_client()
     response = client.post(
         "/api/patterns/scan",
-        json={"tickers": ["AAPL"], "interval": "1day", "apply_filters": True, "min_score": 6.0},
+        json={
+            "tickers": ["AAPL"],
+            "interval": "1day",
+            "apply_filters": True,
+            "min_score": 6.0,
+        },
     )
     assert response.status_code == 200
     body = response.json()
@@ -43,7 +48,10 @@ def test_filter_endpoint():
     response = client.post(
         "/api/patterns/filter",
         json={
-            "patterns": [{"ticker": "AAPL", "current_price": 150}, {"ticker": "LOW", "current_price": 20}],
+            "patterns": [
+                {"ticker": "AAPL", "current_price": 150},
+                {"ticker": "LOW", "current_price": 20},
+            ],
             "filter_config": {"min_price": 30},
         },
     )

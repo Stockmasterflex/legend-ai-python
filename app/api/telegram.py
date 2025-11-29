@@ -1,9 +1,10 @@
+import logging
+import re
+from typing import Optional
+
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional
-import re
-import httpx
-import logging
 
 from app.config import get_settings
 
@@ -12,38 +13,41 @@ settings = get_settings()
 
 router = APIRouter()
 
+
 class TelegramUpdate(BaseModel):
     """Telegram webhook update model"""
+
     update_id: int
     message: Optional[dict] = None
 
+
 class CommandRequest(BaseModel):
     """Parsed command request"""
+
     chat_id: str
     cmd: str
     ticker: str = ""
     original_text: str = ""
     is_natural_language: bool = False
 
+
 class TelegramService:
     """Service for handling Telegram operations"""
 
     def __init__(self):
         self.client = httpx.AsyncClient(
-            timeout=30.0,
-            follow_redirects=True,
-            verify=True
+            timeout=30.0, follow_redirects=True, verify=True
         )
 
-    async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
+    async def send_message(
+        self, chat_id: str, text: str, parse_mode: str = "Markdown"
+    ) -> bool:
         """Send message to Telegram chat"""
         try:
-            url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-            payload = {
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": parse_mode
-            }
+            url = (
+                f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+            )
+            payload = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
 
             response = await self.client.post(url, json=payload)
             response.raise_for_status()
@@ -63,7 +67,7 @@ class TelegramService:
                 "chat_id": chat_id,
                 "photo": photo_url,
                 "caption": caption,
-                "parse_mode": "Markdown"
+                "parse_mode": "Markdown",
             }
 
             response = await self.client.post(url, json=payload)
@@ -81,10 +85,21 @@ class TelegramService:
         try:
             # Heuristic shortcuts for common patterns (fast path)
             low = text.lower()
-            if any(phrase in low for phrase in ["top setup", "best setup", "today setup", "find pattern", "scan for pattern"]):
+            if any(
+                phrase in low
+                for phrase in [
+                    "top setup",
+                    "best setup",
+                    "today setup",
+                    "find pattern",
+                    "scan for pattern",
+                ]
+            ):
                 return "scan"
 
-            if any(phrase in low for phrase in ["check", "analyze", "does", "have pattern"]):
+            if any(
+                phrase in low for phrase in ["check", "analyze", "does", "have pattern"]
+            ):
                 return "pattern"
 
             if any(phrase in low for phrase in ["show chart", "chart", "graph"]):
@@ -105,14 +120,14 @@ Response:"""
                     "Authorization": f"Bearer {settings.openrouter_api_key}",
                     "Content-Type": "application/json",
                     "HTTP-Referer": "https://legend-ai-python-production.up.railway.app",
-                    "X-Title": "Legend AI Bot"
+                    "X-Title": "Legend AI Bot",
                 },
                 json={
                     "model": "openai/gpt-4o-mini",
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 10,
-                    "temperature": 0
-                }
+                    "temperature": 0,
+                },
             )
 
             if response.status_code == 200:
@@ -140,10 +155,22 @@ Response:"""
 
         # Check for natural language patterns
         low = original_text.lower()
-        is_natural = any(keyword in low for keyword in [
-            "best", "top", "find", "scan", "show", "check", "analyze",
-            "chart", "pattern", "setup", "today"
-        ])
+        is_natural = any(
+            keyword in low
+            for keyword in [
+                "best",
+                "top",
+                "find",
+                "scan",
+                "show",
+                "check",
+                "analyze",
+                "chart",
+                "pattern",
+                "setup",
+                "today",
+            ]
+        )
 
         # Route natural language to AI intent classifier
         if not cmd.startswith("/") and is_natural:
@@ -159,7 +186,7 @@ Response:"""
             cmd=cmd,
             ticker=ticker,
             original_text=original_text,
-            is_natural_language=is_natural
+            is_natural_language=is_natural,
         )
 
     async def handle_start_command(self, chat_id: str) -> str:
@@ -196,7 +223,7 @@ I understand both!"""
             base_url = settings.telegram_webhook_url or "http://localhost:8000"
             response = await self.client.post(
                 f"{base_url}/api/patterns/detect",
-                json={"ticker": ticker, "interval": "1day"}
+                json={"ticker": ticker, "interval": "1day"},
             )
 
             if response.status_code == 200:
@@ -212,7 +239,9 @@ I understand both!"""
                     criteria = data.get("criteria_met", [])
 
                     if pattern != "NONE" and score >= 7:
-                        criteria_text = "\n".join(f"✅ {c}" for c in criteria[:3])  # Show top 3
+                        criteria_text = "\n".join(
+                            f"✅ {c}" for c in criteria[:3]
+                        )  # Show top 3
                         return f"""📊 *{ticker} Pattern Analysis*
 
 🎯 *Pattern:* {pattern}
@@ -244,14 +273,17 @@ I understand both!"""
     async def handle_chart_command(self, chat_id: str, ticker: str) -> dict:
         """Handle /chart command - generate chart"""
         if not ticker:
-            return {"text": "❌ Usage: /chart TICKER\n\nExample: /chart AAPL", "chart_url": None}
+            return {
+                "text": "❌ Usage: /chart TICKER\n\nExample: /chart AAPL",
+                "chart_url": None,
+            }
 
         try:
             # Call chart generation endpoint using internal service
             base_url = settings.telegram_webhook_url or "http://localhost:8000"
             response = await self.client.post(
                 f"{base_url}/api/charts/generate",
-                json={"ticker": ticker, "interval": "1D"}
+                json={"ticker": ticker, "interval": "1D"},
             )
 
             if response.status_code == 200:
@@ -264,37 +296,38 @@ I understand both!"""
                     photo_success = await self.send_photo(chat_id, chart_url, caption)
 
                     if photo_success:
-                        return {"text": "", "chart_url": chart_url}  # Photo sent, no text needed
+                        return {
+                            "text": "",
+                            "chart_url": chart_url,
+                        }  # Photo sent, no text needed
                     else:
                         return {
                             "text": f"❌ Chart generated but failed to send photo.\n\nChart URL: {chart_url}",
-                            "chart_url": chart_url
+                            "chart_url": chart_url,
                         }
                 else:
                     return {
                         "text": f"❌ Chart generation failed: {result.get('error', 'Unknown error')}",
-                        "chart_url": None
+                        "chart_url": None,
                     }
             else:
                 return {
                     "text": f"❌ Service error ({response.status_code})",
-                    "chart_url": None
+                    "chart_url": None,
                 }
 
         except Exception as e:
             logger.error(f"Chart generation error: {e}")
-            return {
-                "text": f"❌ Chart failed: {str(e)}",
-                "chart_url": None
-            }
+            return {"text": f"❌ Chart failed: {str(e)}", "chart_url": None}
 
-    async def handle_scan_command(self, chat_id: str, pattern: str = "VCP", min_score: int = 8) -> str:
+    async def handle_scan_command(
+        self, chat_id: str, pattern: str = "VCP", min_score: int = 8
+    ) -> str:
         """Handle /scan command - scan universe for patterns"""
         try:
             base_url = settings.telegram_webhook_url or "http://localhost:8000"
             response = await self.client.post(
-                f"{base_url}/api/universe/scan/quick",
-                timeout=10.0
+                f"{base_url}/api/universe/scan/quick", timeout=10.0
             )
             if response.status_code == 200:
                 data = response.json()
@@ -302,8 +335,12 @@ I understand both!"""
                     results = data["results"][:5]
                     msg = "🔍 *Quick Scan Results*\n\n"
                     for r in results:
-                        msg += f"📊 *{r['ticker']}* - {r['pattern']} ({r['score']}/10)\n"
-                        msg += f"   Entry: ${r['entry']:.2f} | Stop: ${r['stop']:.2f}\n\n"
+                        msg += (
+                            f"📊 *{r['ticker']}* - {r['pattern']} ({r['score']}/10)\n"
+                        )
+                        msg += (
+                            f"   Entry: ${r['entry']:.2f} | Stop: ${r['stop']:.2f}\n\n"
+                        )
                     return msg
             return "🔍 *Scanning Universe*\n\nUse /scan for quick results from cached data!"
         except Exception as e:
@@ -331,14 +368,34 @@ I understand both!"""
     def _extract_ticker_from_text(self, text: str) -> str:
         """Extract ticker symbol from natural language text"""
         # Simple regex to find potential tickers (3-5 uppercase letters)
-        matches = re.findall(r'\b[A-Z]{2,5}\b', text.upper())
+        matches = re.findall(r"\b[A-Z]{2,5}\b", text.upper())
         # Filter out common words that might match
-        common_words = {"FOR", "THE", "AND", "ARE", "BUT", "CAN", "DID", "HAS", "HAD", "HER", "HIS", "ITS", "OUR", "THEIR", "WAS", "WILL", "YOU"}
+        common_words = {
+            "FOR",
+            "THE",
+            "AND",
+            "ARE",
+            "BUT",
+            "CAN",
+            "DID",
+            "HAS",
+            "HAD",
+            "HER",
+            "HIS",
+            "ITS",
+            "OUR",
+            "THEIR",
+            "WAS",
+            "WILL",
+            "YOU",
+        }
         tickers = [m for m in matches if m not in common_words and len(m) >= 2]
         return tickers[0] if tickers else ""
 
+
 # Global service instance
 telegram_service = TelegramService()
+
 
 @router.post("/webhook/telegram")
 async def telegram_webhook(request: Request):
@@ -374,15 +431,21 @@ async def telegram_webhook(request: Request):
         elif cmd_request.cmd in ["/help", "/"]:
             response_text = await telegram_service.handle_help_command(chat_id)
         elif cmd_request.cmd == "/pattern":
-            response_text = await telegram_service.handle_pattern_command(chat_id, cmd_request.ticker)
+            response_text = await telegram_service.handle_pattern_command(
+                chat_id, cmd_request.ticker
+            )
         elif cmd_request.cmd == "/chart":
-            result = await telegram_service.handle_chart_command(chat_id, cmd_request.ticker)
+            result = await telegram_service.handle_chart_command(
+                chat_id, cmd_request.ticker
+            )
             response_text = result.get("text", "")
             # Chart photo is already sent within handle_chart_command
         elif cmd_request.cmd == "/scan":
             response_text = await telegram_service.handle_scan_command(chat_id)
         elif cmd_request.cmd == "/ai":
-            response_text = await telegram_service.handle_ai_intent(chat_id, cmd_request.original_text)
+            response_text = await telegram_service.handle_ai_intent(
+                chat_id, cmd_request.original_text
+            )
         else:
             response_text = "❓ Unknown command. Try /help for available commands."
 

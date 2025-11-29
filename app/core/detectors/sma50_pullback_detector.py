@@ -2,14 +2,17 @@
 50 SMA Pullback Pattern Detector
 Detects bullish pullback opportunities near the 50-period SMA
 """
-from typing import List, Optional, Dict, Any
-import pandas as pd
-import numpy as np
-from datetime import datetime
 
-from app.core.detector_base import (
-    Detector, PatternResult, PatternType, StatsHelper
-)
+import logging
+from datetime import datetime
+from typing import List
+
+import numpy as np
+import pandas as pd
+
+from app.core.detector_base import Detector, PatternResult, PatternType
+
+logger = logging.getLogger(__name__)
 
 
 class SMA50PullbackDetector(Detector):
@@ -26,11 +29,15 @@ class SMA50PullbackDetector(Detector):
 
     def __init__(self, **kwargs):
         super().__init__("50 SMA Pullback Detector", **kwargs)
-        self.max_distance_pct = kwargs.get('max_distance_pct', 3.0)  # 3% from 50 SMA
-        self.lookback = kwargs.get('lookback', 10)  # Recent bars to check
-        self.min_uptrend_bars = kwargs.get('min_uptrend_bars', 20)  # Bars above SMA for uptrend
+        self.max_distance_pct = kwargs.get("max_distance_pct", 3.0)  # 3% from 50 SMA
+        self.lookback = kwargs.get("lookback", 10)  # Recent bars to check
+        self.min_uptrend_bars = kwargs.get(
+            "min_uptrend_bars", 20
+        )  # Bars above SMA for uptrend
 
-    def find(self, ohlcv: pd.DataFrame, timeframe: str, symbol: str) -> List[PatternResult]:
+    def find(
+        self, ohlcv: pd.DataFrame, timeframe: str, symbol: str
+    ) -> List[PatternResult]:
         """Detect 50 SMA pullback patterns"""
         if len(ohlcv) < 200:  # Need enough history for 200 SMA
             return []
@@ -40,16 +47,16 @@ class SMA50PullbackDetector(Detector):
         try:
             # Calculate SMAs
             ohlcv = ohlcv.copy()
-            ohlcv['sma_50'] = ohlcv['close'].rolling(window=50).mean()
-            ohlcv['sma_200'] = ohlcv['close'].rolling(window=200).mean()
+            ohlcv["sma_50"] = ohlcv["close"].rolling(window=50).mean()
+            ohlcv["sma_200"] = ohlcv["close"].rolling(window=200).mean()
 
             # Need valid SMAs
-            if ohlcv['sma_50'].isna().iloc[-1] or ohlcv['sma_200'].isna().iloc[-1]:
+            if ohlcv["sma_50"].isna().iloc[-1] or ohlcv["sma_200"].isna().iloc[-1]:
                 return []
 
-            current_price = ohlcv['close'].iloc[-1]
-            sma_50 = ohlcv['sma_50'].iloc[-1]
-            sma_200 = ohlcv['sma_200'].iloc[-1]
+            current_price = ohlcv["close"].iloc[-1]
+            sma_50 = ohlcv["sma_50"].iloc[-1]
+            sma_200 = ohlcv["sma_200"].iloc[-1]
 
             # Check uptrend criteria
             if not self._is_in_uptrend(ohlcv):
@@ -63,7 +70,7 @@ class SMA50PullbackDetector(Detector):
 
             # Check for pullback (recent high above current price)
             recent_window = ohlcv.iloc[-20:]
-            recent_high = recent_window['high'].max()
+            recent_high = recent_window["high"].max()
             pullback_depth = (recent_high - current_price) / recent_high * 100
 
             if pullback_depth < 3 or pullback_depth > 15:  # 3-15% pullback
@@ -81,15 +88,23 @@ class SMA50PullbackDetector(Detector):
                 pullback_depth,
                 volume_declining,
                 bounce_signal,
-                current_price > sma_200
+                current_price > sma_200,
             )
 
             if confidence < 0.40:
                 return []
 
             # Build result
-            window_start = ohlcv.index[-20].isoformat() if hasattr(ohlcv.index[-20], 'isoformat') else str(ohlcv.index[-20])
-            window_end = ohlcv.index[-1].isoformat() if hasattr(ohlcv.index[-1], 'isoformat') else str(ohlcv.index[-1])
+            window_start = (
+                ohlcv.index[-20].isoformat()
+                if hasattr(ohlcv.index[-20], "isoformat")
+                else str(ohlcv.index[-20])
+            )
+            window_end = (
+                ohlcv.index[-1].isoformat()
+                if hasattr(ohlcv.index[-1], "isoformat")
+                else str(ohlcv.index[-1])
+            )
 
             # Create PatternResult (using CHANNEL_UP as a proxy pattern type for SMA pullback)
             result = PatternResult(
@@ -102,21 +117,19 @@ class SMA50PullbackDetector(Detector):
                 window_start=window_start,
                 window_end=window_end,
                 lines={
-                    'current_price': current_price,
-                    'sma_50': sma_50,
-                    'sma_200': sma_200,
-                    'distance_from_sma': distance_pct,
-                    'pullback_depth': pullback_depth
+                    "current_price": current_price,
+                    "sma_50": sma_50,
+                    "sma_200": sma_200,
+                    "distance_from_sma": distance_pct,
+                    "pullback_depth": pullback_depth,
                 },
-                touches={
-                    'sma_50': 1
-                },
+                touches={"sma_50": 1},
                 breakout=None,
                 evidence={
-                    'volume_declining': volume_declining,
-                    'bounce_signal': bounce_signal,
-                    'above_200sma': current_price > sma_200
-                }
+                    "volume_declining": volume_declining,
+                    "bounce_signal": bounce_signal,
+                    "above_200sma": current_price > sma_200,
+                },
             )
 
             results.append(result)
@@ -129,16 +142,16 @@ class SMA50PullbackDetector(Detector):
     def _is_in_uptrend(self, ohlcv: pd.DataFrame) -> bool:
         """Check if stock is in uptrend"""
         # Price should be above both SMAs
-        if ohlcv['close'].iloc[-1] < ohlcv['sma_50'].iloc[-1]:
+        if ohlcv["close"].iloc[-1] < ohlcv["sma_50"].iloc[-1]:
             return False
 
         # 50 SMA should be above 200 SMA
-        if ohlcv['sma_50'].iloc[-1] < ohlcv['sma_200'].iloc[-1]:
+        if ohlcv["sma_50"].iloc[-1] < ohlcv["sma_200"].iloc[-1]:
             return False
 
         # Price should have been above 50 SMA for most recent bars (uptrend)
-        recent = ohlcv.iloc[-self.min_uptrend_bars:]
-        bars_above = (recent['close'] > recent['sma_50']).sum()
+        recent = ohlcv.iloc[-self.min_uptrend_bars :]
+        bars_above = (recent["close"] > recent["sma_50"]).sum()
 
         if bars_above < self.min_uptrend_bars * 0.7:  # At least 70% of bars above
             return False
@@ -147,8 +160,8 @@ class SMA50PullbackDetector(Detector):
 
     def _check_volume_decline(self, ohlcv: pd.DataFrame) -> bool:
         """Check if volume is declining during pullback"""
-        recent_vol = ohlcv['volume'].iloc[-5:].mean()
-        prior_vol = ohlcv['volume'].iloc[-20:-5].mean()
+        recent_vol = ohlcv["volume"].iloc[-5:].mean()
+        prior_vol = ohlcv["volume"].iloc[-20:-5].mean()
 
         return recent_vol < prior_vol * 0.8  # Recent volume 20% below prior
 
@@ -162,16 +175,16 @@ class SMA50PullbackDetector(Detector):
             bar = recent_bars.iloc[idx]
 
             # Hammer: long lower shadow, small body
-            body = abs(bar['close'] - bar['open'])
-            lower_shadow = min(bar['open'], bar['close']) - bar['low']
-            total_range = bar['high'] - bar['low']
+            body = abs(bar["close"] - bar["open"])
+            lower_shadow = min(bar["open"], bar["close"]) - bar["low"]
+            total_range = bar["high"] - bar["low"]
 
             if total_range > 0:
                 if lower_shadow > body * 2 and lower_shadow > total_range * 0.6:
                     return True
 
                 # Bullish bounce: closed near high of bar
-                close_position = (bar['close'] - bar['low']) / total_range
+                close_position = (bar["close"] - bar["low"]) / total_range
                 if close_position > 0.7:
                     return True
 
@@ -183,7 +196,7 @@ class SMA50PullbackDetector(Detector):
         pullback_depth: float,
         volume_declining: bool,
         bounce_signal: bool,
-        above_200sma: bool
+        above_200sma: bool,
     ) -> float:
         """Calculate pullback pattern confidence"""
 
@@ -211,11 +224,11 @@ class SMA50PullbackDetector(Detector):
         trend_score = 0.9 if above_200sma else 0.6
 
         confidence = (
-            0.30 * distance_score +
-            0.25 * depth_score +
-            0.20 * volume_score +
-            0.15 * bounce_score +
-            0.10 * trend_score
+            0.30 * distance_score
+            + 0.25 * depth_score
+            + 0.20 * volume_score
+            + 0.15 * bounce_score
+            + 0.10 * trend_score
         )
 
         return np.clip(confidence, 0, 1)

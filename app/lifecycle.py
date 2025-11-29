@@ -1,6 +1,7 @@
 """
 Application lifecycle management - startup and shutdown events
 """
+
 import json
 import logging
 import os
@@ -11,8 +12,8 @@ import httpx
 from fastapi import FastAPI
 
 from app.config import get_settings
-from app.services.universe_store import universe_store
 from app.services.cache_warmer import get_cache_warmer
+from app.services.universe_store import universe_store
 from app.utils.build_info import resolve_build_sha
 
 logger = logging.getLogger(__name__)
@@ -37,11 +38,11 @@ async def setup_telegram_webhook() -> None:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 f"https://api.telegram.org/bot{bot_token}/setWebhook",
-                json={"url": webhook_url}
+                json={"url": webhook_url},
             )
 
             if response.status_code == 200:
-                logger.info(f"✅ Telegram webhook successfully configured!")
+                logger.info("✅ Telegram webhook successfully configured!")
                 logger.info(f"   URL: {webhook_url}")
             else:
                 logger.error(f"❌ Failed to set webhook: {response.status_code}")
@@ -95,7 +96,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             sample_symbols = list(result.keys())[:5]
             logger.info(f"Sample symbols: {sample_symbols}")
         else:
-            logger.error("❌ Universe seed returned empty dict - FILE MIGHT BE EMPTY OR INVALID JSON")
+            logger.error(
+                "❌ Universe seed returned empty dict - FILE MIGHT BE EMPTY OR INVALID JSON"
+            )
 
     except FileNotFoundError as exc:
         logger.error(f"❌ Universe seed file not found: {exc}")
@@ -128,8 +131,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Start monitoring and alerting services
     try:
-        from app.telemetry.monitoring import get_monitoring_service
         from app.telemetry.alerter import get_alerter
+        from app.telemetry.monitoring import get_monitoring_service
 
         monitoring_service = get_monitoring_service()
         await monitoring_service.start_monitoring()
@@ -159,6 +162,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Close news service aiohttp session
     try:
         from app.services.news import news_service
+
         await news_service.close()
         logger.info("✅ News service closed")
     except Exception as exc:
@@ -166,8 +170,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Stop monitoring and alerting services
     try:
-        from app.telemetry.monitoring import get_monitoring_service
         from app.telemetry.alerter import get_alerter
+        from app.telemetry.monitoring import get_monitoring_service
 
         monitoring_service = get_monitoring_service()
         await monitoring_service.stop_monitoring()

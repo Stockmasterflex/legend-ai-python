@@ -5,6 +5,7 @@ This module adapts the checkbox/radio-button logic from Patternz
 (`FilterForm.cs` and ListForm `FilterPatterns`) to work with the
 Python pattern dictionaries returned by the Legend AI detectors.
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,7 +43,10 @@ class PatternFilter:
         for pat in patterns:
             width = self._get_width(pat)
             if width is None:
-                logger.debug("Skipping width filter for pattern with no width: %s", pat.get("pattern"))
+                logger.debug(
+                    "Skipping width filter for pattern with no width: %s",
+                    pat.get("pattern"),
+                )
                 continue
 
             if max_days is not None and width >= max_days:
@@ -74,7 +78,9 @@ class PatternFilter:
         for pat in patterns:
             price = self._get_price(pat)
             if price is None:
-                logger.debug("Missing price; filtering out pattern %s", pat.get("pattern"))
+                logger.debug(
+                    "Missing price; filtering out pattern %s", pat.get("pattern")
+                )
                 continue
 
             if max_price is not None and price >= max_price:
@@ -103,7 +109,9 @@ class PatternFilter:
         for pat in patterns:
             volume = self._get_volume(pat)
             if volume is None:
-                logger.debug("Missing volume; filtering out pattern %s", pat.get("pattern"))
+                logger.debug(
+                    "Missing volume; filtering out pattern %s", pat.get("pattern")
+                )
                 continue
 
             if threshold >= volume:
@@ -132,7 +140,9 @@ class PatternFilter:
         for pat in patterns:
             height_pct = self._get_height_pct(pat)
             if height_pct is None:
-                logger.debug("Missing height; filtering out pattern %s", pat.get("pattern"))
+                logger.debug(
+                    "Missing height; filtering out pattern %s", pat.get("pattern")
+                )
                 continue
 
             if max_pct is not None and height_pct >= max_pct:
@@ -192,13 +202,19 @@ class PatternFilter:
         if weinstein_stage is None:
             return list(patterns)
 
-        allowed = {weinstein_stage} if isinstance(weinstein_stage, int) else set(weinstein_stage)
+        allowed = (
+            {weinstein_stage}
+            if isinstance(weinstein_stage, int)
+            else set(weinstein_stage)
+        )
 
         filtered: List[Dict[str, Any]] = []
         for pat in patterns:
             stage = self._get_stage(pat)
             if stage is None:
-                logger.debug("Missing stage; filtering out pattern %s", pat.get("pattern"))
+                logger.debug(
+                    "Missing stage; filtering out pattern %s", pat.get("pattern")
+                )
                 continue
             if stage in allowed:
                 filtered.append(pat)

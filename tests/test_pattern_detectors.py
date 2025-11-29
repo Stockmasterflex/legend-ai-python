@@ -1,5 +1,3 @@
-import math
-
 from app.core.pattern_detector import PatternDetector
 
 
@@ -44,9 +42,27 @@ def test_detect_head_shoulders_hits():
     detector = PatternDetector()
     closes = [100 + (i * 0.02) for i in range(120)]
     pattern = [
-        104, 106, 108, 109, 108, 106, 104,  # left shoulder
-        107, 110, 114, 116, 114, 110, 107,  # head
-        105, 107, 109, 110, 108, 106, 104   # right shoulder
+        104,
+        106,
+        108,
+        109,
+        108,
+        106,
+        104,  # left shoulder
+        107,
+        110,
+        114,
+        116,
+        114,
+        110,
+        107,  # head
+        105,
+        107,
+        109,
+        110,
+        108,
+        106,
+        104,  # right shoulder
     ]
     start = 70
     for idx, val in enumerate(pattern):
@@ -60,9 +76,27 @@ def test_detect_inverse_head_shoulders_hits():
     detector = PatternDetector()
     closes = [100 - (i * 0.01) for i in range(120)]
     pattern = [
-        96, 94, 93, 94, 96, 97, 98,        # left shoulder (inverse)
-        95, 92, 90, 89, 90, 92, 95,        # head (inverse)
-        96, 97, 98, 99, 98, 97, 96         # right shoulder (inverse)
+        96,
+        94,
+        93,
+        94,
+        96,
+        97,
+        98,  # left shoulder (inverse)
+        95,
+        92,
+        90,
+        89,
+        90,
+        92,
+        95,  # head (inverse)
+        96,
+        97,
+        98,
+        99,
+        98,
+        97,
+        96,  # right shoulder (inverse)
     ]
     start = 60
     for idx, val in enumerate(pattern):

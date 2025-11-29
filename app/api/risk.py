@@ -2,10 +2,12 @@
 Risk Management and Position Sizing API
 Professional position calculator for swing traders
 """
+
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
-import logging
 
 from app.services.risk_calculator import get_risk_calculator
 
@@ -28,23 +30,36 @@ def _evaluate_rr(ratio: float) -> str:
 
 class PositionRequest(BaseModel):
     """Request for position size calculation"""
+
     account_size: float = Field(..., gt=0, description="Total account size in $")
     entry_price: float = Field(..., gt=0, description="Entry price per share in $")
-    stop_loss_price: float = Field(..., gt=0, description="Stop loss price per share in $")
-    target_price: float = Field(..., gt=0, description="Target/take profit price per share in $")
-    risk_percentage: Optional[float] = Field(0.02, ge=0.01, le=0.05, description="Risk per trade (1-5%)")
-    win_rate: Optional[float] = Field(None, ge=0, le=1, description="Historical win rate (0-1) for Kelly Criterion")
+    stop_loss_price: float = Field(
+        ..., gt=0, description="Stop loss price per share in $"
+    )
+    target_price: float = Field(
+        ..., gt=0, description="Target/take profit price per share in $"
+    )
+    risk_percentage: Optional[float] = Field(
+        0.02, ge=0.01, le=0.05, description="Risk per trade (1-5%)"
+    )
+    win_rate: Optional[float] = Field(
+        None, ge=0, le=1, description="Historical win rate (0-1) for Kelly Criterion"
+    )
 
 
 class BreakEvenRequest(BaseModel):
     """Request for break-even calculation"""
+
     entry_price: float = Field(..., gt=0, description="Entry price per share in $")
     position_size: int = Field(..., gt=0, description="Number of shares")
-    commission_per_share: Optional[float] = Field(0.01, ge=0, description="Commission cost per share")
+    commission_per_share: Optional[float] = Field(
+        0.01, ge=0, description="Commission cost per share"
+    )
 
 
 class RecoveryRequest(BaseModel):
     """Request for recovery calculation"""
+
     starting_account: float = Field(..., gt=0, description="Starting account size in $")
     current_account: float = Field(..., gt=0, description="Current account size in $")
 
@@ -55,7 +70,7 @@ async def risk_health():
     return {
         "status": "healthy",
         "service": "risk management",
-        "features": ["position_sizing", "kelly_criterion", "breakeven", "recovery"]
+        "features": ["position_sizing", "kelly_criterion", "breakeven", "recovery"],
     }
 
 
@@ -96,7 +111,7 @@ async def calculate_position(request: PositionRequest):
             stop_loss_price=request.stop_loss_price,
             target_price=request.target_price,
             risk_percentage=request.risk_percentage,
-            win_rate=request.win_rate
+            win_rate=request.win_rate,
         )
 
         return {
@@ -106,7 +121,7 @@ async def calculate_position(request: PositionRequest):
                 "risk_per_trade": f"${result.risk_per_trade:,.2f}",
                 "recommended_position_size": result.position_size,
                 "position_size_dollars": f"${result.position_size_dollars:,.2f}",
-                "notes": result.notes or []
+                "notes": result.notes or [],
             },
             "entry_exit": {
                 "entry_price": f"${result.entry_price:.2f}",
@@ -115,24 +130,34 @@ async def calculate_position(request: PositionRequest):
                 "risk_distance": f"${result.risk_distance:.2f}",
                 "reward_distance": f"${result.reward_distance:.2f}",
                 "risk_percentage": f"{result.risk_percentage:.2f}%",
-                "reward_percentage": f"{result.reward_percentage:.2f}%"
+                "reward_percentage": f"{result.reward_percentage:.2f}%",
             },
             "risk_reward": {
                 "ratio": f"{result.risk_reward_ratio:.2f}:1",
-                "expected_value": f"${result.expected_value:,.2f}" if result.expected_value else "N/A",
-                "evaluation": _evaluate_rr(result.risk_reward_ratio)
+                "expected_value": (
+                    f"${result.expected_value:,.2f}" if result.expected_value else "N/A"
+                ),
+                "evaluation": _evaluate_rr(result.risk_reward_ratio),
             },
             "alternatives": {
                 "conservative_size": result.conservative_position_size,
                 "conservative_dollars": f"${result.conservative_position_size * result.entry_price:,.2f}",
                 "aggressive_size": result.aggressive_position_size,
-                "aggressive_dollars": f"${result.aggressive_position_size * result.entry_price:,.2f}"
+                "aggressive_dollars": f"${result.aggressive_position_size * result.entry_price:,.2f}",
             },
-            "kelly_criterion": {
-                "position_size": result.kelly_position_size,
-                "percentage": f"{result.kelly_position_percentage:.2f}%" if result.kelly_position_percentage else "N/A",
-                "note": "Kelly uses 50% safety factor (Kelly/2) for conservative sizing"
-            } if result.kelly_position_size else None
+            "kelly_criterion": (
+                {
+                    "position_size": result.kelly_position_size,
+                    "percentage": (
+                        f"{result.kelly_position_percentage:.2f}%"
+                        if result.kelly_position_percentage
+                        else "N/A"
+                    ),
+                    "note": "Kelly uses 50% safety factor (Kelly/2) for conservative sizing",
+                }
+                if result.kelly_position_size
+                else None
+            ),
         }
 
     except ValueError as e:
@@ -161,7 +186,7 @@ async def calculate_breakeven(request: BreakEvenRequest):
         result = calculator.calculate_break_even_points(
             entry_price=request.entry_price,
             position_size=request.position_size,
-            commission_per_share=request.commission_per_share
+            commission_per_share=request.commission_per_share,
         )
 
         return {
@@ -170,7 +195,7 @@ async def calculate_breakeven(request: BreakEvenRequest):
             "breakeven_price": f"${result['breakeven_price']:.2f}",
             "commission_impact": f"${result['commission_impact']:.2f}",
             "commission_percentage": f"{result['commission_percentage']:.2f}%",
-            "warning": result['notes']
+            "warning": result["notes"],
         }
 
     except Exception as e:
@@ -196,7 +221,7 @@ async def calculate_recovery(request: RecoveryRequest):
         calculator = get_risk_calculator()
         result = calculator.calculate_account_recovery(
             starting_account=request.starting_account,
-            current_account=request.current_account
+            current_account=request.current_account,
         )
 
         if result["status"] == "profitable":
@@ -205,7 +230,7 @@ async def calculate_recovery(request: RecoveryRequest):
                 "status": "profitable",
                 "profit_amount": f"${result['profit_amount']:,.2f}",
                 "profit_percentage": f"{result['profit_percentage']:.2f}%",
-                "message": "🎉 Account is in profit!"
+                "message": "🎉 Account is in profit!",
             }
         else:
             return {
@@ -215,8 +240,8 @@ async def calculate_recovery(request: RecoveryRequest):
                 "loss_percentage": f"{result['loss_percentage']:.2f}%",
                 "recovery_needed_dollars": f"${result['recovery_needed_dollars']:,.2f}",
                 "recovery_needed_percentage": f"{result['recovery_needed_percentage']:.2f}%",
-                "warning": result['warning'],
-                "note": "⚠️ Remember: Losses hurt more than wins help (asymmetric)"
+                "warning": result["warning"],
+                "note": "⚠️ Remember: Losses hurt more than wins help (asymmetric)",
             }
 
     except Exception as e:
@@ -238,24 +263,24 @@ async def get_risk_rules():
             "1_percent_rule": {
                 "rule": "Never risk more than 2% of account per trade",
                 "reason": "Allows survival of 50 consecutive losses",
-                "benefit": "Maintains capital for future trading"
+                "benefit": "Maintains capital for future trading",
             },
             "risk_reward_ratio": {
                 "minimum": "1:1",
                 "good": "1.5:1",
                 "excellent": "2:1 or better",
-                "rule": "Only take trades where reward > risk"
+                "rule": "Only take trades where reward > risk",
             },
             "position_sizing": {
                 "rule": "Position size = Risk Amount / Risk Distance",
                 "example": "$2,000 risk / $3.50 stop distance = 571 shares",
-                "importance": "Correct sizing is CRITICAL for profitability"
+                "importance": "Correct sizing is CRITICAL for profitability",
             },
             "kelly_criterion": {
                 "rule": "f* = (bp - q) / b where b=reward/risk, p=win%, q=loss%",
                 "usage": "Calculate optimal Kelly, then use Kelly/2 for safety",
-                "note": "Full Kelly can lead to ruin even with positive expectancy"
-            }
+                "note": "Full Kelly can lead to ruin even with positive expectancy",
+            },
         },
         "donts": {
             "1": "❌ Don't trade without stops",
@@ -263,6 +288,6 @@ async def get_risk_rules():
             "3": "❌ Don't trade with more than 2% risk",
             "4": "❌ Don't use leverage unless you know exactly what you're doing",
             "5": "❌ Don't let winners turn into losers (take profits!)",
-            "6": "❌ Don't revenge trade after a loss"
-        }
+            "6": "❌ Don't revenge trade after a loss",
+        },
     }

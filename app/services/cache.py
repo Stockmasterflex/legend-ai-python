@@ -1,8 +1,9 @@
-from redis.asyncio import Redis
-from typing import Optional, Any, Dict
 import json
 import logging
 from datetime import datetime, time
+from typing import Any, Dict, Optional
+
+from redis.asyncio import Redis
 
 from app.config import get_settings
 
@@ -85,9 +86,7 @@ class CacheService:
             return False
 
     async def get_pattern(
-        self,
-        ticker: str,
-        interval: str = "1day"
+        self, ticker: str, interval: str = "1day"
     ) -> Optional[Dict[str, Any]]:
         """
         Get cached pattern result
@@ -114,7 +113,7 @@ class CacheService:
         ticker: str,
         interval: str,
         data: Dict[str, Any],
-        ttl: Optional[int] = None
+        ttl: Optional[int] = None,
     ) -> bool:
         """
         Cache pattern result with smart TTL based on market hours
@@ -143,7 +142,9 @@ class CacheService:
             logger.error(f"Cache set error for {key}: {e}")
             return False
 
-    async def get_price_data(self, ticker: str, interval: str = "1day") -> Optional[Dict[str, Any]]:
+    async def get_price_data(
+        self, ticker: str, interval: str = "1day"
+    ) -> Optional[Dict[str, Any]]:
         """
         Get cached price data
 
@@ -170,7 +171,7 @@ class CacheService:
         ticker: str,
         data: Dict[str, Any],
         ttl: Optional[int] = None,
-        is_historical: bool = False
+        is_historical: bool = False,
     ) -> bool:
         """
         Cache price data with smart TTL based on data age and market hours
@@ -199,7 +200,9 @@ class CacheService:
         try:
             json_data = json.dumps(data)
             await redis.setex(key, ttl, json_data)
-            logger.debug(f"Cached price data: {key} (TTL: {ttl}s, historical: {is_historical})")
+            logger.debug(
+                f"Cached price data: {key} (TTL: {ttl}s, historical: {is_historical})"
+            )
             return True
         except Exception as e:
             logger.error(f"Cache set error for {key}: {e}")
@@ -225,11 +228,7 @@ class CacheService:
             return None
 
     async def set_chart(
-        self,
-        ticker: str,
-        interval: str,
-        url: str,
-        ttl: Optional[int] = None
+        self, ticker: str, interval: str, url: str, ttl: Optional[int] = None
     ) -> bool:
         """
         Cache chart URL with smart TTL from config
@@ -270,7 +269,9 @@ class CacheService:
                 keys = await redis.keys(pattern)
             else:
                 # Delete specific interval
-                key = self._generate_cache_key("pattern", ticker=ticker, interval=interval)
+                key = self._generate_cache_key(
+                    "pattern", ticker=ticker, interval=interval
+                )
                 keys = [key]
 
             if keys:
@@ -317,13 +318,18 @@ class CacheService:
             return {
                 "redis_hits": info.get("keyspace_hits", 0),
                 "redis_misses": info.get("keyspace_misses", 0),
-                "redis_hit_rate": (info.get("keyspace_hits", 0) /
-                                 max(1, info.get("keyspace_hits", 0) + info.get("keyspace_misses", 0)) * 100),
+                "redis_hit_rate": (
+                    info.get("keyspace_hits", 0)
+                    / max(
+                        1, info.get("keyspace_hits", 0) + info.get("keyspace_misses", 0)
+                    )
+                    * 100
+                ),
                 "total_keys": total_keys,
                 "pattern_keys": pattern_keys,
                 "price_keys": price_keys,
                 "chart_keys": chart_keys,
-                "memory_used": info.get("used_memory_human", "unknown")
+                "memory_used": info.get("used_memory_human", "unknown"),
             }
         except Exception as e:
             logger.error(f"Cache stats error: {e}")
@@ -342,47 +348,19 @@ class CacheService:
             price_keys = await redis.delete(*await redis.keys("ohlcv:*"))
             chart_keys = await redis.delete(*await redis.keys("chart:*"))
 
-            logger.warning(f"Cleared all cache: {pattern_keys} patterns, {price_keys} price data, {chart_keys} charts")
+            logger.warning(
+                f"Cleared all cache: {pattern_keys} patterns, {price_keys} price data, {chart_keys} charts"
+            )
 
             return {
                 "pattern_keys_deleted": pattern_keys,
                 "price_keys_deleted": price_keys,
                 "chart_keys_deleted": chart_keys,
-                "total_deleted": pattern_keys + price_keys + chart_keys
+                "total_deleted": pattern_keys + price_keys + chart_keys,
             }
         except Exception as e:
             logger.error(f"Cache clear error: {e}")
             return {"error": str(e)}
-
-    async def get(self, key: str) -> Optional[Any]:
-        """Generic get from cache (for market_data service)"""
-        try:
-            redis = await self._get_redis()
-            data = await redis.get(key)
-            if data:
-                try:
-                    return json.loads(data)
-                except (json.JSONDecodeError, TypeError) as e:
-                    logger.warning(f"Cache data not JSON for {key}, returning raw: {e}")
-                    return data
-            return None
-        except Exception as e:
-            logger.error(f"Cache get error for {key}: {e}")
-            return None
-
-    async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
-        """Generic set to cache (for market_data service)"""
-        try:
-            redis = await self._get_redis()
-            if isinstance(value, (dict, list)):
-                value = json.dumps(value)
-            elif isinstance(value, (int, float)):
-                value = str(value)
-            await redis.setex(key, ttl, value)
-            return True
-        except Exception as e:
-            logger.error(f"Cache set error for {key}: {e}")
-            return False
 
     async def health_check(self) -> Dict[str, Any]:
         """
@@ -394,16 +372,12 @@ class CacheService:
 
             stats = await self.get_cache_stats()
 
-            return {
-                "status": "healthy",
-                "connection": "connected",
-                "stats": stats
-            }
+            return {"status": "healthy", "connection": "connected", "stats": stats}
         except Exception as e:
             return {
                 "status": "unhealthy",
                 "connection": "disconnected",
-                "error": str(e)
+                "error": str(e),
             }
 
     async def close(self):

@@ -13,14 +13,11 @@ def resolve_build_sha() -> str:
         if value:
             return value[:7]
     try:
-        return (
-            subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"],
-                text=True,
-                stderr=subprocess.DEVNULL,
-            )
-            .strip()
-        )
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
     except Exception:
         return "unknown"
 
@@ -33,14 +30,11 @@ def resolve_branch() -> str:
         if value:
             return value
     try:
-        return (
-            subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                text=True,
-                stderr=subprocess.DEVNULL,
-            )
-            .strip()
-        )
+        return subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
     except Exception:
         return "unknown"
 

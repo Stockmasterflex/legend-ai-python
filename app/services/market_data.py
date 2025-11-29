@@ -2,12 +2,14 @@
 Enhanced Market Data Service with Multi-Source Fallback
 Intelligently manages API limits across TwelveData, Finnhub, and Alpha Vantage
 """
-import httpx
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+
 import asyncio
 import logging
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import httpx
 import pandas as pd
 
 from app.config import get_settings
@@ -47,29 +49,44 @@ class MarketDataService:
     async def get_usage_stats(self) -> Dict[str, Any]:
         """Get current API usage for all sources"""
         try:
-            twelve_usage = await self.cache.get(f"{self.usage_key_prefix}:twelvedata") or 0
-            finnhub_usage = await self.cache.get(f"{self.usage_key_prefix}:finnhub") or 0
-            alpha_usage = await self.cache.get(f"{self.usage_key_prefix}:alphavantage") or 0
+            twelve_usage = (
+                await self.cache.get(f"{self.usage_key_prefix}:twelvedata") or 0
+            )
+            finnhub_usage = (
+                await self.cache.get(f"{self.usage_key_prefix}:finnhub") or 0
+            )
+            alpha_usage = (
+                await self.cache.get(f"{self.usage_key_prefix}:alphavantage") or 0
+            )
 
             return {
                 "twelvedata": {
                     "used": int(twelve_usage),
                     "limit": self.settings.twelvedata_daily_limit,
-                    "remaining": self.settings.twelvedata_daily_limit - int(twelve_usage),
-                    "percent": (int(twelve_usage) / self.settings.twelvedata_daily_limit) * 100
+                    "remaining": self.settings.twelvedata_daily_limit
+                    - int(twelve_usage),
+                    "percent": (
+                        int(twelve_usage) / self.settings.twelvedata_daily_limit
+                    )
+                    * 100,
                 },
                 "finnhub": {
                     "used": int(finnhub_usage),
                     "limit": self.settings.finnhub_daily_limit,
                     "remaining": self.settings.finnhub_daily_limit - int(finnhub_usage),
-                    "percent": (int(finnhub_usage) / self.settings.finnhub_daily_limit) * 100
+                    "percent": (int(finnhub_usage) / self.settings.finnhub_daily_limit)
+                    * 100,
                 },
                 "alphavantage": {
                     "used": int(alpha_usage),
                     "limit": self.settings.alpha_vantage_daily_limit,
-                    "remaining": self.settings.alpha_vantage_daily_limit - int(alpha_usage),
-                    "percent": (int(alpha_usage) / self.settings.alpha_vantage_daily_limit) * 100
-                }
+                    "remaining": self.settings.alpha_vantage_daily_limit
+                    - int(alpha_usage),
+                    "percent": (
+                        int(alpha_usage) / self.settings.alpha_vantage_daily_limit
+                    )
+                    * 100,
+                },
             }
         except Exception as e:
             logger.warning(f"Error getting usage stats: {e}")
@@ -93,14 +110,16 @@ class MarketDataService:
             limits = {
                 DataSource.TWELVE_DATA: self.settings.twelvedata_daily_limit,
                 DataSource.FINNHUB: self.settings.finnhub_daily_limit,
-                DataSource.ALPHA_VANTAGE: self.settings.alpha_vantage_daily_limit
+                DataSource.ALPHA_VANTAGE: self.settings.alpha_vantage_daily_limit,
             }
 
             limit = limits.get(source, 999999)
             can_request = int(current) < limit
 
             if not can_request:
-                logger.warning(f"⚠️ {source.value} daily limit reached ({current}/{limit})")
+                logger.warning(
+                    f"⚠️ {source.value} daily limit reached ({current}/{limit})"
+                )
 
             return can_request
         except Exception as e:
@@ -112,7 +131,7 @@ class MarketDataService:
         ticker: str,
         interval: str = "1day",
         outputsize: int = 500,
-        prefer_free: bool = False
+        prefer_free: bool = False,
     ) -> Optional[Dict[str, Any]]:
         """Alias for get_time_series to maintain backward compatibility"""
         return await self.get_time_series(ticker, interval, outputsize, prefer_free)
@@ -122,7 +141,7 @@ class MarketDataService:
         ticker: str,
         interval: str = "1day",
         outputsize: int = 500,
-        prefer_free: bool = False
+        prefer_free: bool = False,
     ) -> Optional[Dict[str, Any]]:
         """
         Get OHLCV time series data with intelligent fallback
@@ -164,11 +183,15 @@ class MarketDataService:
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
                 data["cached"] = False
                 data["source"] = DataSource.YAHOO
-                logger.info(f"💰 Using free Yahoo Finance for {ticker} (cost optimization)")
+                logger.info(
+                    f"💰 Using free Yahoo Finance for {ticker} (cost optimization)"
+                )
                 return data
 
         # 2. Try TwelveData (primary) only if API key configured
-        if self.settings.twelvedata_api_key and await self._check_rate_limit(DataSource.TWELVE_DATA):
+        if self.settings.twelvedata_api_key and await self._check_rate_limit(
+            DataSource.TWELVE_DATA
+        ):
             data = await self._get_from_twelvedata(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.TWELVE_DATA)
@@ -179,7 +202,9 @@ class MarketDataService:
                 return data
 
         # 3. Try Finnhub (fallback 1)
-        if self.settings.finnhub_api_key and await self._check_rate_limit(DataSource.FINNHUB):
+        if self.settings.finnhub_api_key and await self._check_rate_limit(
+            DataSource.FINNHUB
+        ):
             data = await self._get_from_finnhub(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.FINNHUB)
@@ -190,7 +215,9 @@ class MarketDataService:
                 return data
 
         # 4. Try Alpha Vantage (fallback 2)
-        if self.settings.alpha_vantage_api_key and await self._check_rate_limit(DataSource.ALPHA_VANTAGE):
+        if self.settings.alpha_vantage_api_key and await self._check_rate_limit(
+            DataSource.ALPHA_VANTAGE
+        ):
             data = await self._get_from_alpha_vantage(ticker, interval, outputsize)
             if data:
                 await self._increment_usage(DataSource.ALPHA_VANTAGE)
@@ -214,10 +241,7 @@ class MarketDataService:
         return None
 
     async def _get_from_twelvedata(
-        self,
-        ticker: str,
-        interval: str,
-        outputsize: int
+        self, ticker: str, interval: str, outputsize: int
     ) -> Optional[Dict[str, Any]]:
         """Get data from TwelveData"""
         try:
@@ -227,7 +251,11 @@ class MarketDataService:
                 "interval": interval,
                 "outputsize": min(outputsize, 5000),
                 "format": "json",
-                **({"apikey": self.settings.twelvedata_api_key} if self.settings.twelvedata_api_key else {}),
+                **(
+                    {"apikey": self.settings.twelvedata_api_key}
+                    if self.settings.twelvedata_api_key
+                    else {}
+                ),
             }
 
             logger.info(f"📡 TwelveData: {ticker}")
@@ -261,7 +289,9 @@ class MarketDataService:
                     continue
 
             if len(result["c"]) < 50:
-                logger.warning(f"Insufficient TwelveData data: {len(result['c'])} points")
+                logger.warning(
+                    f"Insufficient TwelveData data: {len(result['c'])} points"
+                )
                 return None
 
             return result
@@ -271,10 +301,7 @@ class MarketDataService:
             return None
 
     async def _get_from_finnhub(
-        self,
-        ticker: str,
-        interval: str,
-        outputsize: int
+        self, ticker: str, interval: str, outputsize: int
     ) -> Optional[Dict[str, Any]]:
         """Get data from Finnhub"""
         try:
@@ -287,7 +314,7 @@ class MarketDataService:
                 "1hour": "60",
                 "1day": "D",
                 "1week": "W",
-                "1month": "M"
+                "1month": "M",
             }
             resolution = resolution_map.get(interval, "D")
 
@@ -302,7 +329,7 @@ class MarketDataService:
                 "resolution": resolution,
                 "from": from_ts,
                 "to": now,
-                "token": self.settings.finnhub_api_key
+                "token": self.settings.finnhub_api_key,
             }
 
             logger.info(f"📡 Finnhub: {ticker}")
@@ -325,7 +352,9 @@ class MarketDataService:
                 "h": data.get("h", []),
                 "l": data.get("l", []),
                 "v": data.get("v", []),
-                "t": [datetime.fromtimestamp(ts).isoformat() for ts in data.get("t", [])]
+                "t": [
+                    datetime.fromtimestamp(ts).isoformat() for ts in data.get("t", [])
+                ],
             }
 
             if len(result["c"]) < 50:
@@ -339,10 +368,7 @@ class MarketDataService:
             return None
 
     async def _get_from_alpha_vantage(
-        self,
-        ticker: str,
-        interval: str,
-        outputsize: int
+        self, ticker: str, interval: str, outputsize: int
     ) -> Optional[Dict[str, Any]]:
         """Get data from Alpha Vantage"""
         try:
@@ -359,7 +385,7 @@ class MarketDataService:
                 "function": function,
                 "symbol": ticker,
                 "apikey": self.settings.alpha_vantage_api_key,
-                "outputsize": "full" if outputsize > 100 else "compact"
+                "outputsize": "full" if outputsize > 100 else "compact",
             }
 
             if interval_param:
@@ -402,7 +428,9 @@ class MarketDataService:
                     continue
 
             if len(result["c"]) < 50:
-                logger.warning(f"Insufficient Alpha Vantage data: {len(result['c'])} points")
+                logger.warning(
+                    f"Insufficient Alpha Vantage data: {len(result['c'])} points"
+                )
                 return None
 
             return result
@@ -412,9 +440,7 @@ class MarketDataService:
             return None
 
     async def _get_from_yahoo(
-        self,
-        ticker: str,
-        interval: str
+        self, ticker: str, interval: str
     ) -> Optional[Dict[str, Any]]:
         """Get data from Yahoo Finance (last resort)"""
         try:
@@ -426,15 +452,12 @@ class MarketDataService:
                 "1hour": "1h",
                 "1day": "1d",
                 "1week": "1wk",
-                "1month": "1mo"
+                "1month": "1mo",
             }
             yahoo_interval = interval_map.get(interval, "1d")
 
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
-            params = {
-                "interval": yahoo_interval,
-                "range": "5y"
-            }
+            params = {"interval": yahoo_interval, "range": "5y"}
 
             logger.info(f"📡 Yahoo Finance: {ticker}")
             headers = {
@@ -469,7 +492,9 @@ class MarketDataService:
             lows = [x for x in quote.get("low", []) if x is not None]
             volumes = [x for x in quote.get("volume", []) if x is not None]
 
-            min_length = min(len(closes), len(opens), len(highs), len(lows), len(volumes))
+            min_length = min(
+                len(closes), len(opens), len(highs), len(lows), len(volumes)
+            )
 
             if min_length < 50:
                 return None
@@ -480,7 +505,10 @@ class MarketDataService:
                 "h": highs[:min_length],
                 "l": lows[:min_length],
                 "v": volumes[:min_length],
-                "t": [datetime.fromtimestamp(ts).isoformat() for ts in timestamps[:min_length]]
+                "t": [
+                    datetime.fromtimestamp(ts).isoformat()
+                    for ts in timestamps[:min_length]
+                ],
             }
 
         except Exception as e:
@@ -493,10 +521,7 @@ class MarketDataService:
         if await self._check_rate_limit(DataSource.TWELVE_DATA):
             try:
                 url = "https://api.twelvedata.com/quote"
-                params = {
-                    "symbol": ticker,
-                    "apikey": self.settings.twelvedata_api_key
-                }
+                params = {"symbol": ticker, "apikey": self.settings.twelvedata_api_key}
 
                 response = await self.client.get(url, params=params)
                 if response.status_code == 200:
@@ -517,7 +542,7 @@ class MarketDataService:
                 "high": series["h"][-1],
                 "low": series["l"][-1],
                 "volume": series["v"][-1],
-                "timestamp": series["t"][-1]
+                "timestamp": series["t"][-1],
             }
 
         return None
@@ -527,7 +552,7 @@ class MarketDataService:
         tickers: List[str],
         interval: str = "1day",
         outputsize: int = 500,
-        prefer_free: bool = True
+        prefer_free: bool = True,
     ) -> Dict[str, Optional[Dict[str, Any]]]:
         """
         Batch fetch time series data for multiple tickers concurrently
@@ -561,7 +586,9 @@ class MarketDataService:
                 uncached_tickers.append(ticker)
 
         cache_hits = len(tickers) - len(uncached_tickers)
-        logger.info(f"⚡ Cache: {cache_hits}/{len(tickers)} hits ({cache_hits/len(tickers)*100:.1f}%)")
+        logger.info(
+            f"⚡ Cache: {cache_hits}/{len(tickers)} hits ({cache_hits/len(tickers)*100:.1f}%)"
+        )
 
         # Fetch uncached tickers in parallel
         if uncached_tickers:
@@ -589,10 +616,7 @@ class MarketDataService:
         return results
 
     async def get_price_data(
-        self,
-        symbol: str,
-        period: str = "3mo",
-        interval: str = "1d"
+        self, symbol: str, period: str = "3mo", interval: str = "1d"
     ) -> Optional[pd.DataFrame]:
         """
         Get price data as a pandas DataFrame
@@ -613,7 +637,7 @@ class MarketDataService:
             "1y": 365,
             "2y": 730,
             "5y": 1825,
-            "max": 5000
+            "max": 5000,
         }
         outputsize = period_map.get(period, 180)
 
@@ -626,29 +650,29 @@ class MarketDataService:
             "1h": "1h",
             "1d": "1day",
             "1wk": "1week",
-            "1mo": "1month"
+            "1mo": "1month",
         }
         api_interval = interval_map.get(interval, interval)
 
         # Get time series data
         data = await self.get_time_series(
-            ticker=symbol,
-            interval=api_interval,
-            outputsize=outputsize
+            ticker=symbol, interval=api_interval, outputsize=outputsize
         )
 
         if not data or not data.get("c"):
             return None
 
         # Convert to DataFrame
-        df = pd.DataFrame({
-            "open": data["o"],
-            "high": data["h"],
-            "low": data["l"],
-            "close": data["c"],
-            "volume": data["v"],
-            "timestamp": data["t"]
-        })
+        df = pd.DataFrame(
+            {
+                "open": data["o"],
+                "high": data["h"],
+                "low": data["l"],
+                "close": data["c"],
+                "volume": data["v"],
+                "timestamp": data["t"],
+            }
+        )
 
         # Convert timestamp to datetime if it's a string
         if len(df) > 0 and isinstance(df["timestamp"].iloc[0], str):
@@ -668,13 +692,14 @@ class MarketDataService:
 # Global instance
 market_data_service = MarketDataService()
 
+
 async def get_current_price(symbol: str) -> float:
     """
     Get current price for a symbol (helper for other services)
-    
+
     Args:
         symbol: Stock symbol
-        
+
     Returns:
         Current price or 0.0 if not found
     """

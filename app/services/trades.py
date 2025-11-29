@@ -2,12 +2,13 @@
 Trade Management Service
 Track open/closed trades with P&L calculation and statistics
 """
-import logging
+
 import json
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from dataclasses import dataclass, asdict
+import logging
 import uuid
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.services.cache import get_cache_service
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Trade:
     """Trade record"""
+
     trade_id: str
     ticker: str
     entry_price: float
@@ -50,7 +52,7 @@ class TradeManager:
         target_price: float,
         position_size: int,
         risk_amount: float,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> Trade:
         """Create a new trade"""
 
@@ -68,7 +70,7 @@ class TradeManager:
             reward_amount=reward_amount,
             status="open",
             entry_date=datetime.now().isoformat(),
-            notes=notes or ""
+            notes=notes or "",
         )
 
         # Store in cache
@@ -77,17 +79,13 @@ class TradeManager:
         await cache.setex(trade_key, 30 * 24 * 3600, json.dumps(asdict(trade)))
 
         # Add to open trades list
-        await cache.lpush(f"trades:open", trade_id)
+        await cache.lpush("trades:open", trade_id)
 
         logger.info(f"✅ Trade created: {trade_id} - {ticker} @ ${entry_price:.2f}")
 
         return trade
 
-    async def close_trade(
-        self,
-        trade_id: str,
-        exit_price: float
-    ) -> Trade:
+    async def close_trade(self, trade_id: str, exit_price: float) -> Trade:
         """Close a trade and calculate P&L"""
 
         # Retrieve trade
@@ -105,7 +103,7 @@ class TradeManager:
         profit_loss_pct = ((exit_price - trade.entry_price) / trade.entry_price) * 100
 
         # Determine if win/loss
-        is_long = trade.target_price > trade.entry_price
+        trade.target_price > trade.entry_price
         win = profit_loss > 0
 
         # Calculate R multiple
@@ -128,10 +126,12 @@ class TradeManager:
         await cache.setex(trade_key, 30 * 24 * 3600, json.dumps(asdict(trade)))
 
         # Move from open to closed
-        await cache.lrem(f"trades:open", 1, trade_id)
-        await cache.lpush(f"trades:closed", trade_id)
+        await cache.lrem("trades:open", 1, trade_id)
+        await cache.lpush("trades:closed", trade_id)
 
-        logger.info(f"✅ Trade closed: {trade_id} - P&L: ${profit_loss:.2f} ({profit_loss_pct:.2f}%)")
+        logger.info(
+            f"✅ Trade closed: {trade_id} - P&L: ${profit_loss:.2f} ({profit_loss_pct:.2f}%)"
+        )
 
         return trade
 
@@ -139,7 +139,7 @@ class TradeManager:
         """Get all open trades"""
 
         cache = await self.cache._get_redis()
-        trade_ids = await cache.lrange(f"trades:open", 0, -1)
+        trade_ids = await cache.lrange("trades:open", 0, -1)
 
         trades = []
         for trade_id in trade_ids:
@@ -153,7 +153,7 @@ class TradeManager:
         """Get closed trades"""
 
         cache = await self.cache._get_redis()
-        trade_ids = await cache.lrange(f"trades:closed", 0, limit - 1)
+        trade_ids = await cache.lrange("trades:closed", 0, limit - 1)
 
         trades = []
         for trade_id in trade_ids:
@@ -169,10 +169,7 @@ class TradeManager:
         closed_trades = await self.get_closed_trades(limit=1000)
 
         if not closed_trades:
-            return {
-                "total_trades": 0,
-                "message": "No closed trades yet"
-            }
+            return {"total_trades": 0, "message": "No closed trades yet"}
 
         total_trades = len(closed_trades)
         winning_trades = [t for t in closed_trades if t.win]
@@ -185,10 +182,22 @@ class TradeManager:
         total_profit_loss = sum(t.profit_loss for t in closed_trades if t.profit_loss)
         total_risk = sum(t.risk_amount for t in closed_trades)
 
-        avg_win = sum(t.profit_loss for t in winning_trades if t.profit_loss) / wins if wins > 0 else 0
-        avg_loss = sum(t.profit_loss for t in losing_trades if t.profit_loss) / losses if losses > 0 else 0
+        avg_win = (
+            sum(t.profit_loss for t in winning_trades if t.profit_loss) / wins
+            if wins > 0
+            else 0
+        )
+        avg_loss = (
+            sum(t.profit_loss for t in losing_trades if t.profit_loss) / losses
+            if losses > 0
+            else 0
+        )
 
-        avg_r_multiple = sum(t.r_multiple for t in closed_trades if t.r_multiple) / total_trades if total_trades > 0 else 0
+        avg_r_multiple = (
+            sum(t.r_multiple for t in closed_trades if t.r_multiple) / total_trades
+            if total_trades > 0
+            else 0
+        )
 
         # Expectancy = (Win% × Avg Win) + (Loss% × Avg Loss)
         expectancy = (win_rate / 100 * avg_win) + ((1 - win_rate / 100) * avg_loss)
@@ -200,12 +209,20 @@ class TradeManager:
             "win_rate_pct": round(win_rate, 2),
             "total_profit_loss": round(total_profit_loss, 2),
             "total_risk": round(total_risk, 2),
-            "profit_factor": round(total_profit_loss / abs(sum(t.profit_loss for t in losing_trades if t.profit_loss)), 2) if sum(t.profit_loss for t in losing_trades if t.profit_loss) else 0,
+            "profit_factor": (
+                round(
+                    total_profit_loss
+                    / abs(sum(t.profit_loss for t in losing_trades if t.profit_loss)),
+                    2,
+                )
+                if sum(t.profit_loss for t in losing_trades if t.profit_loss)
+                else 0
+            ),
             "average_win": round(avg_win, 2),
             "average_loss": round(avg_loss, 2),
             "average_r_multiple": round(avg_r_multiple, 2),
             "expectancy_per_trade": round(expectancy, 2),
-            "expectancy_description": self._describe_expectancy(expectancy)
+            "expectancy_description": self._describe_expectancy(expectancy),
         }
 
     def _describe_expectancy(self, expectancy: float) -> str:

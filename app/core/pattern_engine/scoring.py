@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -87,7 +87,9 @@ class PatternScorer:
     # ------------------------------------------------------------------ #
     # Component scoring helpers
     # ------------------------------------------------------------------ #
-    def _score_trend_start(self, pattern: Dict[str, Any], metadata: Dict[str, Any]) -> float:
+    def _score_trend_start(
+        self, pattern: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> float:
         """
         Reward early uptrends that already established momentum.
         Uses percentage off lows or recent trend strength if provided.
@@ -99,7 +101,9 @@ class PatternScorer:
         trend_days = metadata.get("trend_days") or pattern.get("trend_days") or 0
         return 0.8 if trend_days >= 30 else 0.5 if trend_days >= 15 else 0.2
 
-    def _score_trend_quality(self, pattern: Dict[str, Any], metadata: Dict[str, Any]) -> float:
+    def _score_trend_quality(
+        self, pattern: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> float:
         """Favor clean, higher-high/higher-low trends or high confidence detectors."""
         strength = (
             metadata.get("trend_strength")
@@ -109,7 +113,9 @@ class PatternScorer:
         )
         return _clamp(strength)
 
-    def _score_flat_base(self, pattern: Dict[str, Any], metadata: Dict[str, Any]) -> float:
+    def _score_flat_base(
+        self, pattern: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> float:
         """Prefer shallow consolidations with reasonable duration."""
         depth_pct = metadata.get("base_depth_pct") or pattern.get("base_depth_pct")
         if depth_pct is not None:
@@ -134,7 +140,9 @@ class PatternScorer:
 
         return 0.0
 
-    def _score_yearly_range(self, pattern: Dict[str, Any], metadata: Dict[str, Any]) -> float:
+    def _score_yearly_range(
+        self, pattern: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> float:
         """Check where current price sits relative to the yearly range."""
         current = pattern.get("current_price") or pattern.get("close")
         year_high = metadata.get("year_high") or pattern.get("year_high")
@@ -147,7 +155,9 @@ class PatternScorer:
 
         return 0.0
 
-    def _score_pattern_height(self, pattern: Dict[str, Any], metadata: Dict[str, Any]) -> float:
+    def _score_pattern_height(
+        self, pattern: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> float:
         """Reward patterns with proportional height/depth."""
         height_pct = (
             pattern.get("height_pct")
@@ -176,7 +186,9 @@ class PatternScorer:
             return 0.0
         return _clamp(1 - throwback_pct / 0.15)
 
-    def _score_breakout_gap(self, pattern: Dict[str, Any], metadata: Dict[str, Any]) -> float:
+    def _score_breakout_gap(
+        self, pattern: Dict[str, Any], metadata: Dict[str, Any]
+    ) -> float:
         """Gap ups on breakout add conviction."""
         gap_pct = metadata.get("breakout_gap_pct") or pattern.get("breakout_gap_pct")
         if gap_pct is None:

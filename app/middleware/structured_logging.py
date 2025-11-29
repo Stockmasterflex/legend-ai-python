@@ -24,13 +24,11 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
         response: Optional[Response] = None
         status_code = 500
-        exc: Optional[Exception] = None
         try:
             response = await call_next(request)
             status_code = response.status_code
             return response
-        except Exception as err:  # pragma: no cover - bubbled to FastAPI
-            exc = err
+        except Exception:  # pragma: no cover - bubbled to FastAPI
             status_code = 500
             raise
         finally:
@@ -46,7 +44,8 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
             payload: Dict[str, Any] = {
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "level": level_name,
-                "event": metadata.get("event") or f"{request.method} {request.url.path}",
+                "event": metadata.get("event")
+                or f"{request.method} {request.url.path}",
                 "symbol": metadata.get("symbol"),
                 "interval": metadata.get("interval"),
                 "status": metadata.get("status") or status_code,

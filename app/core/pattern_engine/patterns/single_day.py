@@ -10,8 +10,9 @@ Ported from Patternz FindPatterns.cs single-bar routines:
 - Close Price Reversal Up/Down
 - Opening Close Reversal Up/Down
 """
-from typing import List, Dict, Any
+
 import logging
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -21,8 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def find_single_day_patterns(
-    data: PatternData,
-    helpers: PatternHelpers
+    data: PatternData, helpers: PatternHelpers
 ) -> List[Dict[str, Any]]:
     """Run all single-day detectors in one pass."""
     patterns: List[Dict[str, Any]] = []
@@ -57,21 +57,25 @@ def find_inside_day(data: PatternData, helpers: PatternHelpers) -> List[Dict[str
 
         if data.highs[i] > data.highs[i + 1] and data.lows[i] < data.lows[i + 1]:
             ratio = curr_range / prev_range
-            patterns.append({
-                'pattern': 'Inside Day',
-                'start_idx': i,
-                'end_idx': i + 1,
-                'range_ratio': ratio,
-                'confirmed': True,
-                'pending': False,
-                'direction': 'neutral',
-                'confidence': _contraction_confidence(ratio, 4)
-            })
+            patterns.append(
+                {
+                    "pattern": "Inside Day",
+                    "start_idx": i,
+                    "end_idx": i + 1,
+                    "range_ratio": ratio,
+                    "confirmed": True,
+                    "pending": False,
+                    "direction": "neutral",
+                    "confidence": _contraction_confidence(ratio, 4),
+                }
+            )
 
     return patterns
 
 
-def find_outside_day(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, Any]]:
+def find_outside_day(
+    data: PatternData, helpers: PatternHelpers
+) -> List[Dict[str, Any]]:
     """Outside Day: current bar engulfs prior day's range."""
     patterns: List[Dict[str, Any]] = []
     start = data.chart_start_index
@@ -85,16 +89,18 @@ def find_outside_day(data: PatternData, helpers: PatternHelpers) -> List[Dict[st
 
         if data.highs[i] < data.highs[i + 1] and data.lows[i] > data.lows[i + 1]:
             ratio = second_range / first_range
-            patterns.append({
-                'pattern': 'Outside Day',
-                'start_idx': i,
-                'end_idx': i + 1,
-                'range_ratio': ratio,
-                'confirmed': True,
-                'pending': False,
-                'direction': 'neutral',
-                'confidence': _expansion_confidence(ratio, 2)
-            })
+            patterns.append(
+                {
+                    "pattern": "Outside Day",
+                    "start_idx": i,
+                    "end_idx": i + 1,
+                    "range_ratio": ratio,
+                    "confirmed": True,
+                    "pending": False,
+                    "direction": "neutral",
+                    "confidence": _expansion_confidence(ratio, 2),
+                }
+            )
 
     return patterns
 
@@ -112,16 +118,18 @@ def find_nr4(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, Any]]
             continue
         if all(cur_range < r for r in window):
             avg_prev = float(np.mean(window))
-            patterns.append({
-                'pattern': 'NR4',
-                'start_idx': i - 3,
-                'end_idx': i,
-                'range_ratio': cur_range / avg_prev,
-                'confirmed': True,
-                'pending': False,
-                'direction': 'neutral',
-                'confidence': _contraction_confidence(cur_range / avg_prev, 4)
-            })
+            patterns.append(
+                {
+                    "pattern": "NR4",
+                    "start_idx": i - 3,
+                    "end_idx": i,
+                    "range_ratio": cur_range / avg_prev,
+                    "confirmed": True,
+                    "pending": False,
+                    "direction": "neutral",
+                    "confidence": _contraction_confidence(cur_range / avg_prev, 4),
+                }
+            )
 
     return patterns
 
@@ -139,21 +147,25 @@ def find_nr7(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, Any]]
             continue
         if all(cur_range < r for r in window):
             avg_prev = float(np.mean(window))
-            patterns.append({
-                'pattern': 'NR7',
-                'start_idx': i - 6,
-                'end_idx': i,
-                'range_ratio': cur_range / avg_prev,
-                'confirmed': True,
-                'pending': False,
-                'direction': 'neutral',
-                'confidence': _contraction_confidence(cur_range / avg_prev, 7)
-            })
+            patterns.append(
+                {
+                    "pattern": "NR7",
+                    "start_idx": i - 6,
+                    "end_idx": i,
+                    "range_ratio": cur_range / avg_prev,
+                    "confirmed": True,
+                    "pending": False,
+                    "direction": "neutral",
+                    "confidence": _contraction_confidence(cur_range / avg_prev, 7),
+                }
+            )
 
     return patterns
 
 
-def find_wide_range_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, Any]]:
+def find_wide_range_up(
+    data: PatternData, helpers: PatternHelpers
+) -> List[Dict[str, Any]]:
     """Wide Range Up: large bullish bar after a downtrend."""
     patterns: List[Dict[str, Any]] = []
     start = max(data.chart_start_index + 2, 2)
@@ -176,22 +188,30 @@ def find_wide_range_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[
         if trend != -1:
             continue
 
-        patterns.append({
-            'pattern': 'Wide Range Up',
-            'start_idx': i,
-            'end_idx': i,
-            'range': rng,
-            'avg_range': avg_range,
-            'direction': 'bullish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _wide_range_confidence(rng, avg_range, _close_position(data.highs, data.lows, data.closes, i))
-        })
+        patterns.append(
+            {
+                "pattern": "Wide Range Up",
+                "start_idx": i,
+                "end_idx": i,
+                "range": rng,
+                "avg_range": avg_range,
+                "direction": "bullish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _wide_range_confidence(
+                    rng,
+                    avg_range,
+                    _close_position(data.highs, data.lows, data.closes, i),
+                ),
+            }
+        )
 
     return patterns
 
 
-def find_wide_range_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, Any]]:
+def find_wide_range_down(
+    data: PatternData, helpers: PatternHelpers
+) -> List[Dict[str, Any]]:
     """Wide Range Down: large bearish bar after an uptrend."""
     patterns: List[Dict[str, Any]] = []
     start = max(data.chart_start_index + 2, 2)
@@ -214,17 +234,23 @@ def find_wide_range_down(data: PatternData, helpers: PatternHelpers) -> List[Dic
         if trend != 1:
             continue
 
-        patterns.append({
-            'pattern': 'Wide Range Down',
-            'start_idx': i,
-            'end_idx': i,
-            'range': rng,
-            'avg_range': avg_range,
-            'direction': 'bearish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _wide_range_confidence(rng, avg_range, 1 - _close_position(data.highs, data.lows, data.closes, i))
-        })
+        patterns.append(
+            {
+                "pattern": "Wide Range Down",
+                "start_idx": i,
+                "end_idx": i,
+                "range": rng,
+                "avg_range": avg_range,
+                "direction": "bearish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _wide_range_confidence(
+                    rng,
+                    avg_range,
+                    1 - _close_position(data.highs, data.lows, data.closes, i),
+                ),
+            }
+        )
 
     return patterns
 
@@ -241,7 +267,10 @@ def find_spike_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str
             continue
 
         half = rng * 0.5
-        if not (data.lows[i - 1] > data.highs[i] - half and data.lows[i + 1] > data.highs[i] - half):
+        if not (
+            data.lows[i - 1] > data.highs[i] - half
+            and data.lows[i + 1] > data.highs[i] - half
+        ):
             continue
 
         if data.closes[i] <= data.highs[i] - rng * 0.25:
@@ -255,17 +284,21 @@ def find_spike_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str
         if trend != -1:
             continue
 
-        patterns.append({
-            'pattern': 'Spike Down',
-            'start_idx': i,
-            'end_idx': i,
-            'range': rng,
-            'avg_range': avg_range,
-            'direction': 'bullish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _spike_confidence(rng, avg_range, data.opens[i], data.closes[i])
-        })
+        patterns.append(
+            {
+                "pattern": "Spike Down",
+                "start_idx": i,
+                "end_idx": i,
+                "range": rng,
+                "avg_range": avg_range,
+                "direction": "bullish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _spike_confidence(
+                    rng, avg_range, data.opens[i], data.closes[i]
+                ),
+            }
+        )
 
     return patterns
 
@@ -282,7 +315,10 @@ def find_spike_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, 
             continue
 
         half = rng * 0.5
-        if not (data.highs[i - 1] < data.lows[i] + half and data.highs[i + 1] < data.lows[i] + half):
+        if not (
+            data.highs[i - 1] < data.lows[i] + half
+            and data.highs[i + 1] < data.lows[i] + half
+        ):
             continue
 
         if data.closes[i] >= data.lows[i] + rng * 0.25:
@@ -296,17 +332,21 @@ def find_spike_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, 
         if trend != 1:
             continue
 
-        patterns.append({
-            'pattern': 'Spike Up',
-            'start_idx': i,
-            'end_idx': i,
-            'range': rng,
-            'avg_range': avg_range,
-            'direction': 'bearish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _spike_confidence(rng, avg_range, data.opens[i], data.closes[i])
-        })
+        patterns.append(
+            {
+                "pattern": "Spike Up",
+                "start_idx": i,
+                "end_idx": i,
+                "range": rng,
+                "avg_range": avg_range,
+                "direction": "bearish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _spike_confidence(
+                    rng, avg_range, data.opens[i], data.closes[i]
+                ),
+            }
+        )
 
     return patterns
 
@@ -321,25 +361,34 @@ def find_three_bar(data: PatternData, helpers: PatternHelpers) -> List[Dict[str,
         if data.closes[i - 1] <= data.closes[i]:
             continue
 
-        if not (data.lows[i + 1] < data.lows[i] and data.lows[i + 1] < data.lows[i + 2]):
+        if not (
+            data.lows[i + 1] < data.lows[i] and data.lows[i + 1] < data.lows[i + 2]
+        ):
             continue
 
         if helpers.strict_patterns:
-            breakout = data.closes[i + 2] > data.highs[i] and data.closes[i + 2] > data.highs[i + 1]
+            breakout = (
+                data.closes[i + 2] > data.highs[i]
+                and data.closes[i + 2] > data.highs[i + 1]
+            )
         else:
             breakout = data.closes[i + 2] > data.highs[i + 1]
 
         if breakout:
             rng = _bar_range(data.highs, data.lows, i + 2)
-            patterns.append({
-                'pattern': '3-Bar',
-                'start_idx': i,
-                'end_idx': i + 2,
-                'direction': 'bullish',
-                'confirmed': True,
-                'pending': False,
-                'confidence': _breakout_confidence(data.closes[i + 2], data.highs[i + 1], rng)
-            })
+            patterns.append(
+                {
+                    "pattern": "3-Bar",
+                    "start_idx": i,
+                    "end_idx": i + 2,
+                    "direction": "bullish",
+                    "confirmed": True,
+                    "pending": False,
+                    "confidence": _breakout_confidence(
+                        data.closes[i + 2], data.highs[i + 1], rng
+                    ),
+                }
+            )
 
     return patterns
 
@@ -356,7 +405,10 @@ def find_cpr_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, 
             continue
 
         quarter = rng * 0.25
-        if not (data.opens[i] < data.lows[i] + quarter and data.closes[i] > data.highs[i] - quarter):
+        if not (
+            data.opens[i] < data.lows[i] + quarter
+            and data.closes[i] > data.highs[i] - quarter
+        ):
             continue
 
         if data.closes[i - 1] >= data.closes[i]:
@@ -366,15 +418,17 @@ def find_cpr_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, 
         if trend != -1:
             continue
 
-        patterns.append({
-            'pattern': 'CPRD',
-            'start_idx': i,
-            'end_idx': i,
-            'direction': 'bullish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _reversal_confidence(data.opens[i], data.closes[i], rng)
-        })
+        patterns.append(
+            {
+                "pattern": "CPRD",
+                "start_idx": i,
+                "end_idx": i,
+                "direction": "bullish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _reversal_confidence(data.opens[i], data.closes[i], rng),
+            }
+        )
 
     return patterns
 
@@ -391,7 +445,10 @@ def find_cpr_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, An
             continue
 
         quarter = rng * 0.25
-        if not (data.opens[i] > data.highs[i] - quarter and data.closes[i] < data.lows[i] + quarter):
+        if not (
+            data.opens[i] > data.highs[i] - quarter
+            and data.closes[i] < data.lows[i] + quarter
+        ):
             continue
 
         if data.closes[i - 1] <= data.closes[i]:
@@ -401,15 +458,17 @@ def find_cpr_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, An
         if trend != 1:
             continue
 
-        patterns.append({
-            'pattern': 'CPRU',
-            'start_idx': i,
-            'end_idx': i,
-            'direction': 'bearish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _reversal_confidence(data.opens[i], data.closes[i], rng)
-        })
+        patterns.append(
+            {
+                "pattern": "CPRU",
+                "start_idx": i,
+                "end_idx": i,
+                "direction": "bearish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _reversal_confidence(data.opens[i], data.closes[i], rng),
+            }
+        )
 
     return patterns
 
@@ -426,7 +485,10 @@ def find_ocr_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, 
             continue
 
         quarter = rng * 0.25
-        if not (data.opens[i] < data.lows[i] + quarter and data.closes[i] > data.highs[i] - quarter):
+        if not (
+            data.opens[i] < data.lows[i] + quarter
+            and data.closes[i] > data.highs[i] - quarter
+        ):
             continue
 
         if data.closes[i] >= data.closes[i - 1]:
@@ -436,15 +498,17 @@ def find_ocr_down(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, 
         if trend != -1:
             continue
 
-        patterns.append({
-            'pattern': 'OCRD',
-            'start_idx': i,
-            'end_idx': i,
-            'direction': 'bullish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _reversal_confidence(data.opens[i], data.closes[i], rng)
-        })
+        patterns.append(
+            {
+                "pattern": "OCRD",
+                "start_idx": i,
+                "end_idx": i,
+                "direction": "bullish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _reversal_confidence(data.opens[i], data.closes[i], rng),
+            }
+        )
 
     return patterns
 
@@ -461,7 +525,10 @@ def find_ocr_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, An
             continue
 
         quarter = rng * 0.25
-        if not (data.opens[i] > data.highs[i] - quarter and data.closes[i] < data.lows[i] + quarter):
+        if not (
+            data.opens[i] > data.highs[i] - quarter
+            and data.closes[i] < data.lows[i] + quarter
+        ):
             continue
 
         if data.closes[i] <= data.closes[i - 1]:
@@ -471,15 +538,17 @@ def find_ocr_up(data: PatternData, helpers: PatternHelpers) -> List[Dict[str, An
         if trend != 1:
             continue
 
-        patterns.append({
-            'pattern': 'OCRU',
-            'start_idx': i,
-            'end_idx': i,
-            'direction': 'bearish',
-            'confirmed': True,
-            'pending': False,
-            'confidence': _reversal_confidence(data.opens[i], data.closes[i], rng)
-        })
+        patterns.append(
+            {
+                "pattern": "OCRU",
+                "start_idx": i,
+                "end_idx": i,
+                "direction": "bearish",
+                "confirmed": True,
+                "pending": False,
+                "confidence": _reversal_confidence(data.opens[i], data.closes[i], rng),
+            }
+        )
 
     return patterns
 
@@ -488,7 +557,9 @@ def _bar_range(highs: np.ndarray, lows: np.ndarray, idx: int) -> float:
     return float(highs[idx] - lows[idx])
 
 
-def _close_position(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, idx: int) -> float:
+def _close_position(
+    highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, idx: int
+) -> float:
     rng = _bar_range(highs, lows, idx)
     if rng <= 0:
         return 0.5
@@ -504,15 +575,21 @@ def _contraction_confidence(ratio: float, window: int) -> float:
 
 
 def _expansion_confidence(ratio: float, window: int) -> float:
-    return _clamp_confidence(0.55 + min(max(ratio - 1.0, 0.0), 2.5) * 0.18 + min(window, 7) * 0.01)
+    return _clamp_confidence(
+        0.55 + min(max(ratio - 1.0, 0.0), 2.5) * 0.18 + min(window, 7) * 0.01
+    )
 
 
 def _wide_range_confidence(rng: float, avg_range: float, close_pos: float) -> float:
     stretch = rng / avg_range if avg_range > 0 else 1.0
-    return _clamp_confidence(0.6 + min(stretch / 3.0, 2.0) * 0.2 + (close_pos - 0.5) * 0.2)
+    return _clamp_confidence(
+        0.6 + min(stretch / 3.0, 2.0) * 0.2 + (close_pos - 0.5) * 0.2
+    )
 
 
-def _spike_confidence(rng: float, avg_range: float, open_price: float, close_price: float) -> float:
+def _spike_confidence(
+    rng: float, avg_range: float, open_price: float, close_price: float
+) -> float:
     stretch = rng / avg_range if avg_range > 0 else 1.0
     body = abs(close_price - open_price) / rng if rng > 0 else 0.0
     shadow = 1.0 - min(body, 1.0)

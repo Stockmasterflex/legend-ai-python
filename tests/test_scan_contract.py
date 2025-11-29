@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -6,7 +7,9 @@ from fastapi.testclient import TestClient
 def test_scan_disabled_returns_empty(monkeypatch):
     from app.api import scan as scan_mod
 
-    monkeypatch.setattr(scan_mod, "get_legend_flags", lambda: SimpleNamespace(enable_scanner=False))
+    monkeypatch.setattr(
+        scan_mod, "get_legend_flags", lambda: SimpleNamespace(enable_scanner=False)
+    )
 
     app = FastAPI()
     app.include_router(scan_mod.router)
@@ -23,7 +26,9 @@ def test_scan_disabled_returns_empty(monkeypatch):
 def test_scan_enabled_contract(monkeypatch):
     from app.api import scan as scan_mod
 
-    monkeypatch.setattr(scan_mod, "get_legend_flags", lambda: SimpleNamespace(enable_scanner=True))
+    monkeypatch.setattr(
+        scan_mod, "get_legend_flags", lambda: SimpleNamespace(enable_scanner=True)
+    )
 
     sample_payload = {
         "as_of": "2025-11-08T00:00:00Z",
@@ -49,7 +54,12 @@ def test_scan_enabled_contract(monkeypatch):
                 "chart_url": None,
             }
         ],
-        "meta": {"build_sha": "abc123", "duration_ms": 12.3, "result_count": 1, "total_hits": 1},
+        "meta": {
+            "build_sha": "abc123",
+            "duration_ms": 12.3,
+            "result_count": 1,
+            "total_hits": 1,
+        },
     }
 
     async def fake_scan(*_, **__):

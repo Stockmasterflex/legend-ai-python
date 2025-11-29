@@ -5,6 +5,7 @@ Flags are sourced from the LEGEND_FLAGS environment variable, which accepts eith
 JSON (e.g., {"enable_scanner": true}) or a comma-separated list (e.g., enable_scanner=1).
 Individual overrides like LEGEND_FLAGS_ENABLE_SCANNER are also supported.
 """
+
 from __future__ import annotations
 
 import json

@@ -1,9 +1,10 @@
+import logging
+import os
+import subprocess
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
-import os
-import logging
-from pathlib import Path
-import subprocess
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -11,14 +12,19 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # Resolve the dashboard template relative to the repository root so it works
 # locally and inside Railway containers.
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "dashboard.html"
-TV_TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "templates" / "partials" / "tv_widget_templates.html"
+TV_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "templates"
+    / "partials"
+    / "tv_widget_templates.html"
+)
 
 
 @router.get("", response_class=HTMLResponse)
 async def get_dashboard():
     """
     Serve the main Legend AI dashboard
-    
+
     Modern dashboard with:
     - Pattern scanner (single ticker)
     - Universe scanner (bulk analysis)
@@ -39,7 +45,7 @@ async def get_dashboard():
 
         logger.info("📊 Serving dashboard")
         return html_content
-        
+
     except Exception as e:
         logger.error(f"Error loading dashboard: {e}")
         return f"""
@@ -122,6 +128,8 @@ async def dashboard_test():
     </body>
     </html>
     """
+
+
 def _resolve_build_sha() -> str:
     """Resolve a short build SHA for cache-busting and display.
 
@@ -139,7 +147,13 @@ def _resolve_build_sha() -> str:
             # If it's a full SHA, keep short 7 chars for display/cache param
             return s[:7]
     try:
-        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+        sha = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+            )
+            .decode()
+            .strip()
+        )
         return sha or "unknown"
     except Exception:
         return "unknown"
@@ -147,7 +161,9 @@ def _resolve_build_sha() -> str:
 
 def _inject_tv_templates(html: str) -> str:
     """Insert shared TradingView templates into the page."""
-    logger.info(f"Checking for TV_WIDGET_TEMPLATES placeholder in HTML (length: {len(html)})")
+    logger.info(
+        f"Checking for TV_WIDGET_TEMPLATES placeholder in HTML (length: {len(html)})"
+    )
     if "<!--TV_WIDGET_TEMPLATES-->" not in html:
         logger.warning("TV_WIDGET_TEMPLATES placeholder not found in dashboard HTML")
         return html

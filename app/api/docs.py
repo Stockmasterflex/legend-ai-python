@@ -2,9 +2,11 @@
 Custom API Documentation Router
 Provides enhanced documentation landing page with error codes and guides
 """
+
+import logging
+
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,5 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from .indicators import sma
 
 
@@ -50,4 +51,3 @@ def weinstein_stage(closes_weekly: List[float]) -> Dict[str, Any]:
     if not rising and abs(c - s) / s if s else 0 < 0.03:
         return {"stage": 3, "reason": "near flattening 30W SMA"}
     return {"stage": 1, "reason": "basing / transition"}
-

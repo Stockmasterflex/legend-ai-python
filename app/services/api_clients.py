@@ -1,10 +1,12 @@
-import httpx
-from typing import Optional, Dict, Any
+import logging
 from datetime import datetime, timedelta
-import asyncio
-import time
+from typing import Any, Dict, Optional
+
+import httpx
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class TwelveDataClient:
@@ -23,7 +25,9 @@ class TwelveDataClient:
         # Rate limiting: max 800 calls per day
         self.daily_limit = 800
         self.calls_today = 0
-        self.reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        self.reset_time = datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) + timedelta(days=1)
 
     async def _check_rate_limit(self) -> bool:
         """Check if we're within rate limits"""
@@ -32,16 +36,22 @@ class TwelveDataClient:
         # Reset counter daily
         if now >= self.reset_time:
             self.calls_today = 0
-            self.reset_time = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            self.reset_time = now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
 
         # Check if we've hit the limit
         if self.calls_today >= self.daily_limit:
-            logger.warning(f"⚠️ TwelveData daily limit reached ({self.daily_limit} calls)")
+            logger.warning(
+                f"⚠️ TwelveData daily limit reached ({self.daily_limit} calls)"
+            )
             return False
 
         return True
 
-    async def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _make_request(
+        self, endpoint: str, params: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Make API request with rate limiting and error handling"""
         if not await self._check_rate_limit():
             return None
@@ -52,7 +62,9 @@ class TwelveDataClient:
                 params["apikey"] = self.settings.twelvedata_api_key
 
             url = f"{self.base_url}/{endpoint}"
-            logger.info(f"📡 TwelveData API call: {endpoint} for {params.get('symbol', 'unknown')}")
+            logger.info(
+                f"📡 TwelveData API call: {endpoint} for {params.get('symbol', 'unknown')}"
+            )
 
             response = await self.client.get(url, params=params)
             self.calls_today += 1
@@ -62,12 +74,16 @@ class TwelveDataClient:
 
                 # Check for API errors
                 if "status" in data and data["status"] == "error":
-                    logger.error(f"🚫 TwelveData API error: {data.get('message', 'Unknown error')}")
+                    logger.error(
+                        f"🚫 TwelveData API error: {data.get('message', 'Unknown error')}"
+                    )
                     return None
 
                 return data
             else:
-                logger.error(f"🚫 TwelveData HTTP error: {response.status_code} - {response.text}")
+                logger.error(
+                    f"🚫 TwelveData HTTP error: {response.status_code} - {response.text}"
+                )
                 return None
 
         except Exception as e:
@@ -75,10 +91,7 @@ class TwelveDataClient:
             return None
 
     async def get_time_series(
-        self,
-        ticker: str,
-        interval: str = "1day",
-        outputsize: int = 100
+        self, ticker: str, interval: str = "1day", outputsize: int = 100
     ) -> Optional[Dict[str, Any]]:
         """
         Get OHLCV time series data
@@ -102,7 +115,7 @@ class TwelveDataClient:
             "symbol": ticker,
             "interval": interval,
             "outputsize": min(outputsize, 5000),  # API limit
-            "format": "json"
+            "format": "json",
         }
 
         data = await self._make_request("time_series", params)
@@ -120,7 +133,7 @@ class TwelveDataClient:
             "h": [],  # highs
             "l": [],  # lows
             "v": [],  # volumes
-            "t": []   # timestamps
+            "t": [],  # timestamps
         }
 
         for value in reversed(values):  # TwelveData returns newest first
@@ -136,7 +149,9 @@ class TwelveDataClient:
 
         # Validate we got data
         if len(result["c"]) < 50:
-            logger.warning(f"⚠️ Insufficient data for {ticker}: {len(result['c'])} points")
+            logger.warning(
+                f"⚠️ Insufficient data for {ticker}: {len(result['c'])} points"
+            )
             return None
 
         return result
@@ -159,10 +174,7 @@ class TwelveDataClient:
                 "previous_close": "178.02"
             }
         """
-        params = {
-            "symbol": ticker,
-            "format": "json"
-        }
+        params = {"symbol": ticker, "format": "json"}
 
         return await self._make_request("quote", params)
 
@@ -172,10 +184,7 @@ class TwelveDataClient:
 
         Note: This endpoint might not be available in free tier
         """
-        params = {
-            "symbol": ticker,
-            "format": "json"
-        }
+        params = {"symbol": ticker, "format": "json"}
 
         return await self._make_request("statistics", params)
 
@@ -185,7 +194,7 @@ class TwelveDataClient:
             "calls_today": self.calls_today,
             "daily_limit": self.daily_limit,
             "usage_percent": (self.calls_today / self.daily_limit) * 100,
-            "reset_time": self.reset_time.isoformat()
+            "reset_time": self.reset_time.isoformat(),
         }
 
     async def close(self):
@@ -209,10 +218,7 @@ class YahooFinanceClient:
         self.client = httpx.AsyncClient(timeout=30.0)
 
     async def get_time_series(
-        self,
-        ticker: str,
-        interval: str = "1d",
-        range_param: str = "5y"
+        self, ticker: str, interval: str = "1d", range_param: str = "5y"
     ) -> Optional[Dict[str, Any]]:
         """
         Get OHLCV data from Yahoo Finance (same as n8n workflow)
@@ -221,10 +227,7 @@ class YahooFinanceClient:
         """
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
-            params = {
-                "interval": interval,
-                "range": range_param
-            }
+            params = {"interval": interval, "range": range_param}
 
             logger.info(f"📡 Yahoo Finance API call: {ticker}")
 
@@ -239,7 +242,9 @@ class YahooFinanceClient:
             # Check for Yahoo Finance errors
             result = data.get("chart", {}).get("result", [{}])[0]
             if result.get("error"):
-                logger.error(f"🚫 Yahoo Finance error: {result['error']['description']}")
+                logger.error(
+                    f"🚫 Yahoo Finance error: {result['error']['description']}"
+                )
                 return None
 
             # Extract quote data
@@ -258,12 +263,18 @@ class YahooFinanceClient:
             volumes = [x for x in quote.get("volume", []) if x is not None]
 
             # Convert timestamps
-            datetime_strings = [datetime.fromtimestamp(ts).isoformat() for ts in timestamps]
+            datetime_strings = [
+                datetime.fromtimestamp(ts).isoformat() for ts in timestamps
+            ]
 
             # Validate data length
-            min_length = min(len(closes), len(opens), len(highs), len(lows), len(volumes))
+            min_length = min(
+                len(closes), len(opens), len(highs), len(lows), len(volumes)
+            )
             if min_length < 50:
-                logger.warning(f"⚠️ Insufficient Yahoo Finance data for {ticker}: {min_length} points")
+                logger.warning(
+                    f"⚠️ Insufficient Yahoo Finance data for {ticker}: {min_length} points"
+                )
                 return None
 
             return {
@@ -272,7 +283,7 @@ class YahooFinanceClient:
                 "h": highs[:min_length],
                 "l": lows[:min_length],
                 "v": volumes[:min_length],
-                "t": datetime_strings[:min_length]
+                "t": datetime_strings[:min_length],
             }
 
         except Exception as e:
