@@ -184,8 +184,10 @@ class MonitoringService:
             cache_service = get_cache_service()
 
             # Try to ping Redis
-            if cache_service.client:
-                await cache_service.client.ping()
+            # Use the internal redis client if available, or initialize it
+            redis = await cache_service._get_redis()
+            if redis:
+                await redis.ping()
                 HEALTH_CHECK_STATUS.labels(component="redis").set(1)
             else:
                 HEALTH_CHECK_STATUS.labels(component="redis").set(0)

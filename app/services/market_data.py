@@ -107,6 +107,16 @@ class MarketDataService:
             logger.warning(f"Error checking rate limit: {e}")
             return True  # Fail open
 
+    async def get_ohlcv(
+        self,
+        ticker: str,
+        interval: str = "1day",
+        outputsize: int = 500,
+        prefer_free: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """Alias for get_time_series to maintain backward compatibility"""
+        return await self.get_time_series(ticker, interval, outputsize, prefer_free)
+
     async def get_time_series(
         self,
         ticker: str,

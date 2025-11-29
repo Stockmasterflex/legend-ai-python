@@ -27,7 +27,16 @@ def _make_series(n=260):
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    # Set necessary env vars to make health check pass
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
+    monkeypatch.setenv("CHART_IMG_API_KEY", "dummy_key")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy_token")
+
+    # Reload settings to pick up env vars
+    from app.config import get_settings
+    get_settings.cache_clear()
+
     # Keep universe store in-memory during tests
     import app.services.universe_store as uni_mod
 
