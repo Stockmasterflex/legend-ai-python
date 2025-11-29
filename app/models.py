@@ -152,3 +152,40 @@ class AlertLog(Base):
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
+
+class Portfolio(Base):
+    """User portfolio container"""
+    __tablename__ = "portfolios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    name = Column(String(100))
+    initial_capital = Column(Float)
+    cash_balance = Column(Float)
+    total_value = Column(Float)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class Position(Base):
+    """Individual portfolio position"""
+    __tablename__ = "positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), index=True)
+    ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
+    quantity = Column(Float)
+    avg_cost_basis = Column(Float)
+    total_cost = Column(Float)
+    current_price = Column(Float, nullable=True)
+    current_value = Column(Float, nullable=True)
+    unrealized_pnl = Column(Float, nullable=True)
+    unrealized_pnl_pct = Column(Float, nullable=True)
+    stop_loss = Column(Float, nullable=True)
+    target_price = Column(Float, nullable=True)
+    position_size_pct = Column(Float, nullable=True)
+    status = Column(String(20), default="open")  # open, closed, partial
+    notes = Column(Text, nullable=True)
+    opened_at = Column(DateTime(timezone=True), server_default=func.now())
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+

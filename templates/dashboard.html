@@ -10,37 +10,101 @@
         rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0b0e11;
-            --bg-card: #151924;
-            --bg-hover: #1e2330;
-            --text-primary: #e1e3e6;
-            --text-secondary: #8d92a0;
+            --bg-dark: #09090b;
+            /* Zinc 950 */
+            --bg-card: rgba(24, 24, 27, 0.6);
+            /* Zinc 900 with opacity */
+            --bg-hover: rgba(39, 39, 42, 0.8);
+            /* Zinc 800 */
+            --text-primary: #f4f4f5;
+            /* Zinc 100 */
+            --text-secondary: #a1a1aa;
+            /* Zinc 400 */
             --accent-blue: #3b82f6;
+            /* Blue 500 */
+            --accent-purple: #8b5cf6;
+            /* Violet 500 */
             --accent-green: #10b981;
+            /* Emerald 500 */
             --accent-red: #ef4444;
-            --border-color: #2a2f3a;
-            --glass-bg: rgba(21, 25, 36, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.05);
+            /* Red 500 */
+            --border-color: rgba(255, 255, 255, 0.1);
+            --glass-bg: rgba(9, 9, 11, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
             color: var(--text-primary);
             line-height: 1.6;
             overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         /* Navigation */
         nav {
             background: var(--glass-bg);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
@@ -64,24 +128,31 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            letter-spacing: -0.02em;
         }
 
         .logo span {
-            color: var(--accent-blue);
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .nav-links {
             display: flex;
-            gap: 10px;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
         }
 
         .nav-tab {
             color: var(--text-secondary);
             text-decoration: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 500;
-            transition: all 0.2s;
-            padding: 8px 16px;
+            transition: all 0.2s ease;
+            padding: 6px 16px;
             border-radius: 6px;
             cursor: pointer;
             border: 1px solid transparent;
@@ -89,13 +160,14 @@
 
         .nav-tab:hover {
             color: var(--text-primary);
-            background: var(--bg-hover);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .nav-tab.active {
             color: white;
-            background: var(--accent-blue);
-            border-color: var(--accent-blue);
+            background: var(--bg-hover);
+            border-color: var(--border-color);
+            box-shadow: var(--shadow-sm);
         }
 
         /* Layout */
@@ -103,6 +175,7 @@
             max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
+            animation: fadeIn 0.5s ease-out;
         }
 
         .grid {
@@ -115,19 +188,27 @@
         /* Widgets */
         .widget {
             background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: border-color 0.2s;
+        }
+
+        .widget:hover {
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         .widget-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .widget-title {
@@ -136,11 +217,15 @@
             color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .widget-icon {
             color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 1.1rem;
         }
 
         /* Specific Grid Areas */
@@ -179,18 +264,30 @@
             display: block;
             font-size: 0.85rem;
             color: var(--text-secondary);
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            font-weight: 500;
         }
 
         input[type="text"],
-        input[type="number"] {
-            background: var(--bg-dark);
+        input[type="number"],
+        input[type="date"],
+        select {
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
             padding: 10px 15px;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
             width: 100%;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
 
         button {
@@ -198,73 +295,107 @@
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: opacity 0.2s;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
         }
 
         button:hover {
             opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
         }
 
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
         button.secondary {
-            background: var(--bg-hover);
+            background: rgba(255, 255, 255, 0.05);
             color: var(--text-primary);
             border: 1px solid var(--border-color);
+        }
+
+        button.secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         /* Tables */
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 0.9rem;
         }
 
         th {
             text-align: left;
             color: var(--text-secondary);
-            font-weight: 500;
-            padding: 10px;
+            font-weight: 600;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         td {
-            padding: 10px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border-color);
             font-family: 'JetBrains Mono', monospace;
+            transition: background 0.1s;
         }
 
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Badges */
         .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 600;
+            letter-spacing: 0.02em;
         }
 
         .badge-green {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .badge-red {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
         .badge-blue {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .badge-purple {
+            background: rgba(139, 92, 246, 0.15);
+            color: #a78bfa;
+            border: 1px solid rgba(139, 92, 246, 0.2);
         }
 
         /* Tabs */
         .tab-content {
             display: none;
+            animation: fadeIn 0.3s ease-out;
         }
 
         .tab-content.active {
@@ -274,29 +405,58 @@
         /* Cards Grid for Scanner */
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
         }
 
         .scan-card {
-            background: var(--bg-card);
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
-            transition: transform 0.2s;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
         }
 
         .scan-card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-4px);
             border-color: var(--accent-blue);
+            background: rgba(255, 255, 255, 0.04);
+            box-shadow: var(--shadow-lg);
         }
 
         .scan-card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
+
+        /* System Status */
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .status-dot.online {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
 
         .scan-ticker {
             font-size: 1.2rem;
@@ -390,12 +550,20 @@
             <div class="logo">
                 <span>⚡</span> Legend AI
             </div>
+            <div class="system-status" id="system-status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
             <div class="nav-links">
                 <div class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</div>
                 <div class="nav-tab" onclick="switchTab('scanner')">Scanner</div>
                 <div class="nav-tab" onclick="switchTab('top-setups')">Top Setups</div>
                 <div class="nav-tab" onclick="switchTab('multi-tf')">Multi-TF</div>
                 <div class="nav-tab" onclick="switchTab('planner')">Trade Planner</div>
+                <div class="nav-tab" onclick="switchTab('ai-assistant')">AI Assistant</div>
+                <div class="nav-tab" onclick="switchTab('portfolio')">Portfolio</div>
+                <div class="nav-tab" onclick="switchTab('backtest')">Backtest</div>
+                <div class="nav-tab" onclick="switchTab('patterns')">Pattern Catalog</div>
                 <a href="/docs" class="nav-tab" target="_blank" style="border:none;">API Docs</a>
             </div>
         </div>
@@ -510,8 +678,23 @@
                     </div>
                 </div>
 
+                <!-- Market News Widget -->
+                <div class="widget half-width" style="height: 500px; display: flex; flex-direction: column;">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">📰</span> Market News & Sentiment</div>
+                        <button onclick="loadNews()" class="secondary"
+                            style="padding: 4px 12px; font-size: 0.8rem;">Refresh</button>
+                    </div>
+                    <div id="news-container" style="flex: 1; overflow-y: auto; padding-right: 5px;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading news...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
                 <!-- Sector Heatmap -->
-                <div class="widget half-width" style="height: 500px;">
+                <div class="widget full-width" style="height: 500px;">
                     <div class="widget-header">
                         <div class="widget-title">Sector Heatmap</div>
                     </div>
@@ -723,6 +906,247 @@
                 </div>
             </div>
         </div>
+        <!-- TAB: AI ASSISTANT -->
+        <div id="tab-ai-assistant" class="tab-content">
+            <div class="grid">
+                <div class="widget two-thirds-width" style="height: 600px; display: flex; flex-direction: column;">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">🤖</span> AI Trading Assistant</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Powered by GPT-4 / Claude 3.5
+                        </div>
+                    </div>
+                    <div id="chat-history"
+                        style="flex: 1; overflow-y: auto; padding: 15px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color);">
+                        <div style="text-align: center; color: var(--text-secondary); margin-top: 20px;">
+                            <p>👋 Hi! I'm Legend AI. Ask me about market trends, specific stocks, or trading strategies.
+                            </p>
+                            <p style="font-size: 0.8rem; margin-top: 10px;">Example: "Analyze NVDA for me" or "Explain
+                                the Cup and Handle pattern"</p>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="chat-input" placeholder="Ask something..."
+                            onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button onclick="sendMessage()" id="chat-btn">Send</button>
+                    </div>
+                </div>
+                <div class="widget third-width">
+                    <div class="widget-header">
+                        <div class="widget-title">Capabilities</div>
+                    </div>
+                    <ul style="list-style: none; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.8;">
+                        <li>✅ Real-time Market Data Analysis</li>
+                        <li>✅ Technical Pattern Explanation</li>
+                        <li>✅ Risk Management Advice</li>
+                        <li>✅ Multi-Ticker Comparison</li>
+                        <li>⚠️ Not Financial Advice</li>
+                    </ul>
+                    <div
+                        style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <div style="font-weight: 600; color: var(--accent-blue); margin-bottom: 5px;">Pro Tip</div>
+                        <div style="font-size: 0.85rem;">Ask for a "Comprehensive Analysis" of a ticker to get a full
+                            technical breakdown including support/resistance levels.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: PATTERN CATALOG -->
+        <div id="tab-patterns" class="tab-content">
+            <div class="grid">
+                <div class="widget full-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">📚</span> Pattern Catalog (50+ Patterns)
+                        </div>
+                        <button onclick="loadPatterns()" class="secondary">Refresh Catalog</button>
+                    </div>
+                    <div id="pattern-catalog-content" style="columns: 3; column-gap: 20px;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 40px;">Loading
+                            patterns...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- TAB: PORTFOLIO -->
+        <div id="tab-portfolio" class="tab-content">
+            <div class="grid">
+                <!-- Portfolio Summary -->
+                <div class="widget full-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">💼</span> Portfolio Overview</div>
+                        <div>
+                            <button onclick="createPortfolio()" class="secondary" id="create-portfolio-btn"
+                                style="display:none;">Create Portfolio</button>
+                            <button onclick="loadPortfolio()" class="secondary">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="portfolio-summary"
+                        style="display: flex; justify-content: space-around; padding: 20px; text-align: center;">
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Value</div>
+                            <div id="port-total-value" style="font-size: 1.5rem; font-weight: 700;">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Cash Balance</div>
+                            <div id="port-cash" style="font-size: 1.2rem;">$0.00</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Total P&L</div>
+                            <div id="port-pnl" style="font-size: 1.2rem;">$0.00 (0.00%)</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Positions</div>
+                            <div id="port-positions-count" style="font-size: 1.2rem;">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Positions Table -->
+                <div class="widget two-thirds-width">
+                    <div class="widget-header">
+                        <div class="widget-title">Holdings</div>
+                        <button onclick="showAddPositionModal()" class="primary"
+                            style="padding: 4px 12px; font-size: 0.8rem;">+ Add Position</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr
+                                    style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; text-align: left;">
+                                    <th style="padding: 10px;">Symbol</th>
+                                    <th style="padding: 10px;">Qty</th>
+                                    <th style="padding: 10px;">Avg Cost</th>
+                                    <th style="padding: 10px;">Price</th>
+                                    <th style="padding: 10px;">Value</th>
+                                    <th style="padding: 10px;">P&L</th>
+                                    <th style="padding: 10px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positions-table-body">
+                                <tr>
+                                    <td colspan="7"
+                                        style="text-align: center; padding: 20px; color: var(--text-secondary);">Loading
+                                        positions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Allocation Chart -->
+                <div class="widget third-width">
+                    <div class="widget-header">
+                        <div class="widget-title">Allocation</div>
+                    </div>
+                    <div id="allocation-chart"
+                        style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                        Chart coming soon...
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- TAB: BACKTEST -->
+        <div id="tab-backtest" class="tab-content">
+            <div class="grid">
+                <div class="widget full-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">🧪</span> Strategy Backtester</div>
+                    </div>
+                    <div
+                        style="display: flex; gap: 20px; align-items: flex-end; padding: 20px; background: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div class="form-group" style="flex: 1;">
+                            <label
+                                style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Strategy</label>
+                            <select id="bt-strategy"
+                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+                                <option value="VCP_Breakout">VCP Breakout</option>
+                                <option value="SMA_Crossover">SMA Crossover</option>
+                                <option value="RSI_MeanReversion">RSI Mean Reversion</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label
+                                style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Ticker</label>
+                            <input type="text" id="bt-ticker" value="NVDA"
+                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Start
+                                Date</label>
+                            <input type="date" id="bt-start" value="2024-01-01"
+                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Initial
+                                Capital</label>
+                            <input type="number" id="bt-capital" value="100000"
+                                style="width: 100%; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+                        </div>
+                        <button onclick="runBacktest()" class="primary" style="height: 38px;">Run Backtest</button>
+                    </div>
+
+                    <div id="bt-results" style="margin-top: 20px; display: none;">
+                        <div
+                            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                            <div class="card" style="text-align: center; padding: 15px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Return</div>
+                                <div id="bt-return" style="font-size: 1.5rem; font-weight: 700;">0.00%</div>
+                            </div>
+                            <div class="card" style="text-align: center; padding: 15px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Win Rate</div>
+                                <div id="bt-winrate" style="font-size: 1.5rem; font-weight: 700;">0.00%</div>
+                            </div>
+                            <div class="card" style="text-align: center; padding: 15px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Max Drawdown</div>
+                                <div id="bt-drawdown"
+                                    style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);">0.00%</div>
+                            </div>
+                            <div class="card" style="text-align: center; padding: 15px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Sharpe Ratio</div>
+                                <div id="bt-sharpe" style="font-size: 1.5rem; font-weight: 700;">0.00</div>
+                            </div>
+                        </div>
+                        <div
+                            style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h4 style="margin-top: 0;">Equity Curve</h4>
+                            <div
+                                style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                                Chart visualization coming soon...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Position Modal (Hidden) -->
+    <div id="add-position-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div
+            style="background: var(--bg-card); padding: 25px; border-radius: 12px; width: 400px; border: 1px solid var(--border-color);">
+            <h3 style="margin-top: 0; margin-bottom: 20px;">Add Position</h3>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Symbol</label>
+                <input type="text" id="pos-symbol"
+                    style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Quantity</label>
+                <input type="number" id="pos-qty"
+                    style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Entry Price</label>
+                <input type="number" id="pos-price"
+                    style="width: 100%; padding: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button onclick="document.getElementById('add-position-modal').style.display='none'"
+                    class="secondary">Cancel</button>
+                <button onclick="submitAddPosition()" class="primary">Add Position</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -739,6 +1163,305 @@
             // Load data if needed
             if (tabId === 'scanner') loadScanner();
             if (tabId === 'top-setups') loadTopSetups();
+            if (tabId === 'patterns') loadPatterns();
+            if (tabId === 'portfolio') loadPortfolio();
+        }
+
+        // --- Portfolio ---
+        let currentPortfolioId = null;
+
+        async function loadPortfolio() {
+            try {
+                // 1. Get List of Portfolios
+                const listRes = await fetch('/api/portfolio/list?user_id=1');
+                const listData = await listRes.json();
+
+                if (!listData.success || listData.portfolios.length === 0) {
+                    document.getElementById('create-portfolio-btn').style.display = 'inline-block';
+                    document.getElementById('portfolio-summary').innerHTML = '<div style="padding: 20px; color: var(--text-secondary);">No portfolio found. Create one to get started.</div>';
+                    document.getElementById('positions-table-body').innerHTML = '';
+                    return;
+                }
+
+                document.getElementById('create-portfolio-btn').style.display = 'none';
+                currentPortfolioId = listData.portfolios[0].id;
+
+                // 2. Get Details & Metrics
+                const detailRes = await fetch(`/api/portfolio/${currentPortfolioId}`);
+                const detailData = await detailRes.json();
+                const metrics = detailData.metrics;
+
+                // Update Summary
+                document.getElementById('port-total-value').innerText = `$${metrics.total_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                document.getElementById('port-cash').innerText = `$${metrics.cash_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+                const pnlClass = metrics.total_pnl >= 0 ? 'text-green' : 'text-red';
+                document.getElementById('port-pnl').innerHTML = `<span class="${pnlClass}">$${metrics.total_pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })} (${metrics.total_return_pct.toFixed(2)}%)</span>`;
+                document.getElementById('port-positions-count').innerText = metrics.num_positions;
+
+                // 3. Get Positions
+                const posRes = await fetch(`/api/portfolio/${currentPortfolioId}/positions`);
+                const posData = await posRes.json();
+
+                const tbody = document.getElementById('positions-table-body');
+                if (posData.positions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">No open positions.</td></tr>';
+                } else {
+                    tbody.innerHTML = posData.positions.map(p => {
+                        const pnlClass = p.unrealized_pnl >= 0 ? 'text-green' : 'text-red';
+                        return `
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px; font-weight: 500;">${p.symbol}</td>
+                                <td style="padding: 10px;">${p.quantity}</td>
+                                <td style="padding: 10px;">$${p.avg_cost_basis.toFixed(2)}</td>
+                                <td style="padding: 10px;">$${(p.current_price || 0).toFixed(2)}</td>
+                                <td style="padding: 10px;">$${(p.current_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td style="padding: 10px;" class="${pnlClass}">$${(p.unrealized_pnl || 0).toFixed(2)} (${(p.unrealized_pnl_pct || 0).toFixed(2)}%)</td>
+                                <td style="padding: 10px;">
+                                    <button onclick="closePosition(${p.id})" style="padding: 2px 8px; font-size: 0.75rem; background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; cursor: pointer;">Close</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+            } catch (e) {
+                console.error("Portfolio load error:", e);
+            }
+        }
+
+        async function createPortfolio() {
+            try {
+                await fetch('/api/portfolio/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: "Main Portfolio", initial_capital: 100000, user_id: 1 })
+                });
+                loadPortfolio();
+            } catch (e) {
+                alert("Failed to create portfolio: " + e.message);
+            }
+        }
+
+        function showAddPositionModal() {
+            if (!currentPortfolioId) {
+                alert("Please create a portfolio first.");
+                return;
+            }
+            document.getElementById('add-position-modal').style.display = 'flex';
+        }
+
+        async function submitAddPosition() {
+            const symbol = document.getElementById('pos-symbol').value.toUpperCase();
+            const qty = parseFloat(document.getElementById('pos-qty').value);
+            const price = parseFloat(document.getElementById('pos-price').value);
+
+            if (!symbol || !qty || !price) {
+                alert("Please fill all fields");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/portfolio/position/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        portfolio_id: currentPortfolioId,
+                        symbol: symbol,
+                        quantity: qty,
+                        entry_price: price
+                    })
+                });
+
+                if (res.ok) {
+                    document.getElementById('add-position-modal').style.display = 'none';
+                    // Clear fields
+                    document.getElementById('pos-symbol').value = '';
+                    document.getElementById('pos-qty').value = '';
+                    document.getElementById('pos-price').value = '';
+                    loadPortfolio();
+                } else {
+                    const data = await res.json();
+                    alert("Error: " + data.detail);
+                }
+            } catch (e) {
+                alert("Failed to add position: " + e.message);
+            }
+        }
+
+        async function closePosition(posId) {
+            if (!confirm("Are you sure you want to close this position?")) return;
+
+            try {
+                const res = await fetch('/api/portfolio/position/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ position_id: posId })
+                });
+
+                if (res.ok) {
+                    loadPortfolio();
+                } else {
+                    const data = await res.json();
+                    alert("Error: " + data.detail);
+                }
+            } catch (e) {
+                alert("Failed to close position: " + e.message);
+            }
+        }
+
+        // --- Backtest ---
+        async function runBacktest() {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Running...";
+            btn.disabled = true;
+
+            document.getElementById('bt-results').style.display = 'none';
+
+            try {
+                const payload = {
+                    strategy: document.getElementById('bt-strategy').value,
+                    symbol: document.getElementById('bt-ticker').value,
+                    start_date: document.getElementById('bt-start').value,
+                    initial_capital: parseFloat(document.getElementById('bt-capital').value)
+                };
+
+                const res = await fetch('/api/backtest/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('bt-results').style.display = 'block';
+                    document.getElementById('bt-return').innerText = data.metrics.total_return_pct.toFixed(2) + "%";
+                    document.getElementById('bt-winrate').innerText = data.metrics.win_rate.toFixed(2) + "%";
+                    document.getElementById('bt-drawdown').innerText = data.metrics.max_drawdown.toFixed(2) + "%";
+                    document.getElementById('bt-sharpe').innerText = data.metrics.sharpe_ratio.toFixed(2);
+                } else {
+                    alert("Backtest failed: " + (data.detail || "Unknown error"));
+                }
+
+            } catch (e) {
+                alert("Backtest error: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // --- AI Assistant ---
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const history = document.getElementById('chat-history');
+            const btn = document.getElementById('chat-btn');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add User Message
+            history.innerHTML += `
+                <div style="margin-bottom: 15px; text-align: right;">
+                    <div style="display: inline-block; background: var(--accent-blue); color: white; padding: 8px 12px; border-radius: 12px 12px 0 12px; max-width: 80%;">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            input.value = '';
+            history.scrollTop = history.scrollHeight;
+
+            // Loading State
+            btn.disabled = true;
+            const loadingId = 'loading-' + Date.now();
+            history.innerHTML += `
+                <div id="${loadingId}" style="margin-bottom: 15px; text-align: left;">
+                    <div style="display: inline-block; background: var(--bg-hover); color: var(--text-secondary); padding: 8px 12px; border-radius: 12px 12px 12px 0; max-width: 80%;">
+                        Thinking...
+                    </div>
+                </div>
+            `;
+            history.scrollTop = history.scrollHeight;
+
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, include_market_data: true })
+                });
+                const data = await response.json();
+
+                // Remove Loading
+                document.getElementById(loadingId).remove();
+
+                if (response.ok) {
+                    history.innerHTML += `
+                        <div style="margin-bottom: 15px; text-align: left;">
+                            <div style="display: inline-block; background: var(--bg-hover); color: var(--text-primary); padding: 12px; border-radius: 12px 12px 12px 0; max-width: 80%; white-space: pre-wrap;">${data.response}</div>
+                        </div>
+                    `;
+                } else {
+                    // Handle specific 503 error for missing key
+                    const errorMsg = response.status === 503
+                        ? "⚠️ AI Service Unavailable: Please configure OPENROUTER_API_KEY or OPENAI_API_KEY in your environment variables."
+                        : `Error: ${data.detail || 'Failed to get response'}`;
+
+                    history.innerHTML += `
+                        <div style="margin-bottom: 15px; text-align: left;">
+                            <div style="display: inline-block; background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 12px; border-radius: 12px 12px 12px 0; max-width: 80%;">
+                                ${errorMsg}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                document.getElementById(loadingId).remove();
+                history.innerHTML += `
+                    <div style="margin-bottom: 15px; text-align: left;">
+                        <div style="display: inline-block; background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 12px; border-radius: 12px 12px 12px 0; max-width: 80%;">
+                            Network Error: ${e.message}
+                        </div>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                history.scrollTop = history.scrollHeight;
+            }
+        }
+
+        // --- Pattern Catalog ---
+        let patternsLoaded = false;
+        async function loadPatterns() {
+            if (patternsLoaded) return;
+
+            const container = document.getElementById('pattern-catalog-content');
+
+            try {
+                const response = await fetch('/api/advanced/patterns/list');
+                const data = await response.json();
+
+                if (!data.patterns_by_category) throw new Error("Invalid data format");
+
+                let html = '';
+                for (const [category, patterns] of Object.entries(data.patterns_by_category)) {
+                    html += `
+                        <div style="break-inside: avoid; margin-bottom: 20px; background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h3 style="color: var(--accent-blue); text-transform: capitalize; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">${category}</h3>
+                            <ul style="list-style: none; padding-left: 0;">
+                                ${patterns.map(p => `<li style="margin-bottom: 5px; color: var(--text-secondary); font-size: 0.9rem;">• ${p}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = html;
+                patternsLoaded = true;
+
+            } catch (e) {
+                container.innerHTML = `<div style="color: var(--accent-red); text-align: center;">Failed to load patterns: ${e.message}</div>`;
+            }
         }
 
         // --- Dashboard Tab ---
@@ -1006,8 +1729,61 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            checkSystemStatus();
             loadTrades();
+            loadNews();
+
+            // Periodic status check
+            setInterval(checkSystemStatus, 30000);
         });
+
+        async function checkSystemStatus() {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+            try {
+                const res = await fetch('/docs'); // Simple check if server is up
+                if (res.ok) {
+                    dot.classList.add('online');
+                    text.innerText = "System Online";
+                } else {
+                    dot.classList.remove('online');
+                    text.innerText = "System Issues";
+                }
+            } catch (e) {
+                dot.classList.remove('online');
+                text.innerText = "Offline";
+            }
+        }
+
+        // --- News ---
+        async function loadNews() {
+            const container = document.getElementById('news-container');
+            container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading news...</div>';
+
+            try {
+                const response = await fetch('/api/news/general');
+                const data = await response.json();
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: var(--text-secondary);">No news available.</div>';
+                    return;
+                }
+
+                container.innerHTML = data.map(item => `
+                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">${item.source} • ${new Date(item.datetime * 1000).toLocaleTimeString()}</span>
+                            <span class="badge ${item.sentiment === 'Positive' ? 'badge-green' : item.sentiment === 'Negative' ? 'badge-red' : 'badge-blue'}">${item.sentiment}</span>
+                        </div>
+                        <a href="${item.url}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-weight: 500; display: block; margin-bottom: 5px; hover:text-decoration: underline;">${item.headline}</a>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${item.summary}</div>
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                container.innerHTML = `<div style="color: var(--accent-red); text-align: center;">Failed to load news: ${e.message}</div>`;
+            }
+        }
     </script>
 </body>
 
