@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Legend AI - Trading Terminal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-dark: #0b0e11;
@@ -20,7 +23,11 @@
             --glass-border: rgba(255, 255, 255, 0.05);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -59,26 +66,36 @@
             gap: 10px;
         }
 
-        .logo span { color: var(--accent-blue); }
+        .logo span {
+            color: var(--accent-blue);
+        }
 
         .nav-links {
             display: flex;
-            gap: 20px;
+            gap: 10px;
         }
 
-        .nav-link {
+        .nav-tab {
             color: var(--text-secondary);
             text-decoration: none;
             font-size: 0.9rem;
             font-weight: 500;
-            transition: color 0.2s;
-            padding: 8px 12px;
+            transition: all 0.2s;
+            padding: 8px 16px;
             border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
         }
 
-        .nav-link:hover, .nav-link.active {
+        .nav-tab:hover {
             color: var(--text-primary);
             background: var(--bg-hover);
+        }
+
+        .nav-tab.active {
+            color: white;
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
         }
 
         /* Layout */
@@ -122,28 +139,58 @@
             gap: 8px;
         }
 
-        .widget-icon { color: var(--accent-blue); }
+        .widget-icon {
+            color: var(--accent-blue);
+        }
 
         /* Specific Grid Areas */
-        .full-width { grid-column: span 12; }
-        .half-width { grid-column: span 6; }
-        .third-width { grid-column: span 4; }
-        
+        .full-width {
+            grid-column: span 12;
+        }
+
+        .half-width {
+            grid-column: span 6;
+        }
+
+        .third-width {
+            grid-column: span 4;
+        }
+
+        .quarter-width {
+            grid-column: span 3;
+        }
+
+        .two-thirds-width {
+            grid-column: span 8;
+        }
+
         /* Interactive Elements */
         .input-group {
             display: flex;
             gap: 10px;
+            margin-bottom: 15px;
         }
 
-        input[type="text"] {
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
             background: var(--bg-dark);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
             padding: 10px 15px;
             border-radius: 6px;
             font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            flex-grow: 1;
+            width: 100%;
         }
 
         button {
@@ -157,8 +204,20 @@
             transition: opacity 0.2s;
         }
 
-        button:hover { opacity: 0.9; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
 
         /* Tables */
         table {
@@ -188,8 +247,67 @@
             font-weight: 600;
         }
 
-        .badge-green { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .badge-red { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .badge-green {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .badge-red {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .badge-blue {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-blue);
+        }
+
+        /* Tabs */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Cards Grid for Scanner */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .scan-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            transition: transform 0.2s;
+        }
+
+        .scan-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+        }
+
+        .scan-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .scan-ticker {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .scan-score {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-green);
+        }
 
         /* Analysis Result */
         #analysis-result {
@@ -205,19 +323,67 @@
             overflow-y: auto;
         }
 
+        /* Heatmap Card */
+        .heatmap-card {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            background: var(--bg-hover);
+        }
+
+        .heatmap-card.bullish {
+            border: 1px solid var(--accent-green);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .heatmap-card.bearish {
+            border: 1px solid var(--accent-red);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .heatmap-card.neutral {
+            border: 1px solid var(--text-secondary);
+        }
+
         /* Mobile Responsiveness */
         @media (max-width: 1024px) {
-            .half-width, .third-width { grid-column: span 12; }
+
+            .half-width,
+            .third-width,
+            .two-thirds-width,
+            .quarter-width {
+                grid-column: span 12;
+            }
         }
 
         @media (max-width: 768px) {
-            .nav-content { padding: 0 10px; }
-            .nav-links { display: none; } /* Simple hide for now, could add hamburger */
-            .grid { display: flex; flex-direction: column; }
-            .widget { min-height: 300px; }
+            .nav-content {
+                padding: 0 10px;
+                overflow-x: auto;
+            }
+
+            .nav-links {
+                gap: 5px;
+            }
+
+            .nav-tab {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+
+            .grid {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .widget {
+                min-height: 300px;
+            }
         }
     </style>
 </head>
+
 <body>
     <nav>
         <div class="nav-content">
@@ -225,146 +391,357 @@
                 <span>⚡</span> Legend AI
             </div>
             <div class="nav-links">
-                <a href="#" class="nav-link active">Dashboard</a>
-                <a href="/docs" class="nav-link" target="_blank">API Docs</a>
-                <a href="#" class="nav-link" onclick="alert('Coming soon!')">Settings</a>
+                <div class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</div>
+                <div class="nav-tab" onclick="switchTab('scanner')">Scanner</div>
+                <div class="nav-tab" onclick="switchTab('top-setups')">Top Setups</div>
+                <div class="nav-tab" onclick="switchTab('multi-tf')">Multi-TF</div>
+                <div class="nav-tab" onclick="switchTab('planner')">Trade Planner</div>
+                <a href="/docs" class="nav-tab" target="_blank" style="border:none;">API Docs</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <!-- Ticker Tape -->
+        <!-- Ticker Tape (Always Visible) -->
         <div class="grid">
             <div class="widget full-width" style="padding: 0; border: none; background: transparent; height: 72px;">
                 <div class="tradingview-widget-container">
                     <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                    {
-                    "symbols": [
-                        {"proName": "FOREXCOM:SPXUSD", "title": "S&P 500"},
-                        {"proName": "NASDAQ:QQQ", "title": "NASDAQ 100"},
-                        {"proName": "AMEX:IWM", "title": "Russell 2000"},
-                        {"proName": "CBOE:VIX", "title": "VIX"},
-                        {"description": "NVDA", "proName": "NASDAQ:NVDA"},
-                        {"description": "AAPL", "proName": "NASDAQ:AAPL"},
-                        {"description": "TSLA", "proName": "NASDAQ:TSLA"}
-                    ],
-                    "showSymbolLogo": true,
-                    "isTransparent": true,
-                    "displayMode": "adaptive",
-                    "colorTheme": "dark",
-                    "locale": "en"
-                    }
-                    </script>
+                    <script type="text/javascript"
+                        src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                            {
+                                "symbols": [
+                                    { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
+                                    { "proName": "NASDAQ:QQQ", "title": "NASDAQ 100" },
+                                    { "proName": "AMEX:IWM", "title": "Russell 2000" },
+                                    { "proName": "CBOE:VIX", "title": "VIX" },
+                                    { "description": "NVDA", "proName": "NASDAQ:NVDA" },
+                                    { "description": "AAPL", "proName": "NASDAQ:AAPL" },
+                                    { "description": "TSLA", "proName": "NASDAQ:TSLA" }
+                                ],
+                                    "showSymbolLogo": true,
+                                        "isTransparent": true,
+                                            "displayMode": "adaptive",
+                                                "colorTheme": "dark",
+                                                    "locale": "en"
+                            }
+                        </script>
                 </div>
             </div>
         </div>
 
-        <div class="grid">
-            <!-- Quick Analysis Tool -->
-            <div class="widget third-width">
-                <div class="widget-header">
-                    <div class="widget-title"><span class="widget-icon">🔍</span> Quick Analysis</div>
+        <!-- TAB: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="grid">
+                <!-- Quick Analysis Tool -->
+                <div class="widget third-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">🔍</span> Quick Analysis</div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g. NVDA)">
+                        <button onclick="runAnalysis()" id="analyze-btn">Analyze</button>
+                    </div>
+                    <div id="analysis-result"></div>
                 </div>
-                <div class="input-group">
-                    <input type="text" id="ticker-input" placeholder="Enter Ticker (e.g. NVDA)">
-                    <button onclick="runAnalysis()" id="analyze-btn">Analyze</button>
+
+                <!-- Recent Trades (Journal) -->
+                <div class="widget two-thirds-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">📓</span> Recent Trades</div>
+                        <button onclick="loadTrades()" class="secondary"
+                            style="padding: 4px 12px; font-size: 0.8rem;">Refresh</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table id="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticker</th>
+                                    <th>Pattern</th>
+                                    <th>Entry</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div id="analysis-result"></div>
             </div>
 
-            <!-- Recent Trades (Journal) -->
-            <div class="widget two-thirds-width" style="grid-column: span 8;">
-                <div class="widget-header">
-                    <div class="widget-title"><span class="widget-icon">📓</span> Recent Trades</div>
-                    <button onclick="loadTrades()" style="padding: 4px 12px; font-size: 0.8rem;">Refresh</button>
+            <div class="grid">
+                <!-- Market Overview -->
+                <div class="widget half-width" style="height: 500px;">
+                    <div class="widget-header">
+                        <div class="widget-title">Market Overview</div>
+                    </div>
+                    <div class="tradingview-widget-container" style="height:100%;width:100%">
+                        <div class="tradingview-widget-container__widget"></div>
+                        <script type="text/javascript"
+                            src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+                                {
+                                    "colorTheme": "dark",
+                                        "dateRange": "12M",
+                                            "showChart": true,
+                                                "locale": "en",
+                                                    "width": "100%",
+                                                        "height": "100%",
+                                                            "largeChartUrl": "",
+                                                                "isTransparent": true,
+                                                                    "showSymbolLogo": true,
+                                                                        "tabs": [
+                                                                            {
+                                                                                "title": "Indices",
+                                                                                "symbols": [
+                                                                                    { "s": "FOREXCOM:SPXUSD", "d": "S&P 500" },
+                                                                                    { "s": "NASDAQ:QQQ", "d": "NASDAQ 100" },
+                                                                                    { "s": "AMEX:IWM", "d": "Russell 2000" },
+                                                                                    { "s": "CBOE:VIX", "d": "VIX" }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                }
+                            </script>
+                    </div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table id="trades-table">
-                        <thead>
-                            <tr>
-                                <th>Ticker</th>
-                                <th>Pattern</th>
-                                <th>Entry</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Loading...</td></tr>
-                        </tbody>
-                    </table>
+
+                <!-- Sector Heatmap -->
+                <div class="widget half-width" style="height: 500px;">
+                    <div class="widget-header">
+                        <div class="widget-title">Sector Heatmap</div>
+                    </div>
+                    <div class="tradingview-widget-container" style="height:100%;width:100%">
+                        <div class="tradingview-widget-container__widget"></div>
+                        <script type="text/javascript"
+                            src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
+                                {
+                                    "exchanges": [],
+                                        "dataSource": "SPX500",
+                                            "grouping": "sector",
+                                                "blockSize": "market_cap_basic",
+                                                    "blockColor": "change",
+                                                        "locale": "en",
+                                                            "symbolUrl": "",
+                                                                "colorTheme": "dark",
+                                                                    "hasTopBar": false,
+                                                                        "isDataSetEnabled": false,
+                                                                            "isZoomEnabled": true,
+                                                                                "hasSymbolTooltip": true,
+                                                                                    "width": "100%",
+                                                                                        "height": "100%"
+                                }
+                            </script>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="grid">
-            <!-- Market Overview -->
-            <div class="widget half-width" style="height: 500px;">
-                <div class="widget-header">
-                    <div class="widget-title">Market Overview</div>
-                </div>
-                <div class="tradingview-widget-container" style="height:100%;width:100%">
-                    <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
-                    {
-                    "colorTheme": "dark",
-                    "dateRange": "12M",
-                    "showChart": true,
-                    "locale": "en",
-                    "width": "100%",
-                    "height": "100%",
-                    "largeChartUrl": "",
-                    "isTransparent": true,
-                    "showSymbolLogo": true,
-                    "tabs": [
-                        {
-                        "title": "Indices",
-                        "symbols": [
-                            {"s": "FOREXCOM:SPXUSD", "d": "S&P 500"},
-                            {"s": "NASDAQ:QQQ", "d": "NASDAQ 100"},
-                            {"s": "AMEX:IWM", "d": "Russell 2000"},
-                            {"s": "CBOE:VIX", "d": "VIX"}
-                        ]
-                        }
-                    ]
-                    }
-                    </script>
+        <!-- TAB: SCANNER -->
+        <div id="tab-scanner" class="tab-content">
+            <div class="grid">
+                <div class="widget full-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">📡</span> Advanced Pattern Scanner</div>
+                        <button onclick="triggerScan()" id="scan-btn">Run New Scan</button>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Scans the S&P 500 and NASDAQ 100 for high-probability setups (VCP, Breakouts, Trend Templates).
+                    </p>
+                    <div id="scanner-results" class="card-grid">
+                        <!-- Results will populate here -->
+                        <div
+                            style="grid-column: span 3; text-align: center; color: var(--text-secondary); padding: 40px;">
+                            Click "Run New Scan" to start or wait for EOD results.
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Sector Heatmap -->
-            <div class="widget half-width" style="height: 500px;">
-                <div class="widget-header">
-                    <div class="widget-title">Sector Heatmap</div>
+        <!-- TAB: TOP SETUPS -->
+        <div id="tab-top-setups" class="tab-content">
+            <div class="grid">
+                <div class="widget full-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">⭐</span> Top Setups (Daily Picks)</div>
+                        <button onclick="loadTopSetups()" class="secondary">Refresh</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table id="top-setups-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Ticker</th>
+                                    <th>Pattern</th>
+                                    <th>Score</th>
+                                    <th>Sector</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" style="text-align: center;">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="tradingview-widget-container" style="height:100%;width:100%">
-                    <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-                    {
-                    "exchanges": [],
-                    "dataSource": "SPX500",
-                    "grouping": "sector",
-                    "blockSize": "market_cap_basic",
-                    "blockColor": "change",
-                    "locale": "en",
-                    "symbolUrl": "",
-                    "colorTheme": "dark",
-                    "hasTopBar": false,
-                    "isDataSetEnabled": false,
-                    "isZoomEnabled": true,
-                    "hasSymbolTooltip": true,
-                    "width": "100%",
-                    "height": "100%"
-                    }
-                    </script>
+            </div>
+        </div>
+
+        <!-- TAB: MULTI-TF -->
+        <div id="tab-multi-tf" class="tab-content">
+            <div class="grid">
+                <div class="widget full-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">🔥</span> Multi-Timeframe Heatmap</div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="mtf-ticker-input" placeholder="Enter Ticker (e.g. NVDA)">
+                        <button onclick="runMultiTFAnalysis()" id="mtf-btn">Analyze Multi-TF</button>
+                    </div>
+                    <div id="mtf-results" style="display: none; margin-top: 20px;">
+                        <div style="margin-bottom: 20px; display: flex; align-items: baseline; gap: 15px;">
+                            <span style="font-size: 1.5rem; font-weight: 700;" id="mtf-signal">STRONG BUY</span>
+                            <span style="color: var(--text-secondary);" id="mtf-confluence">Confluence: 85%</span>
+                        </div>
+                        <div class="grid" style="margin-bottom: 0;">
+                            <!-- 4 Cards for Timeframes -->
+                            <div class="widget quarter-width heatmap-card" id="tf-weekly">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Weekly</div>
+                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
+                                    Uptrend</div>
+                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 80%</div>
+                            </div>
+                            <div class="widget quarter-width heatmap-card" id="tf-daily">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Daily</div>
+                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
+                                    VCP</div>
+                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 90%</div>
+                            </div>
+                            <div class="widget quarter-width heatmap-card" id="tf-4h">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">4-Hour</div>
+                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
+                                    Breakout</div>
+                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 85%</div>
+                            </div>
+                            <div class="widget quarter-width heatmap-card" id="tf-1h">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">1-Hour</div>
+                                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 5px;" class="tf-pattern">
+                                    Consolidation</div>
+                                <div style="font-size: 0.8rem; margin-top: 5px;" class="tf-conf">Conf: 60%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mtf-error" style="color: var(--accent-red); margin-top: 10px; display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: TRADE PLANNER -->
+        <div id="tab-planner" class="tab-content">
+            <div class="grid">
+                <div class="widget half-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">📐</span> Plan a Trade</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ticker Symbol</label>
+                        <input type="text" id="plan-ticker" placeholder="e.g. TSLA">
+                    </div>
+                    <div class="grid" style="margin-bottom: 0;">
+                        <div class="form-group half-width" style="grid-column: span 6;">
+                            <label class="form-label">Account Size ($)</label>
+                            <input type="number" id="plan-account" value="10000">
+                        </div>
+                        <div class="form-group half-width" style="grid-column: span 6;">
+                            <label class="form-label">Risk %</label>
+                            <input type="number" id="plan-risk" value="1.0" step="0.1">
+                        </div>
+                    </div>
+                    <div class="grid" style="margin-bottom: 0;">
+                        <div class="form-group half-width" style="grid-column: span 6;">
+                            <label class="form-label">Entry Price ($)</label>
+                            <input type="number" id="plan-entry" step="0.01">
+                        </div>
+                        <div class="form-group half-width" style="grid-column: span 6;">
+                            <label class="form-label">Stop Loss ($)</label>
+                            <input type="number" id="plan-stop" step="0.01">
+                        </div>
+                    </div>
+                    <button onclick="calculatePlan()" style="width: 100%; margin-top: 10px;">Calculate Position
+                        Size</button>
+                </div>
+
+                <div class="widget half-width">
+                    <div class="widget-header">
+                        <div class="widget-title"><span class="widget-icon">📊</span> Plan Results</div>
+                    </div>
+                    <div id="plan-results" style="display: none;">
+                        <div
+                            style="margin-bottom: 20px; padding: 15px; background: var(--bg-dark); border-radius: 8px;">
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Position Size</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: var(--accent-blue);" id="res-shares">0
+                                shares</div>
+                            <div style="font-size: 0.9rem; color: var(--text-primary);" id="res-value">$0.00 total value
+                            </div>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 0;">
+                            <div
+                                style="grid-column: span 6; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Risk Amount</div>
+                                <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-red);"
+                                    id="res-risk">-$0.00</div>
+                            </div>
+                            <div
+                                style="grid-column: span 6; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Reward (3R)</div>
+                                <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-green);"
+                                    id="res-reward">+$0.00</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 10px;">Targets:</div>
+                            <div
+                                style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace;">
+                                <span>2R: <span id="res-2r" style="color: var(--accent-green)">$0.00</span></span>
+                                <span>3R: <span id="res-3r" style="color: var(--accent-green)">$0.00</span></span>
+                                <span>4R: <span id="res-4r" style="color: var(--accent-green)">$0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="plan-placeholder" style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                        Enter trade details to see position sizing and risk analysis.
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Quick Analysis Function
+        // --- Navigation ---
+        function switchTab(tabId) {
+            // Update Tab Buttons
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update Tab Content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            // Load data if needed
+            if (tabId === 'scanner') loadScanner();
+            if (tabId === 'top-setups') loadTopSetups();
+        }
+
+        // --- Dashboard Tab ---
         async function runAnalysis() {
             const ticker = document.getElementById('ticker-input').value.trim();
             const btn = document.getElementById('analyze-btn');
@@ -380,14 +757,13 @@
             try {
                 const response = await fetch(`/api/analyze?ticker=${ticker}`);
                 const data = await response.json();
-                
+
                 if (response.ok) {
-                    // Format the output nicely
                     const patterns = data.patterns || [];
-                    const patternText = patterns.length > 0 
+                    const patternText = patterns.length > 0
                         ? patterns.map(p => `• ${p.name} (${p.score}%)`).join('\n')
                         : 'No clear patterns detected.';
-                    
+
                     resultDiv.textContent = `✅ Analysis Complete for ${ticker.toUpperCase()}\n\nPatterns:\n${patternText}\n\nTrend: ${data.trend || 'Neutral'}`;
                 } else {
                     resultDiv.textContent = `❌ Error: ${data.detail || 'Analysis failed'}`;
@@ -400,7 +776,6 @@
             }
         }
 
-        // Load Recent Trades
         async function loadTrades() {
             const tbody = document.querySelector('#trades-table tbody');
             tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading...</td></tr>';
@@ -410,7 +785,6 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    // Handle graceful 503 from backend
                     if (response.status === 503) {
                         tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">⚠️ ${data.detail}</td></tr>`;
                         return;
@@ -439,10 +813,202 @@
             }
         }
 
+        // --- Scanner Tab ---
+        async function triggerScan() {
+            const btn = document.getElementById('scan-btn');
+            const container = document.getElementById('scanner-results');
+
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+            container.innerHTML = '<div style="grid-column: span 3; text-align: center;">Running market scan... this may take a moment.</div>';
+
+            try {
+                // Trigger the scan
+                await fetch('/api/scan/trigger', { method: 'POST' });
+
+                // Poll for results (simulated delay for UX)
+                setTimeout(loadScanner, 2000);
+            } catch (e) {
+                container.innerHTML = `<div style="color: var(--accent-red);">Scan failed: ${e.message}</div>`;
+                btn.disabled = false;
+                btn.textContent = 'Run New Scan';
+            }
+        }
+
+        async function loadScanner() {
+            const container = document.getElementById('scanner-results');
+            const btn = document.getElementById('scan-btn');
+
+            try {
+                const response = await fetch('/api/scan/latest');
+                const data = await response.json();
+
+                if (!response.ok || data.detail) {
+                    container.innerHTML = `<div style="grid-column: span 3; text-align: center; color: var(--text-secondary);">${data.detail || 'No results found.'}</div>`;
+                    return;
+                }
+
+                if (Array.isArray(data) && data.length > 0) {
+                    container.innerHTML = data.map(item => `
+                        <div class="scan-card">
+                            <div class="scan-card-header">
+                                <span class="scan-ticker">${item.ticker}</span>
+                                <span class="badge badge-blue">${item.pattern || 'Setup'}</span>
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
+                                Score: <span class="scan-score">${item.score || 0}</span>
+                            </div>
+                            <button onclick="switchTab('dashboard'); document.getElementById('ticker-input').value='${item.ticker}'; runAnalysis();" style="width:100%; font-size:0.8rem; padding: 6px;">Analyze</button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="grid-column: span 3; text-align: center; color: var(--text-secondary);">No setups found in latest scan.</div>';
+                }
+
+            } catch (e) {
+                container.innerHTML = `<div style="color: var(--accent-red);">Failed to load results: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run New Scan';
+            }
+        }
+
+        // --- Top Setups Tab ---
+        async function loadTopSetups() {
+            const tbody = document.querySelector('#top-setups-table tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading...</td></tr>';
+
+            try {
+                const response = await fetch('/api/top-setups');
+                const data = await response.json();
+
+                if (!data.success || !data.setups || data.setups.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No top setups identified today.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.setups.map((s, index) => `
+                    <tr>
+                        <td>#${index + 1}</td>
+                        <td><strong>${s.ticker}</strong></td>
+                        <td><span class="badge badge-blue">${s.pattern}</span></td>
+                        <td style="color: var(--accent-green); font-weight: 700;">${s.score}</td>
+                        <td>${s.sector || '-'}</td>
+                        <td>
+                            <button onclick="switchTab('dashboard'); document.getElementById('ticker-input').value='${s.ticker}'; runAnalysis();" style="padding: 4px 8px; font-size: 0.75rem;">Analyze</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--accent-red);">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        // --- Multi-TF Tab ---
+        async function runMultiTFAnalysis() {
+            const ticker = document.getElementById('mtf-ticker-input').value.trim();
+            const btn = document.getElementById('mtf-btn');
+            const results = document.getElementById('mtf-results');
+            const errorDiv = document.getElementById('mtf-error');
+
+            if (!ticker) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            results.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/analyze?ticker=${ticker}&multi_timeframe=true`);
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.detail || 'Analysis failed');
+
+                const mtf = data.multi_timeframe;
+                if (!mtf) throw new Error('No multi-timeframe data returned');
+
+                // Update Header
+                const signalEl = document.getElementById('mtf-signal');
+                signalEl.textContent = mtf.signal_quality.toUpperCase().replace('_', ' ');
+                signalEl.style.color = mtf.strong_signal ? 'var(--accent-green)' : 'var(--text-primary)';
+
+                document.getElementById('mtf-confluence').textContent = `Confluence: ${Math.round(mtf.overall_confluence * 100)}%`;
+
+                // Update Cards
+                const updateCard = (id, data) => {
+                    const card = document.getElementById(id);
+                    const patternEl = card.querySelector('.tf-pattern');
+                    const confEl = card.querySelector('.tf-conf');
+
+                    patternEl.textContent = data.pattern || 'None';
+                    confEl.textContent = `Conf: ${Math.round(data.confidence * 100)}%`;
+
+                    card.className = 'widget quarter-width heatmap-card'; // reset
+                    if (data.detected) {
+                        card.classList.add('bullish'); // Simplified assumption: detection = bullish for MVP
+                    } else {
+                        card.classList.add('neutral');
+                    }
+                };
+
+                updateCard('tf-weekly', mtf.timeframes.weekly);
+                updateCard('tf-daily', mtf.timeframes.daily);
+                updateCard('tf-4h', mtf.timeframes['4h']);
+                updateCard('tf-1h', mtf.timeframes['1h']);
+
+                results.style.display = 'block';
+
+            } catch (e) {
+                errorDiv.textContent = `Error: ${e.message}`;
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze Multi-TF';
+            }
+        }
+
+        // --- Trade Planner Tab ---
+        function calculatePlan() {
+            const account = parseFloat(document.getElementById('plan-account').value);
+            const riskPct = parseFloat(document.getElementById('plan-risk').value);
+            const entry = parseFloat(document.getElementById('plan-entry').value);
+            const stop = parseFloat(document.getElementById('plan-stop').value);
+
+            if (!account || !riskPct || !entry || !stop) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            if (stop >= entry) {
+                alert('Stop loss must be below entry price for long trades.');
+                return;
+            }
+
+            const riskAmount = account * (riskPct / 100);
+            const riskPerShare = entry - stop;
+            const shares = Math.floor(riskAmount / riskPerShare);
+            const totalValue = shares * entry;
+
+            // Update UI
+            document.getElementById('res-shares').textContent = `${shares} shares`;
+            document.getElementById('res-value').textContent = `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total value`;
+            document.getElementById('res-risk').textContent = `-$${riskAmount.toFixed(2)}`;
+            document.getElementById('res-reward').textContent = `+$${(riskAmount * 3).toFixed(2)}`;
+
+            document.getElementById('res-2r').textContent = `$${(entry + (riskPerShare * 2)).toFixed(2)}`;
+            document.getElementById('res-3r').textContent = `$${(entry + (riskPerShare * 3)).toFixed(2)}`;
+            document.getElementById('res-4r').textContent = `$${(entry + (riskPerShare * 4)).toFixed(2)}`;
+
+            document.getElementById('plan-placeholder').style.display = 'none';
+            document.getElementById('plan-results').style.display = 'block';
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadTrades();
         });
     </script>
 </body>
+
 </html>
