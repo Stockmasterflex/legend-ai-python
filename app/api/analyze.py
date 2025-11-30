@@ -130,7 +130,9 @@ async def analyze(
                 interval,
                 (time.perf_counter() - started) * 1000,
             )
-            return JSONResponse(status_code=400, content={"insufficient": "data"})
+            # Return 422 (Unprocessable Entity) for insufficient data
+            # The request is valid, but we can't process it with the available data
+            return JSONResponse(status_code=422, content={"insufficient": "data"})
 
         spy_data = await spy_task if spy_task else None
         weekly_data = ohlcv if interval == "1week" else (await weekly_task if weekly_task else None)
@@ -151,7 +153,9 @@ async def analyze(
             )
             _observe_duration()
             _update_request_state(request, ticker_clean, interval, "insufficient", cache_hit=False)
-            return JSONResponse(status_code=400, content={"insufficient": "data"})
+            # Return 422 (Unprocessable Entity) for insufficient bars (<50)
+            # The request is valid, but we can't process it with less than 50 bars
+            return JSONResponse(status_code=422, content={"insufficient": "data"})
 
         ema21_raw = ema(closes, 21)
         ema21 = sanitize_series(ema21_raw)

@@ -171,9 +171,14 @@ jobs:
           pip install pytest pytest-asyncio pytest-cov
 
       - name: Verify telemetry env
+        env:
+          REDIS_URL: redis://localhost:6379
         run: |
           if [ -f ops/bin/check_env.py ]; then
-            python ops/bin/check_env.py
+            echo "🔍 Running environment check in CI test mode..."
+            python ops/bin/check_env.py --ci-mode
+          else
+            echo "⚠️  No check_env.py found, skipping environment verification"
           fi
 
       - name: Run full test suite with coverage
@@ -207,13 +212,23 @@ jobs:
           import os
           from pathlib import Path
 
+          # Always ensure artifacts directory exists
+          Path("artifacts").mkdir(parents=True, exist_ok=True)
+
+          # Generate summary from environment variables
           summary = {
               "start_epoch": int(os.environ.get("START_TIME", 0)),
               "end_epoch": int(os.environ.get("END_TIME", 0)),
               "duration_seconds": int(os.environ.get("TEST_DURATION", 0)),
               "status": int(os.environ.get("TEST_STATUS", 1)),
           }
-          Path("artifacts/test-summary.json").write_text(json.dumps(summary, indent=2))
+
+          try:
+              Path("artifacts/test-summary.json").write_text(json.dumps(summary, indent=2))
+              print(f"✅ Test summary generated: {summary}")
+          except Exception as e:
+              print(f"⚠️  Could not write test summary: {e}")
+              # Don't fail the step - summary is optional
           PY
 
       - name: Generate Prometheus metrics
@@ -221,12 +236,16 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          # Always ensure artifacts directory exists
+          Path("artifacts").mkdir(parents=True, exist_ok=True)
           try:
               from prometheus_client import generate_latest
               import app.telemetry.metrics
               Path("artifacts/metrics.prom").write_bytes(generate_latest())
+              print("✅ Prometheus metrics generated")
           except Exception as e:
-              print(f"Could not generate metrics: {e}")
+              print(f"⚠️  Could not generate metrics: {e}")
+              # Don't fail the step - metrics are optional in CI
           PY
 
       - name: Print SLO summary
