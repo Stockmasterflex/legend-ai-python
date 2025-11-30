@@ -22,7 +22,7 @@ class TestAPIUsageLimits:
         assert isinstance(result, bool)
 
     @pytest.mark.asyncio
-    async def test_cache_reduces_api_calls(self):
+    async def test_cache_reduces_api_calls(self, monkeypatch):
         """Verify caching reduces API calls for repeated requests"""
         from app.services.market_data import market_data_service
 
@@ -36,14 +36,22 @@ class TestAPIUsageLimits:
             store[key] = value
             return True
 
-        market_data_service.cache.get = AsyncMock(side_effect=mock_get)
-        market_data_service.cache.set = AsyncMock(side_effect=mock_set)
+        monkeypatch.setattr(market_data_service.cache, "get", AsyncMock(side_effect=mock_get))
+        monkeypatch.setattr(market_data_service.cache, "set", AsyncMock(side_effect=mock_set))
 
         # Mock external API calls to avoid "Event loop is closed" or network errors
-        market_data_service._get_from_yahoo = AsyncMock(return_value={
-            "c": [100.0, 101.0], "o": [99.0, 100.0], "h": [102.0, 102.0],
-            "l": [98.0, 99.0], "v": [1000, 2000], "t": ["2024-01-01", "2024-01-02"]
-        })
+        monkeypatch.setattr(
+            market_data_service,
+            "_get_from_yahoo",
+            AsyncMock(return_value={
+                "c": [100.0, 101.0],
+                "o": [99.0, 100.0],
+                "h": [102.0, 102.0],
+                "l": [98.0, 99.0],
+                "v": [1000, 2000],
+                "t": ["2024-01-01", "2024-01-02"],
+            }),
+        )
 
         ticker = "AAPL"
         interval = "1day"
@@ -182,12 +190,16 @@ class TestCachingEffectiveness:
     """Test that caching is reducing API costs effectively"""
 
     @pytest.mark.asyncio
-    async def test_cache_hit_rate(self):
+    async def test_cache_hit_rate(self, monkeypatch):
         """Verify cache hit rate is reasonable (>50% for repeated queries)"""
         from app.services.market_data import market_data_service
 
         # Mock cache service in market data
-        market_data_service.cache.get = AsyncMock(return_value={"c": [100.0], "cached": True})
+        monkeypatch.setattr(
+            market_data_service.cache,
+            "get",
+            AsyncMock(return_value={"c": [100.0], "cached": True}),
+        )
 
         ticker = "AAPL"
 

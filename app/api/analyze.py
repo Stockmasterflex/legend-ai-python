@@ -130,7 +130,11 @@ async def analyze(
                 interval,
                 (time.perf_counter() - started) * 1000,
             )
-            return JSONResponse(status_code=400, content={"insufficient": "data"})
+            # Use 422 to signal the request was well-formed but could not be
+            # processed due to missing upstream data. This keeps the endpoint
+            # contract consistent for clients and avoids false 400s when
+            # external data providers are unavailable during tests.
+            return JSONResponse(status_code=422, content={"insufficient": "data"})
 
         spy_data = await spy_task if spy_task else None
         weekly_data = ohlcv if interval == "1week" else (await weekly_task if weekly_task else None)
