@@ -11,5 +11,22 @@
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
-  }
+  },
+  "cron": [
+    {
+      "name": "scan-vcp",
+      "schedule": "0 23 * * 1-5",
+      "command": "python -m app.jobs.scan_vcp"
+    },
+    {
+      "name": "scan-cup-handle",
+      "schedule": "15 23 * * 1-5",
+      "command": "python -m app.jobs.scan_cup_handle"
+    },
+    {
+      "name": "scan-flat-base",
+      "schedule": "30 23 * * 1-5",
+      "command": "python -m app.jobs.scan_flat_base"
+    }
+  ]
 }
