@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timezone, date
 from typing import List, Dict, Any, Optional
 import httpx
+from sqlalchemy import text
 
 from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
@@ -303,46 +304,68 @@ class DailyPatternScanner:
 
         # 2. Store in PostgreSQL (permanent history)
         try:
-            conn = self.db.get_connection()
-            cursor = conn.cursor()
-
-            for result in results:
-                cursor.execute("""
-                    INSERT INTO pattern_results
-                    (date, pattern_type, ticker, score, entry_price, stop_price, target_price,
-                     chart_url, reasons, indicators)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (date, pattern_type, ticker)
-                    DO UPDATE SET
-                        score = EXCLUDED.score,
-                        entry_price = EXCLUDED.entry_price,
-                        stop_price = EXCLUDED.stop_price,
-                        target_price = EXCLUDED.target_price,
-                        chart_url = EXCLUDED.chart_url,
-                        reasons = EXCLUDED.reasons,
-                        indicators = EXCLUDED.indicators,
-                        created_at = NOW()
-                """, (
-                    scan_date,
-                    pattern_type,
-                    result['ticker'],
-                    result['score'],
-                    result.get('entry'),
-                    result.get('stop'),
-                    result.get('target'),
-                    result.get('chart_url'),
-                    result.get('reasons'),
-                    result.get('indicators'),
-                ))
-
-            conn.commit()
-            cursor.close()
+            self._persist_results_to_db(pattern_type, scan_date, results)
             logger.info(f"💾 Stored {len(results)} {pattern_type} results in PostgreSQL")
-
         except Exception as e:
             logger.error(f"❌ Database storage failed: {e}")
-            if conn:
-                conn.rollback()
+
+    def _persist_results_to_db(
+        self,
+        pattern_type: str,
+        scan_date: date,
+        results: List[Dict[str, Any]]
+    ) -> None:
+        """Persist scan results using SQLAlchemy sessions."""
+
+        if not results:
+            return
+
+        insert_stmt = text(
+            """
+            INSERT INTO pattern_results (
+                date, pattern_type, ticker, score, entry_price, stop_price, target_price,
+                chart_url, reasons, indicators
+            ) VALUES (
+                :date, :pattern_type, :ticker, :score, :entry_price, :stop_price, :target_price,
+                :chart_url, :reasons, :indicators
+            )
+            ON CONFLICT (date, pattern_type, ticker)
+            DO UPDATE SET
+                score = EXCLUDED.score,
+                entry_price = EXCLUDED.entry_price,
+                stop_price = EXCLUDED.stop_price,
+                target_price = EXCLUDED.target_price,
+                chart_url = EXCLUDED.chart_url,
+                reasons = EXCLUDED.reasons,
+                indicators = EXCLUDED.indicators,
+                created_at = NOW()
+            """
+        )
+
+        session = self.db.get_db()
+        try:
+            for result in results:
+                session.execute(
+                    insert_stmt,
+                    {
+                        "date": scan_date,
+                        "pattern_type": pattern_type,
+                        "ticker": result["ticker"],
+                        "score": result["score"],
+                        "entry_price": result.get("entry"),
+                        "stop_price": result.get("stop"),
+                        "target_price": result.get("target"),
+                        "chart_url": result.get("chart_url"),
+                        "reasons": result.get("reasons"),
+                        "indicators": result.get("indicators"),
+                    },
+                )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     async def get_cached_results(
         self,

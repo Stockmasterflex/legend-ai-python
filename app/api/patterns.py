@@ -4,6 +4,7 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 from datetime import datetime
 import logging
+from sqlalchemy import text
 
 from app.core.detector_base import PatternType
 from app.core.pattern_detector import PatternDetector, PatternResult
@@ -772,12 +773,10 @@ async def get_pattern_history(pattern_type: str, days: int = 7):
 
     try:
         db = get_database_service()
-        conn = db.get_connection()
-        cursor = conn.cursor()
-
         start_date = date.today() - timedelta(days=days)
 
-        cursor.execute("""
+        query = text(
+            """
             SELECT
                 date,
                 ticker,
@@ -790,13 +789,20 @@ async def get_pattern_history(pattern_type: str, days: int = 7):
                 indicators,
                 created_at
             FROM pattern_results
-            WHERE pattern_type = %s
-                AND date >= %s
+            WHERE pattern_type = :pattern_type
+                AND date >= :start_date
             ORDER BY date DESC, score DESC
-        """, (pattern_name, start_date))
+            """
+        )
 
-        rows = cursor.fetchall()
-        cursor.close()
+        session = db.get_db()
+        try:
+            rows = session.execute(
+                query,
+                {"pattern_type": pattern_name, "start_date": start_date},
+            ).all()
+        finally:
+            session.close()
 
         # Group results by date
         results_by_date = {}
@@ -864,28 +870,30 @@ async def scanner_health():
         db_status = "unknown"
         last_scans = {}
         try:
-            conn = db.get_connection()
-            cursor = conn.cursor()
+            session = db.get_db()
+            try:
+                # Get last scan time for each pattern
+                health_query = text(
+                    """
+                    SELECT
+                        pattern_type,
+                        MAX(date) as last_scan_date,
+                        COUNT(*) as total_results
+                    FROM pattern_results
+                    WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+                    GROUP BY pattern_type
+                    """
+                )
 
-            # Get last scan time for each pattern
-            cursor.execute("""
-                SELECT
-                    pattern_type,
-                    MAX(date) as last_scan_date,
-                    COUNT(*) as total_results
-                FROM pattern_results
-                WHERE date >= CURRENT_DATE - INTERVAL '7 days'
-                GROUP BY pattern_type
-            """)
+                for row in session.execute(health_query).all():
+                    last_scans[row[0]] = {
+                        "last_scan_date": str(row[1]),
+                        "total_results_7d": row[2],
+                    }
 
-            for row in cursor.fetchall():
-                last_scans[row[0]] = {
-                    "last_scan_date": str(row[1]),
-                    "total_results_7d": row[2]
-                }
-
-            cursor.close()
-            db_status = "connected"
+                db_status = "connected"
+            finally:
+                session.close()
         except Exception as e:
             db_status = f"error: {str(e)}"
 

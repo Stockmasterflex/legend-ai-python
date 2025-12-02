@@ -4,7 +4,7 @@ import httpx
 import asyncio
 
 async def test_chartimg():
-    api_key = "tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU"
+    api_key = "YOUR_CHART_IMG_API_KEY"
     # Use /storage endpoint to get a URL instead of raw PNG
     url = "https://api.chart-img.com/v2/tradingview/advanced-chart/storage"
 

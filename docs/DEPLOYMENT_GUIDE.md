@@ -31,31 +31,31 @@ Attempt #13 failed with service unavailable
 **Required:**
 ```bash
 # Core
-SECRET_KEY=af10148245a5421e4df19595b6d530434ed6b4c1266636371814bad48a0b775d
+SECRET_KEY=your_secret_key
 DEBUG=false
 
 # AI (OpenRouter - CHEAPER than OpenAI!)
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=your_openrouter_api_key
 AI_MODEL=anthropic/claude-3.5-sonnet
 
 # Market Data
-TWELVEDATA_API_KEY=14b61f5898d1412681a8dfc878f857b4
-FINNHUB_API_KEY=cv9n4f1r01qpd9s87710cv9n4f1r01qpd9s877lg
-ALPHA_VANTAGE_API_KEY=3WOG24BQLRKC7KOO
+TWELVEDATA_API_KEY=your_twelvedata_api_key
+FINNHUB_API_KEY=your_finnhub_api_key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key
 
 # Charts
-CHART_IMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+CHART_IMG_API_KEY=your_chart_img_api_key
 
 # Telegram
-TELEGRAM_BOT_TOKEN=8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4
-TELEGRAM_CHAT_ID=7815143490
+TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+TELEGRAM_CHAT_ID=your_telegram_chat_id
 TELEGRAM_WEBHOOK_URL=https://legend-ai-python-production.up.railway.app
 
 # Database (Railway provides this automatically)
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 
 # Redis (use your Upstash URL)
-REDIS_URL=redis://default:AXsPAAIncDI4MDVmZThlODU1YzU0YjJiYTBmNmU2MjdiNmIwZDA1YXAyMzE1MDM@pleasing-tahr-31503.upstash.io:6379
+REDIS_URL=redis://default:your_redis_password@your-upstash-host:6379
 
 # Google Sheets (optional)
 GOOGLE_SHEETS_ID=1g6vBpp3-d9C-fMYFz4P7BU_Vq5FNDd-VBzxDjw2kDLk

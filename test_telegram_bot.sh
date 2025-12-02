@@ -3,7 +3,7 @@
 # Test Telegram Bot Commands
 # This script tests all bot commands by simulating webhook calls
 
-BOT_TOKEN="8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4"
+BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
 WEBHOOK_URL="https://legend-ai-python-production.up.railway.app/api/webhook/telegram"
 
 # Test chat ID (replace with your actual Telegram chat ID)
