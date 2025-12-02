@@ -5,7 +5,7 @@ This guide will help you configure the Chart-IMG API key for your Legend AI trad
 ## Prerequisites
 
 - Chart-IMG Pro account (you have this already!)
-- Your API key: `tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU`
+- Your API key: `YOUR_CHART_IMG_API_KEY`
 - Railway deployment access
 
 ## Why Chart-IMG is Critical
@@ -29,7 +29,7 @@ Chart-IMG powers ALL chart previews across your dashboard:
 5. **Click "New Variable"**
 6. **Add the following:**
    - **Variable name:** `CHARTIMG_API_KEY`
-   - **Value:** `tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU`
+  - **Value:** `YOUR_CHART_IMG_API_KEY`
 7. **Click "Add"**
 8. **Railway will automatically redeploy** your application
 
@@ -46,7 +46,7 @@ railway login
 railway link
 
 # Set the environment variable
-railway variables set CHARTIMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+railway variables set CHARTIMG_API_KEY=YOUR_CHART_IMG_API_KEY
 
 # Your app will automatically redeploy
 ```
@@ -56,7 +56,7 @@ railway variables set CHARTIMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
 For local testing, create/update `.env` in the project root:
 
 ```bash
-CHARTIMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+CHARTIMG_API_KEY=YOUR_CHART_IMG_API_KEY
 ```
 
 **Note:** Never commit the `.env` file to git! It's already in `.gitignore`.

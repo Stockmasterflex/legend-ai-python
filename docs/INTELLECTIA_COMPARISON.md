@@ -637,7 +637,7 @@ CHART_PRESETS = {
 
 ### Immediate Actions:
 1. **Configure Chart-IMG API key** in Railway (5 min)
-   - Key: `tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU`
+   - Key: `YOUR_CHART_IMG_API_KEY`
    - Verify charts load on all tabs
 
 2. **Choose Phase 1 priorities** (this week):
