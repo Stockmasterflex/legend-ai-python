@@ -3,8 +3,10 @@ Enhanced Market Data Service with Multi-Source Fallback
 Intelligently manages API limits across TwelveData, Finnhub, and Alpha Vantage
 """
 import httpx
+import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
+from pathlib import Path
 import asyncio
 import logging
 from enum import Enum
@@ -40,6 +42,8 @@ class MarketDataService:
         self.settings = get_settings()
         self.cache = get_cache_service()
         self.client = httpx.AsyncClient(timeout=30.0)
+        self.offline_data_path = Path(__file__).resolve().parents[2] / "data" / "yahoo_offline.json"
+        self._offline_data_cache: Dict[str, Dict[str, List[Any]]] = {}
 
         # API usage tracking (persisted in Redis)
         self.usage_key_prefix = "api_usage"
@@ -145,7 +149,7 @@ class MarketDataService:
         # 1. Try cache first
         cache_key = f"timeseries:{ticker}:{interval}"
         cached_data = await self.cache.get(cache_key)
-        if cached_data:
+        if cached_data and self._is_valid_series(cached_data):
             logger.info(f"⚡ Cache hit for {ticker}")
             cached_data["cached"] = True
             cached_data["source"] = DataSource.CACHE
@@ -157,8 +161,8 @@ class MarketDataService:
         # Smart source selection based on data type
         if prefer_free or is_historical:
             # For historical data, try Yahoo first (free, unlimited)
-            data = await self._get_from_yahoo(ticker, interval)
-            if data:
+            data = await self._get_from_yahoo(ticker, interval, outputsize)
+            if self._is_valid_series(data):
                 # Cache historical data for much longer
                 cache_ttl = 604800 if is_historical else 3600  # 7 days vs 1 hour
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -170,7 +174,7 @@ class MarketDataService:
         # 2. Try TwelveData (primary) only if API key configured
         if self.settings.twelvedata_api_key and await self._check_rate_limit(DataSource.TWELVE_DATA):
             data = await self._get_from_twelvedata(ticker, interval, outputsize)
-            if data:
+            if self._is_valid_series(data):
                 await self._increment_usage(DataSource.TWELVE_DATA)
                 cache_ttl = 604800 if is_historical else 900  # Smart TTL
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -181,7 +185,7 @@ class MarketDataService:
         # 3. Try Finnhub (fallback 1)
         if self.settings.finnhub_api_key and await self._check_rate_limit(DataSource.FINNHUB):
             data = await self._get_from_finnhub(ticker, interval, outputsize)
-            if data:
+            if self._is_valid_series(data):
                 await self._increment_usage(DataSource.FINNHUB)
                 cache_ttl = 604800 if is_historical else 900
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -192,7 +196,7 @@ class MarketDataService:
         # 4. Try Alpha Vantage (fallback 2)
         if self.settings.alpha_vantage_api_key and await self._check_rate_limit(DataSource.ALPHA_VANTAGE):
             data = await self._get_from_alpha_vantage(ticker, interval, outputsize)
-            if data:
+            if self._is_valid_series(data):
                 await self._increment_usage(DataSource.ALPHA_VANTAGE)
                 cache_ttl = 604800 if is_historical else 900
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -202,8 +206,8 @@ class MarketDataService:
 
         # 5. Try Yahoo Finance (last resort) if not already tried
         if not (prefer_free or is_historical):
-            data = await self._get_from_yahoo(ticker, interval)
-            if data:
+            data = await self._get_from_yahoo(ticker, interval, outputsize)
+            if self._is_valid_series(data):
                 cache_ttl = 604800 if is_historical else 3600
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
                 data["cached"] = False
@@ -414,7 +418,8 @@ class MarketDataService:
     async def _get_from_yahoo(
         self,
         ticker: str,
-        interval: str
+        interval: str,
+        outputsize: int = 500
     ) -> Optional[Dict[str, Any]]:
         """Get data from Yahoo Finance (last resort)"""
         try:
@@ -447,45 +452,131 @@ class MarketDataService:
             }
             response = await self.client.get(url, params=params, headers=headers)
 
-            if response.status_code != 200:
-                return None
+            if response.status_code == 200:
+                data = response.json()
+                result_data = data.get("chart", {}).get("result", [{}])[0]
 
-            data = response.json()
-            result_data = data.get("chart", {}).get("result", [{}])[0]
+                if not result_data.get("error"):
+                    quote = result_data.get("indicators", {}).get("quote", [{}])[0]
+                    timestamps = result_data.get("timestamp", [])
 
-            if result_data.get("error"):
-                return None
+                    if quote and timestamps:
+                        closes = [x for x in quote.get("close", []) if x is not None]
+                        opens = [x for x in quote.get("open", []) if x is not None]
+                        highs = [x for x in quote.get("high", []) if x is not None]
+                        lows = [x for x in quote.get("low", []) if x is not None]
+                        volumes = [x for x in quote.get("volume", []) if x is not None]
 
-            quote = result_data.get("indicators", {}).get("quote", [{}])[0]
-            timestamps = result_data.get("timestamp", [])
+                        min_length = min(len(closes), len(opens), len(highs), len(lows), len(volumes))
 
-            if not quote or not timestamps:
-                return None
+                        if min_length >= 50:
+                            slice_start = max(0, min_length - outputsize)
+                            return {
+                                "c": closes[slice_start:min_length],
+                                "o": opens[slice_start:min_length],
+                                "h": highs[slice_start:min_length],
+                                "l": lows[slice_start:min_length],
+                                "v": volumes[slice_start:min_length],
+                                "t": [datetime.fromtimestamp(ts).isoformat() for ts in timestamps[slice_start:min_length]]
+                            }
 
-            # Filter nulls and build result
-            closes = [x for x in quote.get("close", []) if x is not None]
-            opens = [x for x in quote.get("open", []) if x is not None]
-            highs = [x for x in quote.get("high", []) if x is not None]
-            lows = [x for x in quote.get("low", []) if x is not None]
-            volumes = [x for x in quote.get("volume", []) if x is not None]
-
-            min_length = min(len(closes), len(opens), len(highs), len(lows), len(volumes))
-
-            if min_length < 50:
-                return None
-
-            return {
-                "c": closes[:min_length],
-                "o": opens[:min_length],
-                "h": highs[:min_length],
-                "l": lows[:min_length],
-                "v": volumes[:min_length],
-                "t": [datetime.fromtimestamp(ts).isoformat() for ts in timestamps[:min_length]]
-            }
-
+            logger.warning("Yahoo Finance request failed, using offline cache if available")
         except Exception as e:
             logger.error(f"Yahoo Finance error: {e}")
+
+        return self._get_offline_yahoo(ticker, interval, outputsize)
+
+    def _get_offline_yahoo(self, ticker: str, interval: str, outputsize: int) -> Optional[Dict[str, Any]]:
+        """Load bundled Yahoo OHLCV data when network access is blocked."""
+        try:
+            needs_reload = not self._offline_data_cache or ticker.upper() not in self._offline_data_cache
+            if needs_reload:
+                if self.offline_data_path.exists():
+                    with self.offline_data_path.open() as f:
+                        self._offline_data_cache = json.load(f)
+                else:
+                    logger.warning("Offline Yahoo cache not found")
+                    return None
+
+            daily = self._offline_data_cache.get(ticker.upper())
+            if not daily:
+                return None
+
+            def _daily_slice(data: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+                min_len = min(len(data.get("c", [])), len(data.get("o", [])), len(data.get("h", [])), len(data.get("l", [])), len(data.get("v", [])))
+                if min_len < 50:
+                    return {}
+                start = max(0, min_len - outputsize)
+                return {
+                    "c": data["c"][start:min_len],
+                    "o": data["o"][start:min_len],
+                    "h": data["h"][start:min_len],
+                    "l": data["l"][start:min_len],
+                    "v": data["v"][start:min_len],
+                    "t": data.get("t", [])[start:min_len],
+                }
+
+            def _weekly_resample(data: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+                rows = list(zip(
+                    data.get("o", []),
+                    data.get("h", []),
+                    data.get("l", []),
+                    data.get("c", []),
+                    data.get("v", []),
+                    data.get("t", []),
+                ))
+                weekly_rows = []
+                for i in range(0, len(rows), 5):
+                    chunk = rows[i:i + 5]
+                    if not chunk:
+                        continue
+                    opens = [r[0] for r in chunk]
+                    highs = [r[1] for r in chunk]
+                    lows = [r[2] for r in chunk]
+                    closes = [r[3] for r in chunk]
+                    vols = [r[4] for r in chunk]
+                    times = [r[5] for r in chunk]
+                    weekly_rows.append({
+                        "o": opens[0],
+                        "h": max(highs),
+                        "l": min(lows),
+                        "c": closes[-1],
+                        "v": sum(vols),
+                        "t": times[-1] if times else None,
+                    })
+
+                start = max(0, len(weekly_rows) - outputsize)
+                sliced = weekly_rows[start:]
+                if len(sliced) < 50:
+                    return {}
+                return {
+                    "o": [r["o"] for r in sliced],
+                    "h": [r["h"] for r in sliced],
+                    "l": [r["l"] for r in sliced],
+                    "c": [r["c"] for r in sliced],
+                    "v": [r["v"] for r in sliced],
+                    "t": [r["t"] for r in sliced],
+                }
+
+            data = _weekly_resample(daily) if interval == "1week" else _daily_slice(daily)
+            if not data:
+                return None
+
+            logger.info(f"📄 Using bundled Yahoo fallback for {ticker}")
+            return data
+        except Exception as e:
+            logger.error(f"Failed to load offline Yahoo data: {e}")
             return None
+
+    @staticmethod
+    def _is_valid_series(data: Optional[Dict[str, Any]]) -> bool:
+        """Basic validation for OHLCV payloads before caching or returning."""
+        if not data:
+            return False
+        required = {"c", "o", "h", "l", "v"}
+        if not required.issubset(set(data.keys())):
+            return False
+        return len(data.get("c", [])) >= 50
 
     async def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Get current quote from best available source"""
