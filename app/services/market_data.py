@@ -462,25 +462,37 @@ class MarketDataService:
             if not quote or not timestamps:
                 return None
 
-            # Filter nulls and build result
-            closes = [x for x in quote.get("close", []) if x is not None]
-            opens = [x for x in quote.get("open", []) if x is not None]
-            highs = [x for x in quote.get("high", []) if x is not None]
-            lows = [x for x in quote.get("low", []) if x is not None]
-            volumes = [x for x in quote.get("volume", []) if x is not None]
+            # Extract raw OHLCV data
+            raw_closes = quote.get("close", [])
+            raw_opens = quote.get("open", [])
+            raw_highs = quote.get("high", [])
+            raw_lows = quote.get("low", [])
+            raw_volumes = quote.get("volume", [])
 
-            min_length = min(len(closes), len(opens), len(highs), len(lows), len(volumes))
+            # Ensure all arrays have same length
+            length = min(len(raw_closes), len(raw_opens), len(raw_highs), len(raw_lows), len(raw_volumes), len(timestamps))
 
-            if min_length < 50:
+            # Filter out indices where ANY value is None (keep data aligned)
+            valid_indices = [
+                i for i in range(length)
+                if raw_closes[i] is not None
+                and raw_opens[i] is not None
+                and raw_highs[i] is not None
+                and raw_lows[i] is not None
+                and raw_volumes[i] is not None
+            ]
+
+            if len(valid_indices) < 50:
                 return None
 
+            # Build result with aligned data
             return {
-                "c": closes[:min_length],
-                "o": opens[:min_length],
-                "h": highs[:min_length],
-                "l": lows[:min_length],
-                "v": volumes[:min_length],
-                "t": [datetime.fromtimestamp(ts).isoformat() for ts in timestamps[:min_length]]
+                "c": [raw_closes[i] for i in valid_indices],
+                "o": [raw_opens[i] for i in valid_indices],
+                "h": [raw_highs[i] for i in valid_indices],
+                "l": [raw_lows[i] for i in valid_indices],
+                "v": [raw_volumes[i] for i in valid_indices],
+                "t": [datetime.fromtimestamp(timestamps[i]).isoformat() for i in valid_indices]
             }
 
         except Exception as e:
@@ -650,9 +662,9 @@ class MarketDataService:
             "timestamp": data["t"]
         })
 
-        # Convert timestamp to datetime if it's a string
-        if len(df) > 0 and isinstance(df["timestamp"].iloc[0], str):
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
+        # Convert timestamp to datetime (handles both ISO strings and Unix timestamps)
+        if len(df) > 0:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
 
         # Set timestamp as index
         if "timestamp" in df.columns:

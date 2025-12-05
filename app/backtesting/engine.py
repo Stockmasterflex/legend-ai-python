@@ -168,7 +168,7 @@ class BacktestEngine:
 
         for ticker, data in self.historical_data.items():
             if "timestamp" in data.columns:
-                dates = pd.to_datetime(data["timestamp"])
+                dates = pd.to_datetime(data["timestamp"], errors="coerce")
             elif data.index.name == "timestamp" or isinstance(data.index, pd.DatetimeIndex):
                 dates = data.index
             else:
