@@ -343,8 +343,12 @@ async def detect_pattern(request: PatternRequest):
         )
 
         if not price_data:
+            # When upstream data providers are unavailable, surface a 422 so
+            # clients know the request was valid but could not be completed
+            # with the current data availability. This avoids leaking a 404
+            # for temporary provider issues in test environments.
             raise HTTPException(
-                status_code=404,
+                status_code=422,
                 detail=f"No price data available for {ticker}"
             )
 
