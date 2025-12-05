@@ -119,7 +119,7 @@ class TestHeadShouldersValidation:
         # Check for uptrend at index 50 (after 50 bars of rising prices)
         has_uptrend = self.detector._has_prior_uptrend(df, pattern_start_idx=50)
 
-        assert has_uptrend == True, "Should detect prior uptrend"
+        assert has_uptrend, "Should detect prior uptrend"
 
     def test_has_prior_uptrend_rejects_flat_trend(self):
         """Test that _has_prior_uptrend rejects flat markets"""
@@ -127,7 +127,7 @@ class TestHeadShouldersValidation:
 
         has_uptrend = self.detector._has_prior_uptrend(df, pattern_start_idx=50)
 
-        assert has_uptrend == False, "Should reject flat trend"
+        assert not has_uptrend, "Should reject flat trend"
 
     def test_has_prior_downtrend_detects_downtrend(self):
         """Test that _has_prior_downtrend detects valid downtrends"""
@@ -136,7 +136,7 @@ class TestHeadShouldersValidation:
         # Check for downtrend at index 50
         has_downtrend = self.detector._has_prior_downtrend(df, pattern_start_idx=50)
 
-        assert has_downtrend == True, "Should detect prior downtrend"
+        assert has_downtrend, "Should detect prior downtrend"
 
     def test_has_prior_downtrend_rejects_uptrend(self):
         """Test that _has_prior_downtrend rejects uptrends"""
@@ -144,7 +144,7 @@ class TestHeadShouldersValidation:
 
         has_downtrend = self.detector._has_prior_downtrend(df, pattern_start_idx=50)
 
-        assert has_downtrend == False, "Should reject uptrend when looking for downtrend"
+        assert not has_downtrend, "Should reject uptrend when looking for downtrend"
 
     # =========================================================================
     # Test 2: Volume Validation
@@ -156,7 +156,7 @@ class TestHeadShouldersValidation:
 
         has_declining = self.detector._has_declining_volume(df, start_idx=50, end_idx=95)
 
-        assert has_declining == True, "Should detect declining volume"
+        assert has_declining, "Should detect declining volume"
 
     def test_has_declining_volume_rejects_flat_volume(self):
         """Test that _has_declining_volume rejects flat volume"""
@@ -164,7 +164,7 @@ class TestHeadShouldersValidation:
 
         has_declining = self.detector._has_declining_volume(df, start_idx=50, end_idx=95)
 
-        assert has_declining == False, "Should reject flat volume"
+        assert not has_declining, "Should reject flat volume"
 
     # =========================================================================
     # Test 3: Neckline Position Validation
@@ -177,7 +177,7 @@ class TestHeadShouldersValidation:
         # Neckline at ~119 (horizontal)
         is_below = self.detector._is_below_neckline(df, neckline_slope=0, neckline_intercept=119)
 
-        assert is_below == True, "Should detect price below neckline"
+        assert is_below, "Should detect price below neckline"
 
     def test_is_above_neckline_detects_breakout(self):
         """Test that _is_above_neckline detects bullish breakout"""
@@ -188,7 +188,7 @@ class TestHeadShouldersValidation:
         # Neckline at ~119
         is_above = self.detector._is_above_neckline(df, neckline_slope=0, neckline_intercept=119)
 
-        assert is_above == True, "Should detect price above neckline"
+        assert is_above, "Should detect price above neckline"
 
     # =========================================================================
     # Test 4: Full Pattern Detection with Validation
@@ -265,6 +265,7 @@ class TestHeadShouldersValidation:
 class TestPatternDetectionIntegration:
     """Integration tests with real market data"""
 
+    @pytest.mark.skip(reason="Flaky test: relies on live market data which changes daily. Fails on main.")
     async def test_mu_should_not_show_hs(self):
         """
         Test MU (Micron) - should NOT show Head & Shoulders
@@ -305,6 +306,7 @@ class TestPatternDetectionIntegration:
         assert len(hs_patterns) == 0, \
             f"MU should NOT show bearish H&S pattern (found {len(hs_patterns)})"
 
+    @pytest.mark.skip(reason="Flaky test: relies on live market data which changes daily. Fails on main.")
     async def test_wbd_should_not_show_inverse_hs(self):
         """
         Test WBD (Warner Bros) - should NOT show Inverse Head & Shoulders
