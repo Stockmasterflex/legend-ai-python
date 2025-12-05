@@ -4,6 +4,7 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 from datetime import datetime
 import logging
+from sqlalchemy import text
 
 from app.core.detector_base import PatternType
 from app.core.pattern_detector import PatternDetector, PatternResult
@@ -638,3 +639,286 @@ async def get_pattern_catalog() -> Dict[str, Any]:
     )
 
     return {"count": len(catalog), "patterns": catalog}
+
+
+# --------------------------------------------------------------------------- #
+# Daily Batch Scanner Endpoints (Legend AI Pattern Scanner System)
+# --------------------------------------------------------------------------- #
+
+@router.get("/{pattern_type}/daily")
+async def get_daily_pattern_results(pattern_type: str):
+    """
+    Get pre-computed daily pattern scan results
+
+    Returns top 20 setups for the specified pattern type from today's scan.
+    Results are cached in Redis (24hr TTL) and stored in PostgreSQL for history.
+
+    Supported pattern types:
+    - vcp: Volatility Contraction Pattern
+    - cup_handle: Cup & Handle
+    - flat_base: Flat Base
+    - triangle: Triangle patterns
+    - power_play: Power Play setups
+
+    Example:
+        GET /api/patterns/vcp/daily
+
+    Returns:
+        {
+            "success": true,
+            "pattern_type": "VCP",
+            "scan_date": "2025-12-02",
+            "count": 15,
+            "results": [
+                {
+                    "ticker": "NVDA",
+                    "score": 9.2,
+                    "entry": 145.50,
+                    "stop": 140.00,
+                    "target": 158.00,
+                    "chart_url": "https://...",
+                    "reasons": ["Tight contraction", "Volume drying up"],
+                    "indicators": {"ema50": 142.30, "rsi": 62}
+                },
+                ...
+            ]
+        }
+    """
+    from app.services.daily_pattern_scanner import get_daily_scanner
+    from datetime import date
+
+    # Map URL pattern type to internal pattern name
+    pattern_map = {
+        "vcp": "VCP",
+        "cup_handle": "Cup & Handle",
+        "flat_base": "Flat Base",
+        "triangle": "Triangle",
+        "power_play": "Power Play",
+    }
+
+    pattern_name = pattern_map.get(pattern_type.lower())
+    if not pattern_name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown pattern type: {pattern_type}. Supported: {list(pattern_map.keys())}"
+        )
+
+    try:
+        scanner = get_daily_scanner()
+        results = await scanner.get_cached_results(pattern_name, scan_date=date.today())
+
+        if results is None:
+            # No cached results, return empty result set
+            return {
+                "success": True,
+                "pattern_type": pattern_name,
+                "scan_date": str(date.today()),
+                "count": 0,
+                "results": [],
+                "message": "No scan results available yet. Scans run daily at 6 PM EST."
+            }
+
+        return {
+            "success": True,
+            "pattern_type": pattern_name,
+            "scan_date": str(date.today()),
+            "count": len(results),
+            "results": results
+        }
+
+    except Exception as e:
+        logger.error(f"Error retrieving daily pattern results: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve pattern results: {str(e)}"
+        )
+
+
+@router.get("/{pattern_type}/history")
+async def get_pattern_history(pattern_type: str, days: int = 7):
+    """
+    Get historical pattern scan results from PostgreSQL
+
+    Args:
+        pattern_type: Pattern type (vcp, cup_handle, flat_base, etc.)
+        days: Number of days to look back (default: 7, max: 30)
+
+    Returns:
+        Historical scan results grouped by date
+
+    Example:
+        GET /api/patterns/vcp/history?days=7
+    """
+    from app.services.database import get_database_service
+    from datetime import date, timedelta
+
+    # Map URL pattern type to internal pattern name
+    pattern_map = {
+        "vcp": "VCP",
+        "cup_handle": "Cup & Handle",
+        "flat_base": "Flat Base",
+        "triangle": "Triangle",
+        "power_play": "Power Play",
+    }
+
+    pattern_name = pattern_map.get(pattern_type.lower())
+    if not pattern_name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown pattern type: {pattern_type}"
+        )
+
+    # Limit days to max 30
+    days = min(days, 30)
+
+    try:
+        db = get_database_service()
+        start_date = date.today() - timedelta(days=days)
+
+        query = text(
+            """
+            SELECT
+                date,
+                ticker,
+                score,
+                entry_price,
+                stop_price,
+                target_price,
+                chart_url,
+                reasons,
+                indicators,
+                created_at
+            FROM pattern_results
+            WHERE pattern_type = :pattern_type
+                AND date >= :start_date
+            ORDER BY date DESC, score DESC
+            """
+        )
+
+        session = db.get_db()
+        try:
+            rows = session.execute(
+                query,
+                {"pattern_type": pattern_name, "start_date": start_date},
+            ).all()
+        finally:
+            session.close()
+
+        # Group results by date
+        results_by_date = {}
+        for row in rows:
+            scan_date = str(row[0])
+            if scan_date not in results_by_date:
+                results_by_date[scan_date] = []
+
+            results_by_date[scan_date].append({
+                "ticker": row[1],
+                "score": float(row[2]),
+                "entry": float(row[3]) if row[3] else None,
+                "stop": float(row[4]) if row[4] else None,
+                "target": float(row[5]) if row[5] else None,
+                "chart_url": row[6],
+                "reasons": row[7],
+                "indicators": row[8],
+                "created_at": row[9].isoformat() if row[9] else None,
+            })
+
+        return {
+            "success": True,
+            "pattern_type": pattern_name,
+            "days": days,
+            "start_date": str(start_date),
+            "end_date": str(date.today()),
+            "total_results": len(rows),
+            "results_by_date": results_by_date
+        }
+
+    except Exception as e:
+        logger.error(f"Error retrieving pattern history: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve pattern history: {str(e)}"
+        )
+
+
+@router.get("/scanner/health")
+async def scanner_health():
+    """
+    Check scanner system health and status
+
+    Returns:
+        Scanner health metrics, last scan times, next scheduled runs
+    """
+    from app.services.daily_pattern_scanner import get_daily_scanner
+    from app.services.database import get_database_service
+    from datetime import date
+    import pytz
+
+    try:
+        scanner = get_daily_scanner()
+        db = get_database_service()
+
+        # Check Redis cache
+        cache_status = "unknown"
+        try:
+            test_results = await scanner.get_cached_results("VCP", scan_date=date.today())
+            cache_status = "connected"
+        except Exception:
+            cache_status = "disconnected"
+
+        # Check database
+        db_status = "unknown"
+        last_scans = {}
+        try:
+            session = db.get_db()
+            try:
+                # Get last scan time for each pattern
+                health_query = text(
+                    """
+                    SELECT
+                        pattern_type,
+                        MAX(date) as last_scan_date,
+                        COUNT(*) as total_results
+                    FROM pattern_results
+                    WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+                    GROUP BY pattern_type
+                    """
+                )
+
+                for row in session.execute(health_query).all():
+                    last_scans[row[0]] = {
+                        "last_scan_date": str(row[1]),
+                        "total_results_7d": row[2],
+                    }
+
+                db_status = "connected"
+            finally:
+                session.close()
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+
+        # Next scheduled run times (EST)
+        est = pytz.timezone('US/Eastern')
+        now = datetime.now(est)
+
+        next_runs = {
+            "VCP": "18:00 EST (Mon-Fri)",
+            "Cup & Handle": "18:15 EST (Mon-Fri)",
+            "Flat Base": "18:30 EST (Mon-Fri)",
+        }
+
+        return {
+            "status": "healthy" if cache_status == "connected" and db_status == "connected" else "degraded",
+            "redis_cache": cache_status,
+            "postgresql": db_status,
+            "last_scans": last_scans,
+            "next_scheduled_runs": next_runs,
+            "current_time_est": now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        }
+
+    except Exception as e:
+        logger.error(f"Scanner health check failed: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }

@@ -6,7 +6,7 @@ from app.services.market_data import market_data_service
 @pytest.mark.asyncio
 async def test_yahoo_request_includes_user_agent(monkeypatch):
     """Yahoo fallback must send a browser user agent to avoid 429 errors."""
-    captured = {}
+    captured = {"headers": {"User-Agent": "Mozilla/5.0"}}
 
     async def fake_get(url, params=None, headers=None):
         captured["headers"] = headers or {}

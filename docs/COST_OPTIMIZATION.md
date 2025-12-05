@@ -39,7 +39,7 @@ This guide shows you how to minimize costs while maximizing performance.
 #### ✅ Use OpenRouter (Current Setup)
 ```bash
 # .env
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=your_openrouter_api_key
 AI_MODEL=anthropic/claude-3.5-sonnet  # ~$3/1M tokens
 ```
 
@@ -314,15 +314,15 @@ curl "https://api.twelvedata.com/usage?apikey=$TWELVEDATA_API_KEY"
 # .env - COST OPTIMIZED CONFIGURATION
 
 # AI: Use Claude (3x cheaper than GPT-4)
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=your_openrouter_api_key
 AI_MODEL=anthropic/claude-3.5-sonnet
 AI_TEMPERATURE=0.7
 AI_RATE_LIMIT_PER_MINUTE=20  # Prevent runaway costs
 
 # Market Data: Free tiers + aggressive caching
-TWELVEDATA_API_KEY=14b61f5898d1412681a8dfc878f857b4
-FINNHUB_API_KEY=cv9n4f1r01qpd9s87710cv9n4f1r01qpd9s877lg
-ALPHA_VANTAGE_API_KEY=3WOG24BQLRKC7KOO
+TWELVEDATA_API_KEY=your_twelvedata_api_key
+FINNHUB_API_KEY=your_finnhub_api_key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key
 DATA_SOURCE_PRIORITY=twelvedata,finnhub,alphavantage
 
 # Caching: Maximize cache TTL
@@ -348,7 +348,7 @@ REDIS_URL=redis://...  # Upstash free tier
 
 ### 1. Use Chart-img.com (You're Paying for It!)
 ```bash
-CHART_IMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+CHART_IMG_API_KEY=your_chart_img_api_key
 ```
 - You have PRO version = **unlimited charts**
 - Don't waste it! Generate charts freely
@@ -371,7 +371,7 @@ CHART_IMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
 
 ### 4. Use Telegram for Free Notifications
 ```bash
-TELEGRAM_BOT_TOKEN=8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4
+TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
 ```
 - Free push notifications
 - Better than SMS or email

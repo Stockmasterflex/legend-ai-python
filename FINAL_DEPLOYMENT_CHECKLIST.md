@@ -61,7 +61,7 @@ Railway provides DATABASE_URL and REDIS_URL automatically
 
 ### Step 7: Update Telegram Webhook (1 minute)
 ```bash
-curl -X POST "https://api.telegram.org/bot8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4/setWebhook" \
+curl -X POST "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook" \
 -H "Content-Type: application/json" \
 -d '{"url": "https://YOUR_RAILWAY_URL/api/webhook/telegram"}'
 ```

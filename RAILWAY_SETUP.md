@@ -20,39 +20,39 @@ Your code is ready to deploy! Follow these exact steps:
 
 ```bash
 # Core Settings
-SECRET_KEY=af10148245a5421e4df19595b6d530434ed6b4c1266636371814bad48a0b775d
+SECRET_KEY=your_secret_key
 DEBUG=false
 APP_NAME=Legend AI
 
 # AI - OpenRouter (MUCH cheaper than OpenAI!)
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=your_openrouter_api_key
 AI_MODEL=anthropic/claude-3.5-sonnet
 
 # Market Data APIs
-TWELVEDATA_API_KEY=14b61f5898d1412681a8dfc878f857b4
-FINNHUB_API_KEY=cv9n4f1r01qpd9s87710cv9n4f1r01qpd9s877lg
-ALPHA_VANTAGE_API_KEY=3WOG24BQLRKC7KOO
+TWELVEDATA_API_KEY=your_twelvedata_api_key
+FINNHUB_API_KEY=your_finnhub_api_key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key
 
 # Chart Generation
-CHART_IMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+CHART_IMG_API_KEY=your_chart_img_api_key
 
 # Telegram Bot
-TELEGRAM_BOT_TOKEN=8072569977:AAH6ajboc0Tl9LHUp1VUj3eQHy_XF6naGB4
-TELEGRAM_CHAT_ID=7815143490
+TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+TELEGRAM_CHAT_ID=your_telegram_chat_id
 TELEGRAM_WEBHOOK_URL=https://legend-ai-python-production.up.railway.app
 
 # Database (Railway auto-provides - use this exact syntax)
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 
 # Redis (Upstash)
-REDIS_URL=redis://default:AXsPAAIncDI4MDVmZThlODU1YzU0YjJiYTBmNmU2MjdiNmIwZDA1YXAyMzE1MDM@pleasing-tahr-31503.upstash.io:6379
+REDIS_URL=redis://default:your_redis_password@your-upstash-host:6379
 
 # Google Sheets (optional)
-GOOGLE_SHEETS_ID=1g6vBpp3-d9C-fMYFz4P7BU_Vq5FNDd-VBzxDjw2kDLk
+GOOGLE_SHEETS_ID=your_google_sheet_id
 
 # N8N (optional)
-N8N_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OWMxYzY5MC05ZTE5LTQxZGUtOWExOS0yNGE5MWYzNDRmMmQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYxMDEyMTAyfQ.joMgjeQXleKK0RhcNaZx4LXZQn08JmrwMEQw4aFE0_g
-N8N_API_URL=https://kylethomas.app.n8n.cloud
+N8N_API_KEY=your_n8n_api_key
+N8N_API_URL=https://your-n8n-instance.example.com
 
 # Feature Flags
 LEGEND_FLAGS_ENABLE_SCANNER=1
@@ -315,7 +315,7 @@ key_presence chartimg=True twelvedata=True ...
 **Check 1: OpenRouter API Key**
 ```bash
 # Verify in Railway variables:
-OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_API_KEY=your_openrouter_api_key
 
 # Test your key at: https://openrouter.ai/playground
 ```
@@ -343,10 +343,10 @@ AI_MODEL=openai/gpt-3.5-turbo
 **Check 1: Bot Token**
 ```bash
 # Verify in Railway variables:
-TELEGRAM_BOT_TOKEN=8072569977:AAH...
+TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
 
 # Test bot with:
-curl https://api.telegram.org/bot8072569977:AAH.../getMe
+curl https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/getMe
 ```
 
 **Check 2: Webhook URL**
@@ -363,7 +363,7 @@ curl https://api.telegram.org/bot8072569977:AAH.../getMe
 **Check 3: Manual Webhook Setup**
 ```bash
 # Set webhook manually:
-curl -X POST "https://api.telegram.org/bot8072569977:AAH.../setWebhook" \
+curl -X POST "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://legend-ai-python-production.up.railway.app/api/webhook/telegram"}'
 ```
