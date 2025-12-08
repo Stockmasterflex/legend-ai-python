@@ -10,6 +10,7 @@ Usage mirrors other pattern modules:
 - Input: PatternData (OHLCV) plus PatternHelpers for shared utilities
 - Output: List of pattern dictionaries with start/end indices and confidence
 """
+
 from __future__ import annotations
 
 import logging
@@ -273,8 +274,7 @@ def _add_pattern(
             "end_idx": int(end_idx),
             "direction": direction,
             "confidence": round(float(confidence), 4),
-            "description": description
-            or f"Legend AI detection for {label}",
+            "description": description or f"Legend AI detection for {label}",
             "metadata": metadata or {},
         }
     )
@@ -666,7 +666,10 @@ def _detect_single_candles(
             ):
                 # Diminishing body sizes point to advance block
                 shrinking = ctx.bodies[idx] < ctx.bodies[prev] < ctx.bodies[prev2]
-                long_wicks = ctx.uppers[idx] > ctx.bodies[idx] and ctx.uppers[prev] > ctx.bodies[prev]
+                long_wicks = (
+                    ctx.uppers[idx] > ctx.bodies[idx]
+                    and ctx.uppers[prev] > ctx.bodies[prev]
+                )
                 if shrinking or long_wicks:
                     _add_pattern(
                         patterns,
@@ -707,7 +710,10 @@ def _detect_two_candle_patterns(
 
         # Engulfing
         if ctx.colors[prev] == -1 and ctx.colors[idx] == 1:
-            engulf = ctx.opens[idx] <= ctx.closes[prev] and ctx.closes[idx] >= ctx.opens[prev]
+            engulf = (
+                ctx.opens[idx] <= ctx.closes[prev]
+                and ctx.closes[idx] >= ctx.opens[prev]
+            )
             if engulf:
                 _add_pattern(
                     patterns,
@@ -718,7 +724,10 @@ def _detect_two_candle_patterns(
                     direction="bullish",
                 )
         if ctx.colors[prev] == 1 and ctx.colors[idx] == -1:
-            engulf = ctx.opens[idx] >= ctx.closes[prev] and ctx.closes[idx] <= ctx.opens[prev]
+            engulf = (
+                ctx.opens[idx] >= ctx.closes[prev]
+                and ctx.closes[idx] <= ctx.opens[prev]
+            )
             if engulf:
                 _add_pattern(
                     patterns,
@@ -730,9 +739,10 @@ def _detect_two_candle_patterns(
                 )
 
         # Harami (inside body)
-        inside = (
-            min(ctx.opens[idx], ctx.closes[idx]) >= min(ctx.opens[prev], ctx.closes[prev])
-            and max(ctx.opens[idx], ctx.closes[idx]) <= max(ctx.opens[prev], ctx.closes[prev])
+        inside = min(ctx.opens[idx], ctx.closes[idx]) >= min(
+            ctx.opens[prev], ctx.closes[prev]
+        ) and max(ctx.opens[idx], ctx.closes[idx]) <= max(
+            ctx.opens[prev], ctx.closes[prev]
         )
         if inside and ctx.colors[prev] == -1 and ctx.colors[idx] == 1:
             _add_pattern(
@@ -804,7 +814,9 @@ def _detect_two_candle_patterns(
 
         # Thrusting / On-Neck / In-Neck (continuations after downtrend)
         if ctx.colors[prev] == -1 and ctx.colors[idx] == 1 and trend_before < 0:
-            close_pos = (ctx.closes[idx] - ctx.lows[prev]) / (ctx.highs[prev] - ctx.lows[prev] + 1e-9)
+            close_pos = (ctx.closes[idx] - ctx.lows[prev]) / (
+                ctx.highs[prev] - ctx.lows[prev] + 1e-9
+            )
             if close_pos < 0.15:
                 _add_pattern(
                     patterns,
@@ -834,7 +846,9 @@ def _detect_two_candle_patterns(
                 )
 
         # Meeting lines (counter-attack)
-        close_near = abs(ctx.closes[idx] - ctx.closes[prev]) <= abs(ctx.closes[prev]) * 0.003
+        close_near = (
+            abs(ctx.closes[idx] - ctx.closes[prev]) <= abs(ctx.closes[prev]) * 0.003
+        )
         if ctx.colors[prev] == -1 and ctx.colors[idx] == 1 and close_near:
             _add_pattern(
                 patterns,
@@ -855,8 +869,15 @@ def _detect_two_candle_patterns(
             )
 
         # Separating lines
-        open_equal = abs(ctx.opens[idx] - ctx.opens[prev]) <= max(ctx.avg_range * 0.05, abs(ctx.opens[prev]) * 0.002)
-        if open_equal and ctx.colors[prev] == -1 and ctx.colors[idx] == 1 and trend_before > 0:
+        open_equal = abs(ctx.opens[idx] - ctx.opens[prev]) <= max(
+            ctx.avg_range * 0.05, abs(ctx.opens[prev]) * 0.002
+        )
+        if (
+            open_equal
+            and ctx.colors[prev] == -1
+            and ctx.colors[idx] == 1
+            and trend_before > 0
+        ):
             _add_pattern(
                 patterns,
                 "SeparatingLinesBull",
@@ -865,7 +886,12 @@ def _detect_two_candle_patterns(
                 _score(0.6, trend_before),
                 direction="bullish",
             )
-        if open_equal and ctx.colors[prev] == 1 and ctx.colors[idx] == -1 and trend_before < 0:
+        if (
+            open_equal
+            and ctx.colors[prev] == 1
+            and ctx.colors[idx] == -1
+            and trend_before < 0
+        ):
             _add_pattern(
                 patterns,
                 "SeparatingLinesBear",
@@ -933,7 +959,8 @@ def _detect_two_candle_patterns(
                 ctx.colors[prev2] == -1
                 and ctx.colors[prev] == 1
                 and ctx.colors[idx] == -1
-                and abs(ctx.closes[idx] - ctx.closes[prev2]) <= max(ctx.avg_range * 0.02, abs(ctx.closes[prev2]) * 0.004)
+                and abs(ctx.closes[idx] - ctx.closes[prev2])
+                <= max(ctx.avg_range * 0.02, abs(ctx.closes[prev2]) * 0.004)
                 and ctx.closes[prev] > ctx.closes[prev2]
             ):
                 _add_pattern(
@@ -947,7 +974,9 @@ def _detect_two_candle_patterns(
 
         # Matching lows / tweezers
         if ctx.colors[prev] == -1 and ctx.colors[idx] == -1:
-            if abs(ctx.closes[idx] - ctx.closes[prev]) <= max(ctx.avg_range * 0.01, abs(ctx.closes[prev]) * 0.002):
+            if abs(ctx.closes[idx] - ctx.closes[prev]) <= max(
+                ctx.avg_range * 0.01, abs(ctx.closes[prev]) * 0.002
+            ):
                 _add_pattern(
                     patterns,
                     "MatchingLow",
@@ -956,7 +985,9 @@ def _detect_two_candle_patterns(
                     _score(0.6, -trend_before),
                     direction="bullish",
                 )
-            if abs(ctx.lows[idx] - ctx.lows[prev]) <= max(ctx.avg_range * 0.005, abs(ctx.lows[prev]) * 0.0015):
+            if abs(ctx.lows[idx] - ctx.lows[prev]) <= max(
+                ctx.avg_range * 0.005, abs(ctx.lows[prev]) * 0.0015
+            ):
                 _add_pattern(
                     patterns,
                     "TweezersBottom",
@@ -965,7 +996,9 @@ def _detect_two_candle_patterns(
                     _score(0.6, -trend_before),
                     direction="bullish",
                 )
-        if abs(ctx.highs[idx] - ctx.highs[prev]) <= max(ctx.avg_range * 0.005, abs(ctx.highs[prev]) * 0.0015):
+        if abs(ctx.highs[idx] - ctx.highs[prev]) <= max(
+            ctx.avg_range * 0.005, abs(ctx.highs[prev]) * 0.0015
+        ):
             _add_pattern(
                 patterns,
                 "TweezersTop",
@@ -1007,8 +1040,6 @@ def _detect_three_candle_patterns(
         bodies = (ctx.bodies[c0], ctx.bodies[c1], ctx.bodies[c2])
 
         # Morning/Evening star family
-        gap_down = ctx.is_gap_down(c1) and ctx.colors[c0] == -1
-        gap_up = ctx.is_gap_up(c1) and ctx.colors[c0] == 1
         close_recovery = ctx.closes[c2] > (ctx.opens[c0] + ctx.closes[c0]) / 2
         close_breakdown = ctx.closes[c2] < (ctx.opens[c0] + ctx.closes[c0]) / 2
 
@@ -1052,15 +1083,18 @@ def _detect_three_candle_patterns(
                 )
 
         # Three inside / outside
-        inside = (
-            min(ctx.opens[c1], ctx.closes[c1]) >= min(ctx.opens[c0], ctx.closes[c0])
-            and max(ctx.opens[c1], ctx.closes[c1]) <= max(ctx.opens[c0], ctx.closes[c0])
-        )
-        engulf = (
-            min(ctx.opens[c1], ctx.closes[c1]) <= min(ctx.opens[c0], ctx.closes[c0])
-            and max(ctx.opens[c1], ctx.closes[c1]) >= max(ctx.opens[c0], ctx.closes[c0])
-        )
-        if inside and ctx.colors[c0] == -1 and ctx.colors[c2] == 1 and ctx.closes[c2] > ctx.opens[c0]:
+        inside = min(ctx.opens[c1], ctx.closes[c1]) >= min(
+            ctx.opens[c0], ctx.closes[c0]
+        ) and max(ctx.opens[c1], ctx.closes[c1]) <= max(ctx.opens[c0], ctx.closes[c0])
+        engulf = min(ctx.opens[c1], ctx.closes[c1]) <= min(
+            ctx.opens[c0], ctx.closes[c0]
+        ) and max(ctx.opens[c1], ctx.closes[c1]) >= max(ctx.opens[c0], ctx.closes[c0])
+        if (
+            inside
+            and ctx.colors[c0] == -1
+            and ctx.colors[c2] == 1
+            and ctx.closes[c2] > ctx.opens[c0]
+        ):
             _add_pattern(
                 patterns,
                 "ThreeInsideUp",
@@ -1069,7 +1103,12 @@ def _detect_three_candle_patterns(
                 _score(0.68, -trend_before),
                 direction="bullish",
             )
-        if inside and ctx.colors[c0] == 1 and ctx.colors[c2] == -1 and ctx.closes[c2] < ctx.opens[c0]:
+        if (
+            inside
+            and ctx.colors[c0] == 1
+            and ctx.colors[c2] == -1
+            and ctx.closes[c2] < ctx.opens[c0]
+        ):
             _add_pattern(
                 patterns,
                 "ThreeInsideDown",
@@ -1078,7 +1117,12 @@ def _detect_three_candle_patterns(
                 _score(0.68, trend_before),
                 direction="bearish",
             )
-        if engulf and ctx.colors[c0] == -1 and ctx.colors[c1] == 1 and ctx.colors[c2] == 1:
+        if (
+            engulf
+            and ctx.colors[c0] == -1
+            and ctx.colors[c1] == 1
+            and ctx.colors[c2] == 1
+        ):
             _add_pattern(
                 patterns,
                 "ThreeOutsideUp",
@@ -1087,7 +1131,12 @@ def _detect_three_candle_patterns(
                 _score(0.7, -trend_before),
                 direction="bullish",
             )
-        if engulf and ctx.colors[c0] == 1 and ctx.colors[c1] == -1 and ctx.colors[c2] == -1:
+        if (
+            engulf
+            and ctx.colors[c0] == 1
+            and ctx.colors[c1] == -1
+            and ctx.colors[c2] == -1
+        ):
             _add_pattern(
                 patterns,
                 "ThreeOutsideDown",
@@ -1149,9 +1198,10 @@ def _detect_three_candle_patterns(
                     _score(0.75, trend_before),
                     direction="bearish",
                 )
-                open_near = (
-                    abs(ctx.opens[c1] - ctx.closes[c0]) <= max(ctx.avg_range * 0.02, abs(ctx.closes[c0]) * 0.003)
-                    and abs(ctx.opens[c2] - ctx.closes[c1]) <= max(ctx.avg_range * 0.02, abs(ctx.closes[c1]) * 0.003)
+                open_near = abs(ctx.opens[c1] - ctx.closes[c0]) <= max(
+                    ctx.avg_range * 0.02, abs(ctx.closes[c0]) * 0.003
+                ) and abs(ctx.opens[c2] - ctx.closes[c1]) <= max(
+                    ctx.avg_range * 0.02, abs(ctx.closes[c1]) * 0.003
                 )
                 if open_near:
                     _add_pattern(
@@ -1516,7 +1566,11 @@ def _detect_multi_session_patterns(
 
         # Breakaway patterns (gap followed by drift then reversal)
         if ctx.colors[i0] == -1 and ctx.is_gap_down(i1) and ctx.colors[i4] == 1:
-            if ctx.closes[i2] < ctx.closes[i0] and ctx.closes[i3] < ctx.closes[i0] and ctx.closes[i4] > ctx.opens[i1]:
+            if (
+                ctx.closes[i2] < ctx.closes[i0]
+                and ctx.closes[i3] < ctx.closes[i0]
+                and ctx.closes[i4] > ctx.opens[i1]
+            ):
                 _add_pattern(
                     patterns,
                     "BreakawayBull",
@@ -1526,7 +1580,11 @@ def _detect_multi_session_patterns(
                     direction="bullish",
                 )
         if ctx.colors[i0] == 1 and ctx.is_gap_up(i1) and ctx.colors[i4] == -1:
-            if ctx.closes[i2] > ctx.closes[i0] and ctx.closes[i3] > ctx.closes[i0] and ctx.closes[i4] < ctx.opens[i1]:
+            if (
+                ctx.closes[i2] > ctx.closes[i0]
+                and ctx.closes[i3] > ctx.closes[i0]
+                and ctx.closes[i4] < ctx.opens[i1]
+            ):
                 _add_pattern(
                     patterns,
                     "BreakawayBear",

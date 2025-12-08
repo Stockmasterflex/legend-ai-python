@@ -1,10 +1,11 @@
 """
 Shared indicator/metric helpers used across API surfaces.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 import math
+from typing import Any, Dict, List, Optional
 
 
 def _to_float_list(values: List[Any]) -> List[float]:
@@ -46,7 +47,9 @@ def last_valid(values: List[Any]) -> Optional[float]:
     return None
 
 
-def ma_distances(price: float, ema_value: Optional[float], sma_value: Optional[float]) -> Dict[str, Optional[float]]:
+def ma_distances(
+    price: float, ema_value: Optional[float], sma_value: Optional[float]
+) -> Dict[str, Optional[float]]:
     return {
         "vs_ema21_pct": percentage_distance(price, ema_value),
         "vs_sma50_pct": percentage_distance(price, sma_value),
@@ -54,14 +57,18 @@ def ma_distances(price: float, ema_value: Optional[float], sma_value: Optional[f
     }
 
 
-def percentage_distance(price: Optional[float], reference: Optional[float]) -> Optional[float]:
+def percentage_distance(
+    price: Optional[float], reference: Optional[float]
+) -> Optional[float]:
     """Return the percent difference between price and a moving average base."""
     if price is None or reference in (None, 0):
         return None
     return round(((price - reference) / reference) * 100, 2)
 
 
-def compute_atr(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> List[float]:
+def compute_atr(
+    highs: List[float], lows: List[float], closes: List[float], period: int = 14
+) -> List[float]:
     """Average True Range using simple rolling mean."""
     if not highs or not lows or not closes:
         return []
@@ -81,12 +88,14 @@ def compute_atr(highs: List[float], lows: List[float], closes: List[float], peri
     # Simple moving average of true range
     atr: List[float] = []
     for idx in range(len(trs)):
-        window = trs[max(0, idx - period + 1): idx + 1]
+        window = trs[max(0, idx - period + 1) : idx + 1]
         atr.append(sum(window) / len(window))
     return atr
 
 
-def relative_strength_metrics(closes: List[float], spy_closes: List[float]) -> Dict[str, Any]:
+def relative_strength_metrics(
+    closes: List[float], spy_closes: List[float]
+) -> Dict[str, Any]:
     """Relative strength vs SPY, returning sanitized series and rank."""
     closes_clean = _to_float_list(closes)
     spy_clean = _to_float_list(spy_closes)

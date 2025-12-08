@@ -3,14 +3,14 @@ Cache Warming Service
 Pre-populates cache on startup with frequently accessed data
 """
 
-import logging
 import asyncio
-from typing import List, Dict, Any
+import logging
 from datetime import datetime
+from typing import Any, Dict, List
 
 from app.config import get_settings
-from app.services.multi_tier_cache import get_multi_tier_cache
 from app.services.market_data import market_data_service
+from app.services.multi_tier_cache import get_multi_tier_cache
 from app.services.universe_store import universe_store
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class CacheWarmer:
             "universe": 0,
             "indices": 0,
             "failed": 0,
-            "duration_seconds": 0
+            "duration_seconds": 0,
         }
 
         # Warm market data for popular tickers
@@ -94,14 +94,18 @@ class CacheWarmer:
 
     async def _warm_market_data(self) -> Dict[str, int]:
         """Warm cache with market data for popular tickers"""
-        logger.info(f"📊 Warming market data for {len(self.POPULAR_TICKERS)} popular tickers...")
+        logger.info(
+            f"📊 Warming market data for {len(self.POPULAR_TICKERS)} popular tickers..."
+        )
 
         stats = {"success": 0, "failed": 0}
 
         for ticker in self.POPULAR_TICKERS:
             try:
                 # Fetch and cache OHLCV data
-                data = await self.market_data.get_ohlcv(ticker, interval="1day", outputsize=100)
+                data = await self.market_data.get_ohlcv(
+                    ticker, interval="1day", outputsize=100
+                )
 
                 if data:
                     # Cache in both hot and warm tiers
@@ -109,10 +113,7 @@ class CacheWarmer:
 
                     # Hot tier (Redis) - 15 min
                     await self.cache.set(
-                        cache_key,
-                        data,
-                        data_type="price",
-                        tier=None  # Auto-determine
+                        cache_key, data, data_type="price", tier=None  # Auto-determine
                     )
 
                     stats["success"] += 1
@@ -147,10 +148,7 @@ class CacheWarmer:
                 tickers_list = list(universe_data.keys())
 
                 await self.cache.set(
-                    cache_key,
-                    tickers_list,
-                    data_type="generic",
-                    tier=None
+                    cache_key, tickers_list, data_type="generic", tier=None
                 )
 
                 stats["success"] += 1
@@ -173,23 +171,19 @@ class CacheWarmer:
 
                 # Cache sector data
                 await self.cache.set(
-                    "universe:sectors",
-                    sectors,
-                    data_type="generic",
-                    tier=None
+                    "universe:sectors", sectors, data_type="generic", tier=None
                 )
 
                 # Cache industry data
                 await self.cache.set(
-                    "universe:industries",
-                    industries,
-                    data_type="generic",
-                    tier=None
+                    "universe:industries", industries, data_type="generic", tier=None
                 )
 
                 stats["success"] += 2
 
-                logger.info(f"✅ Warmed universe metadata: {len(tickers_list)} tickers, {len(sectors)} sectors, {len(industries)} industries")
+                logger.info(
+                    f"✅ Warmed universe metadata: {len(tickers_list)} tickers, {len(sectors)} sectors, {len(industries)} industries"
+                )
 
             else:
                 logger.warning("⚠️ Universe data not available for warming")
@@ -209,18 +203,15 @@ class CacheWarmer:
 
         try:
             # Fetch SPY data for RS calculations
-            spy_data = await self.market_data.get_ohlcv("SPY", interval="1day", outputsize=252)
+            spy_data = await self.market_data.get_ohlcv(
+                "SPY", interval="1day", outputsize=252
+            )
 
             if spy_data:
                 # Cache SPY data with longer TTL (1 day)
                 cache_key = "index:spy:daily"
 
-                await self.cache.set(
-                    cache_key,
-                    spy_data,
-                    data_type="price",
-                    tier=None
-                )
+                await self.cache.set(cache_key, spy_data, data_type="price", tier=None)
 
                 stats["success"] += 1
                 logger.info("✅ Warmed SPY index data")
@@ -249,16 +240,13 @@ class CacheWarmer:
             logger.info(f"🔄 Warming cache for {ticker}...")
 
             # Fetch market data
-            data = await self.market_data.get_ohlcv(ticker, interval="1day", outputsize=100)
+            data = await self.market_data.get_ohlcv(
+                ticker, interval="1day", outputsize=100
+            )
 
             if data:
                 cache_key = f"ohlcv:{ticker}:1d:5y"
-                await self.cache.set(
-                    cache_key,
-                    data,
-                    data_type="price",
-                    tier=None
-                )
+                await self.cache.set(cache_key, data, data_type="price", tier=None)
 
                 logger.info(f"✅ Warmed cache for {ticker}")
                 return True

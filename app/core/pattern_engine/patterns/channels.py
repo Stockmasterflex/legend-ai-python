@@ -1,6 +1,7 @@
 """
 Channel pattern detection (ascending, descending, horizontal).
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -62,7 +63,9 @@ def _build_pattern(
         "width": int(end_idx - start_idx),
         "height": round(height, 2),
         "current_price": round(current_price, 2),
-        "confirmed": bool((current_price >= entry) if breakout == "up" else (current_price <= entry)),
+        "confirmed": bool(
+            (current_price >= entry) if breakout == "up" else (current_price <= entry)
+        ),
         "metadata": {
             "slope": slope,
             "breakout_direction": breakout,
@@ -112,7 +115,18 @@ def _detect_channel(
     confidence = 0.68 + (0.05 if ratio < 1.2 else 0.0)
     if strict and abs(slope_high - slope_low) > 0.02:
         return None
-    return _build_pattern(name, start_idx, end_idx, upper_last, lower_last, slope_high, high, low, breakout, confidence)
+    return _build_pattern(
+        name,
+        start_idx,
+        end_idx,
+        upper_last,
+        lower_last,
+        slope_high,
+        high,
+        low,
+        breakout,
+        confidence,
+    )
 
 
 def find_channels(
@@ -127,7 +141,9 @@ def find_channels(
     """Find ascending, descending, and horizontal channels."""
     results: List[Dict[str, Any]] = []
     asc = _detect_channel(high, low, "Ascending Channel", slope_sign=1, strict=strict)
-    desc = _detect_channel(high, low, "Descending Channel", slope_sign=-1, strict=strict)
+    desc = _detect_channel(
+        high, low, "Descending Channel", slope_sign=-1, strict=strict
+    )
     flat = _detect_channel(high, low, "Horizontal Channel", slope_sign=0, strict=strict)
     for pat in (asc, desc, flat):
         if pat:
@@ -136,12 +152,24 @@ def find_channels(
 
 
 def find_ascending_channel(*args, **kwargs) -> List[Dict[str, Any]]:
-    return [pat for pat in find_channels(*args, **kwargs) if pat["pattern"] == "Ascending Channel"]
+    return [
+        pat
+        for pat in find_channels(*args, **kwargs)
+        if pat["pattern"] == "Ascending Channel"
+    ]
 
 
 def find_descending_channel(*args, **kwargs) -> List[Dict[str, Any]]:
-    return [pat for pat in find_channels(*args, **kwargs) if pat["pattern"] == "Descending Channel"]
+    return [
+        pat
+        for pat in find_channels(*args, **kwargs)
+        if pat["pattern"] == "Descending Channel"
+    ]
 
 
 def find_horizontal_channel(*args, **kwargs) -> List[Dict[str, Any]]:
-    return [pat for pat in find_channels(*args, **kwargs) if pat["pattern"] == "Horizontal Channel"]
+    return [
+        pat
+        for pat in find_channels(*args, **kwargs)
+        if pat["pattern"] == "Horizontal Channel"
+    ]

@@ -1,10 +1,11 @@
+import json
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-import json
-from pathlib import Path
-import logging
 
 from app.services.cache import get_cache_service
 
@@ -104,9 +105,12 @@ async def add_to_watchlist(item: WatchlistItem):
     """Prefer Postgres, fallback to file store."""
     try:
         from app.services.database import get_database_service
+
         dbs = get_database_service()
         tags_str = ",".join(item.tags) if item.tags else None
-        if not dbs.add_watchlist_symbol(item.ticker, item.reason, tags_str, item.status):
+        if not dbs.add_watchlist_symbol(
+            item.ticker, item.reason, tags_str, item.status
+        ):
             raise Exception("Database add failed")
         all_items = dbs.get_watchlist_items()
         await _sync_cache(all_items)
@@ -131,6 +135,7 @@ async def add_to_watchlist(item: WatchlistItem):
 async def get_watchlist():
     try:
         from app.services.database import get_database_service
+
         dbs = get_database_service()
         items = dbs.get_watchlist_items()
         if items:
@@ -157,6 +162,7 @@ async def remove_from_watchlist(ticker: str):
     t = ticker.upper().strip()
     try:
         from app.services.database import get_database_service
+
         dbs = get_database_service()
         if dbs.remove_watchlist_symbol(t):
             items = dbs.get_watchlist_items()
@@ -181,6 +187,7 @@ async def update_watchlist_item(ticker: str, payload: WatchlistUpdate):
     updated = False
     try:
         from app.services.database import get_database_service
+
         dbs = get_database_service()
         tags_str = ",".join(payload.tags) if payload.tags else None
         updated = dbs.update_watchlist_symbol(
@@ -220,21 +227,17 @@ async def manual_watchlist_check():
     try:
         from app.jobs.watchlist_monitor import run_watchlist_check
         from app.services.telegram_bot import get_telegram_bot
-        
+
         logger.info("Manual watchlist check triggered")
         alerts = await run_watchlist_check()
-        
+
         # Send Telegram alerts if any
         if alerts:
             bot = get_telegram_bot()
             for alert in alerts:
                 await bot.send_alert(alert)
-        
-        return {
-            "success": True,
-            "alerts_triggered": len(alerts),
-            "alerts": alerts
-        }
+
+        return {"success": True, "alerts_triggered": len(alerts), "alerts": alerts}
     except Exception as e:
         logger.error(f"Manual watchlist check failed: {e}")
         raise HTTPException(status_code=500, detail=f"Watchlist check failed: {str(e)}")

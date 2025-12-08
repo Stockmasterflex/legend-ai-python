@@ -4,6 +4,7 @@ End-to-End Flow Tests
 These tests verify complete user workflows work correctly from start to finish.
 Critical for ensuring the full analysis -> decision -> action flow works.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,6 +13,7 @@ from fastapi.testclient import TestClient
 def client():
     """Create test client"""
     from app.main import app
+
     return TestClient(app)
 
 
@@ -66,9 +68,7 @@ class TestPatternAnalysisFlow:
 
         # Step 1: Run universe scan
         scan_result = await pattern_scanner_service.scan_universe(
-            universe=["AAPL", "NVDA", "MSFT"],
-            limit=10,
-            min_score=6.0
+            universe=["AAPL", "NVDA", "MSFT"], limit=10, min_score=6.0
         )
 
         # Should complete successfully
@@ -77,10 +77,7 @@ class TestPatternAnalysisFlow:
         assert "meta" in scan_result
 
         # Step 2: Filter results by score
-        high_score_results = [
-            r for r in scan_result["results"]
-            if r["score"] >= 8.0
-        ]
+        high_score_results = [r for r in scan_result["results"] if r["score"] >= 8.0]
 
         # All filtered results should meet criteria
         for result in high_score_results:
@@ -95,8 +92,8 @@ class TestPatternAnalysisFlow:
                 "ticker": "TSLA",
                 "status": "Watching",
                 "reason": "VCP forming",
-                "tags": ["VCP", "Momentum"]
-            }
+                "tags": ["VCP", "Momentum"],
+            },
         )
 
         # Should succeed (200 or 201)
@@ -159,25 +156,15 @@ class TestAPIEndpoints:
 
     def test_analyze_endpoint(self, client):
         """Test /api/analyze endpoint"""
-        response = client.get(
-            "/api/analyze",
-            params={
-                "ticker": "AAPL",
-                "tf": "daily"
-            }
-        )
+        response = client.get("/api/analyze", params={"ticker": "AAPL", "tf": "daily"})
 
-        # Should return results (200, 201, or 422 for validation error)
-        assert response.status_code in [200, 201, 422]
+        # Should return results (200, 201, 400, or 422 for validation/insufficient data)
+        assert response.status_code in [200, 201, 400, 422]
 
     def test_patterns_detect_endpoint(self, client):
         """Test /api/patterns/detect endpoint"""
         response = client.post(
-            "/api/patterns/detect",
-            json={
-                "ticker": "NVDA",
-                "interval": "1day"
-            }
+            "/api/patterns/detect", json={"ticker": "NVDA", "interval": "1day"}
         )
 
         # Should return results
@@ -188,7 +175,7 @@ class TestAPIEndpoints:
         # Get universe
         get_response = client.get("/api/universe/tickers")
         assert get_response.status_code == 200
-        
+
         data = get_response.json()
         assert data["success"] is True
         assert "tickers" in data
@@ -205,11 +192,7 @@ class TestAPIEndpoints:
         """Test /api/scan/universe endpoint"""
         response = client.post(
             "/api/universe/scan",
-            json={
-                "min_score": 7.0,
-                "max_results": 5,
-                "pattern_types": ["VCP"]
-            }
+            json={"min_score": 7.0, "max_results": 5, "pattern_types": ["VCP"]},
         )
 
         # Should return results
@@ -223,10 +206,7 @@ class TestErrorHandling:
         """Test handling of invalid ticker symbols"""
         response = client.post(
             "/api/patterns/detect",
-            json={
-                "ticker": "INVALID_SYMBOL_123",
-                "timeframe": "1day"
-            }
+            json={"ticker": "INVALID_SYMBOL_123", "timeframe": "1day"},
         )
 
         # Should handle gracefully (not crash)
@@ -236,10 +216,7 @@ class TestErrorHandling:
         """Test handling of invalid timeframe"""
         response = client.post(
             "/api/patterns/detect",
-            json={
-                "ticker": "AAPL",
-                "interval": "invalid_interval"
-            }
+            json={"ticker": "AAPL", "interval": "invalid_interval"},
         )
 
         # Should reject invalid input (Pydantic validation error)
@@ -251,9 +228,7 @@ class TestErrorHandling:
         from app.services.pattern_scanner import pattern_scanner_service
 
         result = await pattern_scanner_service.scan_universe(
-            universe=[],
-            limit=10,
-            min_score=7.0
+            universe=[], limit=10, min_score=7.0
         )
 
         # Should handle gracefully
@@ -280,6 +255,7 @@ class TestPerformance:
     async def test_single_scan_performance(self):
         """Verify single ticker scan completes in reasonable time"""
         import time
+
         from app.services.pattern_scanner import pattern_scanner_service
 
         start = time.perf_counter()
@@ -293,13 +269,12 @@ class TestPerformance:
     async def test_universe_scan_performance(self):
         """Verify universe scan completes in reasonable time"""
         import time
+
         from app.services.pattern_scanner import pattern_scanner_service
 
         start = time.perf_counter()
         await pattern_scanner_service.scan_universe(
-            universe=["AAPL", "NVDA", "MSFT", "GOOGL", "META"],
-            limit=10,
-            min_score=7.0
+            universe=["AAPL", "NVDA", "MSFT", "GOOGL", "META"], limit=10, min_score=7.0
         )
         duration = time.perf_counter() - start
 
@@ -356,9 +331,7 @@ class TestIntegrationWithExternalAPIs:
         from app.services.market_data import market_data_service
 
         data = await market_data_service.get_time_series(
-            ticker="AAPL",
-            interval="1day",
-            outputsize=10
+            ticker="AAPL", interval="1day", outputsize=10
         )
 
         # Should return data or handle error gracefully

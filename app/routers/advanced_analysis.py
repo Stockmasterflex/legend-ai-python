@@ -5,18 +5,19 @@ Advanced Technical Analysis Router
 - Fibonacci Levels
 - Support/Resistance Detection
 """
+
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
-import logging
 
+from app.detectors.advanced.patterns import (AdvancedPatternDetector,
+                                             PatternType)
 from app.services.market_data import MarketDataService
-from app.detectors.advanced.patterns import AdvancedPatternDetector, PatternType
-from app.technicals.trendlines import (
-    AutoTrendlineDetector,
-    detect_horizontal_support_resistance
-)
 from app.technicals.fibonacci import FibonacciCalculator
+from app.technicals.trendlines import (AutoTrendlineDetector,
+                                       detect_horizontal_support_resistance)
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +32,17 @@ fib_calculator = FibonacciCalculator()
 
 class PatternDetectionRequest(BaseModel):
     """Advanced pattern detection request"""
+
     symbol: str = Field(..., description="Stock ticker symbol")
     timeframe: str = Field("daily", description="Timeframe (daily, weekly)")
-    min_confidence: float = Field(60.0, ge=0, le=100, description="Minimum pattern confidence")
+    min_confidence: float = Field(
+        60.0, ge=0, le=100, description="Minimum pattern confidence"
+    )
 
 
 class TrendlineRequest(BaseModel):
     """Trendline detection request"""
+
     symbol: str = Field(..., description="Stock ticker symbol")
     lookback_period: Optional[int] = Field(100, description="How far back to analyze")
     min_touches: int = Field(3, description="Minimum touches for valid trendline")
@@ -45,12 +50,14 @@ class TrendlineRequest(BaseModel):
 
 class FibonacciRequest(BaseModel):
     """Fibonacci levels request"""
+
     symbol: str = Field(..., description="Stock ticker symbol")
     lookback: int = Field(100, description="Lookback period for swing detection")
 
 
 class ManualFibonacciRequest(BaseModel):
     """Manual Fibonacci calculation"""
+
     high: float = Field(..., description="Swing high price")
     low: float = Field(..., description="Swing low price")
     direction: str = Field("uptrend", description="'uptrend' or 'downtrend'")
@@ -88,15 +95,12 @@ async def detect_advanced_patterns(request: PatternDetectionRequest):
     try:
         # Fetch price data
         df = await market_data.get_price_data(
-            symbol=request.symbol,
-            period="6mo",
-            interval="1d"
+            symbol=request.symbol, period="6mo", interval="1d"
         )
 
         if df is None or df.empty:
             raise HTTPException(
-                status_code=404,
-                detail=f"No data available for {request.symbol}"
+                status_code=404, detail=f"No data available for {request.symbol}"
             )
 
         # Detect patterns
@@ -113,16 +117,18 @@ async def detect_advanced_patterns(request: PatternDetectionRequest):
             "patterns": patterns_dict,
             "summary": {
                 "total_patterns": len(patterns_dict),
-                "bullish_patterns": len([
-                    p for p in patterns_dict
-                    if p.get('expected_move', 0) > 0
-                ]),
-                "bearish_patterns": len([
-                    p for p in patterns_dict
-                    if p.get('expected_move', 0) < 0
-                ]),
-                "highest_confidence": max([p['confidence'] for p in patterns_dict]) if patterns_dict else 0
-            }
+                "bullish_patterns": len(
+                    [p for p in patterns_dict if p.get("expected_move", 0) > 0]
+                ),
+                "bearish_patterns": len(
+                    [p for p in patterns_dict if p.get("expected_move", 0) < 0]
+                ),
+                "highest_confidence": (
+                    max([p["confidence"] for p in patterns_dict])
+                    if patterns_dict
+                    else 0
+                ),
+            },
         }
 
     except HTTPException:
@@ -162,15 +168,12 @@ async def detect_trendlines(request: TrendlineRequest):
     try:
         # Fetch price data
         df = await market_data.get_price_data(
-            symbol=request.symbol,
-            period="6mo",
-            interval="1d"
+            symbol=request.symbol, period="6mo", interval="1d"
         )
 
         if df is None or df.empty:
             raise HTTPException(
-                status_code=404,
-                detail=f"No data available for {request.symbol}"
+                status_code=404, detail=f"No data available for {request.symbol}"
             )
 
         # Detect trendlines
@@ -182,24 +185,22 @@ async def detect_trendlines(request: TrendlineRequest):
 
         # Detect horizontal S/R
         horizontal = detect_horizontal_support_resistance(
-            df,
-            lookback=request.lookback_period,
-            min_touches=request.min_touches
+            df, lookback=request.lookback_period, min_touches=request.min_touches
         )
 
         return {
             "symbol": request.symbol,
-            "support_trendlines": [tl.to_dict() for tl in trendlines['support']],
-            "resistance_trendlines": [tl.to_dict() for tl in trendlines['resistance']],
+            "support_trendlines": [tl.to_dict() for tl in trendlines["support"]],
+            "resistance_trendlines": [tl.to_dict() for tl in trendlines["resistance"]],
             "channels": [ch.to_dict() for ch in channels],
             "horizontal_levels": horizontal,
             "summary": {
-                "total_support_lines": len(trendlines['support']),
-                "total_resistance_lines": len(trendlines['resistance']),
+                "total_support_lines": len(trendlines["support"]),
+                "total_resistance_lines": len(trendlines["resistance"]),
                 "total_channels": len(channels),
-                "horizontal_support": len(horizontal['support']),
-                "horizontal_resistance": len(horizontal['resistance'])
-            }
+                "horizontal_support": len(horizontal["support"]),
+                "horizontal_resistance": len(horizontal["resistance"]),
+            },
         }
 
     except HTTPException:
@@ -237,15 +238,12 @@ async def calculate_fibonacci_auto(request: FibonacciRequest):
     try:
         # Fetch price data
         df = await market_data.get_price_data(
-            symbol=request.symbol,
-            period="6mo",
-            interval="1d"
+            symbol=request.symbol, period="6mo", interval="1d"
         )
 
         if df is None or df.empty:
             raise HTTPException(
-                status_code=404,
-                detail=f"No data available for {request.symbol}"
+                status_code=404, detail=f"No data available for {request.symbol}"
             )
 
         # Calculate Fibonacci levels
@@ -254,7 +252,7 @@ async def calculate_fibonacci_auto(request: FibonacciRequest):
         return {
             "symbol": request.symbol,
             "fibonacci_levels": [fib.to_dict() for fib in fib_levels],
-            "count": len(fib_levels)
+            "count": len(fib_levels),
         }
 
     except HTTPException:
@@ -289,12 +287,10 @@ async def calculate_fibonacci_manual(request: ManualFibonacciRequest):
             high=request.high,
             low=request.low,
             direction=request.direction,
-            current_price=current_price
+            current_price=current_price,
         )
 
-        return {
-            "fibonacci_levels": fib.to_dict()
-        }
+        return {"fibonacci_levels": fib.to_dict()}
 
     except Exception as e:
         logger.error(f"Manual Fibonacci calculation error: {e}")
@@ -315,36 +311,73 @@ async def list_all_patterns():
     """
     patterns_by_category = {
         "continuation": [
-            "Bull Flag", "Bear Flag", "Bull Pennant", "Bear Pennant",
-            "Ascending Triangle", "Descending Triangle", "Symmetrical Triangle",
-            "Rising Wedge", "Falling Wedge", "Rectangle (Bullish)", "Rectangle (Bearish)"
+            "Bull Flag",
+            "Bear Flag",
+            "Bull Pennant",
+            "Bear Pennant",
+            "Ascending Triangle",
+            "Descending Triangle",
+            "Symmetrical Triangle",
+            "Rising Wedge",
+            "Falling Wedge",
+            "Rectangle (Bullish)",
+            "Rectangle (Bearish)",
         ],
         "reversal": [
-            "Head and Shoulders", "Inverse Head and Shoulders",
-            "Double Top", "Double Bottom", "Triple Top", "Triple Bottom",
-            "Rounding Top", "Rounding Bottom", "Cup and Handle", "Inverse Cup and Handle",
-            "Diamond Top", "Diamond Bottom", "Broadening Top", "Broadening Bottom"
+            "Head and Shoulders",
+            "Inverse Head and Shoulders",
+            "Double Top",
+            "Double Bottom",
+            "Triple Top",
+            "Triple Bottom",
+            "Rounding Top",
+            "Rounding Bottom",
+            "Cup and Handle",
+            "Inverse Cup and Handle",
+            "Diamond Top",
+            "Diamond Bottom",
+            "Broadening Top",
+            "Broadening Bottom",
         ],
         "gaps": [
-            "Breakaway Gap (Bull)", "Breakaway Gap (Bear)",
-            "Runaway Gap (Bull)", "Runaway Gap (Bear)",
-            "Exhaustion Gap (Bull)", "Exhaustion Gap (Bear)",
-            "Island Reversal (Bull)", "Island Reversal (Bear)"
+            "Breakaway Gap (Bull)",
+            "Breakaway Gap (Bear)",
+            "Runaway Gap (Bull)",
+            "Runaway Gap (Bear)",
+            "Exhaustion Gap (Bull)",
+            "Exhaustion Gap (Bear)",
+            "Island Reversal (Bull)",
+            "Island Reversal (Bear)",
         ],
         "candlestick": [
-            "Hammer", "Inverted Hammer", "Hanging Man", "Shooting Star",
-            "Bullish Engulfing", "Bearish Engulfing",
-            "Morning Star", "Evening Star",
-            "Piercing Line", "Dark Cloud Cover",
-            "Three White Soldiers", "Three Black Crows",
-            "Doji", "Dragonfly Doji", "Gravestone Doji",
-            "Bullish Harami", "Bearish Harami"
+            "Hammer",
+            "Inverted Hammer",
+            "Hanging Man",
+            "Shooting Star",
+            "Bullish Engulfing",
+            "Bearish Engulfing",
+            "Morning Star",
+            "Evening Star",
+            "Piercing Line",
+            "Dark Cloud Cover",
+            "Three White Soldiers",
+            "Three Black Crows",
+            "Doji",
+            "Dragonfly Doji",
+            "Gravestone Doji",
+            "Bullish Harami",
+            "Bearish Harami",
         ],
         "harmonic": [
-            "Gartley Pattern", "Bat Pattern", "Butterfly Pattern",
-            "Crab Pattern", "Shark Pattern", "Cypher Pattern",
-            "Elliott Wave (5 waves)", "Elliott Wave (ABC correction)"
-        ]
+            "Gartley Pattern",
+            "Bat Pattern",
+            "Butterfly Pattern",
+            "Crab Pattern",
+            "Shark Pattern",
+            "Cypher Pattern",
+            "Elliott Wave (5 waves)",
+            "Elliott Wave (ABC correction)",
+        ],
     }
 
     total = sum(len(patterns) for patterns in patterns_by_category.values())
@@ -352,12 +385,14 @@ async def list_all_patterns():
     return {
         "total_patterns": total,
         "patterns_by_category": patterns_by_category,
-        "pattern_types": [pt.value for pt in PatternType]
+        "pattern_types": [pt.value for pt in PatternType],
     }
 
 
 @router.post("/comprehensive-analysis")
-async def comprehensive_technical_analysis(symbol: str = Query(..., description="Stock ticker")):
+async def comprehensive_technical_analysis(
+    symbol: str = Query(..., description="Stock ticker")
+):
     """
     **Ultimate Technical Analysis** - Everything at once!
 
@@ -375,15 +410,12 @@ async def comprehensive_technical_analysis(symbol: str = Query(..., description=
     try:
         # Fetch price data
         df = await market_data.get_price_data(
-            symbol=symbol,
-            period="6mo",
-            interval="1d"
+            symbol=symbol, period="6mo", interval="1d"
         )
 
         if df is None or df.empty:
             raise HTTPException(
-                status_code=404,
-                detail=f"No data available for {symbol}"
+                status_code=404, detail=f"No data available for {symbol}"
             )
 
         # Run all analyses in parallel conceptually (sequential for now)
@@ -402,7 +434,7 @@ async def comprehensive_technical_analysis(symbol: str = Query(..., description=
         horizontal = detect_horizontal_support_resistance(df, lookback=100)
 
         # 5. Current price context
-        current_price = df['close'].iloc[-1]
+        current_price = df["close"].iloc[-1]
 
         return {
             "symbol": symbol,
@@ -411,23 +443,28 @@ async def comprehensive_technical_analysis(symbol: str = Query(..., description=
                 "patterns": {
                     "detected": [p.to_dict() for p in patterns],
                     "count": len(patterns),
-                    "bullish_count": len([p for p in patterns if p.expected_move and p.expected_move > 0]),
-                    "bearish_count": len([p for p in patterns if p.expected_move and p.expected_move < 0])
+                    "bullish_count": len(
+                        [p for p in patterns if p.expected_move and p.expected_move > 0]
+                    ),
+                    "bearish_count": len(
+                        [p for p in patterns if p.expected_move and p.expected_move < 0]
+                    ),
                 },
                 "trendlines": {
-                    "support": [tl.to_dict() for tl in trendlines['support']],
-                    "resistance": [tl.to_dict() for tl in trendlines['resistance']],
-                    "channels": [ch.to_dict() for ch in channels]
+                    "support": [tl.to_dict() for tl in trendlines["support"]],
+                    "resistance": [tl.to_dict() for tl in trendlines["resistance"]],
+                    "channels": [ch.to_dict() for ch in channels],
                 },
                 "fibonacci": [fib.to_dict() for fib in fib_levels],
-                "horizontal_levels": horizontal
+                "horizontal_levels": horizontal,
             },
             "summary": {
                 "total_patterns": len(patterns),
-                "total_trendlines": len(trendlines['support']) + len(trendlines['resistance']),
+                "total_trendlines": len(trendlines["support"])
+                + len(trendlines["resistance"]),
                 "total_channels": len(channels),
-                "fibonacci_swings": len(fib_levels)
-            }
+                "fibonacci_swings": len(fib_levels),
+            },
         }
 
     except HTTPException:

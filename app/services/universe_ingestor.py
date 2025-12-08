@@ -1,9 +1,11 @@
 """
 Universe ingestion helper for S&P 500 and NASDAQ 100 lists.
 """
+
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -11,10 +13,9 @@ import httpx
 import pandas as pd
 from sqlalchemy import text
 
+from app.config import get_settings
 from app.services.cache import get_cache_service
 from app.services.database import get_database_service
-from app.config import get_settings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +78,28 @@ class UniverseIngestor:
 
     def _fetch_universe(self) -> List[Dict[str, Optional[str]]]:
         entries = []
-        entries.extend(self._parse_table(self.SP500_URL, "Symbol", "Security", "GICS Sector", "GICS Sub-Industry", "Market Cap (USD)", "S&P 500"))
-        entries.extend(self._parse_table(self.NASDAQ100_URL, "Ticker", "Company", "GICS Sector", "GICS Sub-Industry", "Market Cap", "NASDAQ 100"))
+        entries.extend(
+            self._parse_table(
+                self.SP500_URL,
+                "Symbol",
+                "Security",
+                "GICS Sector",
+                "GICS Sub-Industry",
+                "Market Cap (USD)",
+                "S&P 500",
+            )
+        )
+        entries.extend(
+            self._parse_table(
+                self.NASDAQ100_URL,
+                "Ticker",
+                "Company",
+                "GICS Sector",
+                "GICS Sub-Industry",
+                "Market Cap",
+                "NASDAQ 100",
+            )
+        )
         # Deduplicate by symbol, keep latest entry
         dedup = {}
         for entry in entries:
@@ -116,16 +137,24 @@ class UniverseIngestor:
             name = row.get(name_col)
             sector = row.get(sector_col) if sector_col in df.columns else None
             industry = row.get(industry_col) if industry_col in df.columns else None
-            market_cap = _parse_market_cap(row.get(market_cap_col)) if market_cap_col and market_cap_col in df.columns else None
-            results.append({
-                "symbol": symbol.upper().strip(),
-                "name": str(name).strip() if isinstance(name, str) else None,
-                "sector": str(sector).strip() if isinstance(sector, str) else None,
-                "industry": str(industry).strip() if isinstance(industry, str) else None,
-                "market_cap": market_cap,
-                "source": source,
-                "last_updated": datetime.utcnow(),
-            })
+            market_cap = (
+                _parse_market_cap(row.get(market_cap_col))
+                if market_cap_col and market_cap_col in df.columns
+                else None
+            )
+            results.append(
+                {
+                    "symbol": symbol.upper().strip(),
+                    "name": str(name).strip() if isinstance(name, str) else None,
+                    "sector": str(sector).strip() if isinstance(sector, str) else None,
+                    "industry": (
+                        str(industry).strip() if isinstance(industry, str) else None
+                    ),
+                    "market_cap": market_cap,
+                    "source": source,
+                    "last_updated": datetime.utcnow(),
+                }
+            )
         logger.info("Parsed %s entries from %s", len(results), source)
         return results
 
@@ -135,14 +164,16 @@ class UniverseIngestor:
 
         rows = []
         for entry in symbols:
-            rows.append({
-                "symbol": entry["symbol"],
-                "name": entry.get("name"),
-                "sector": entry.get("sector"),
-                "industry": entry.get("industry"),
-                "market_cap": entry.get("market_cap"),
-                "last_updated": entry.get("last_updated") or datetime.utcnow(),
-            })
+            rows.append(
+                {
+                    "symbol": entry["symbol"],
+                    "name": entry.get("name"),
+                    "sector": entry.get("sector"),
+                    "industry": entry.get("industry"),
+                    "market_cap": entry.get("market_cap"),
+                    "last_updated": entry.get("last_updated") or datetime.utcnow(),
+                }
+            )
 
         stmt = text(
             """

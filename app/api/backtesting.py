@@ -3,32 +3,18 @@ Backtesting API Endpoints
 Comprehensive API for running backtests, optimizations, and Monte Carlo simulations
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from sqlalchemy.orm import Session
-import asyncio
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from app.models import BacktestRun, BacktestTrade, MonteCarloRun
+from app.models import Strategy as StrategyModel
+from app.models import StrategyTemplate, WalkForwardRun
 from app.services.database import get_db
-from app.models import (
-    Strategy as StrategyModel,
-    BacktestRun,
-    BacktestTrade,
-    BacktestMetrics,
-    StrategyTemplate,
-    WalkForwardRun,
-    MonteCarloRun,
-    HyperparameterOptimization,
-)
-from app.backtesting.engine import BacktestEngine, BacktestConfig
-from app.backtesting.strategy import YAMLStrategy, PythonStrategy, VisualStrategy
-from app.backtesting.execution import ExecutionSimulator
-from app.backtesting.walk_forward import WalkForwardOptimizer, WalkForwardConfig
-from app.backtesting.monte_carlo import MonteCarloEngine, MonteCarloConfig
-from app.backtesting.ml.optimization import HyperparameterOptimizer, OptimizationConfig, OptimizationType
-from app.backtesting.ml.models import ModelType
 
 router = APIRouter(prefix="/api/backtest", tags=["backtesting"])
 logger = logging.getLogger(__name__)
@@ -37,6 +23,7 @@ logger = logging.getLogger(__name__)
 # =====================================================================
 # Request/Response Models
 # =====================================================================
+
 
 class CreateStrategyRequest(BaseModel):
     name: str
@@ -110,6 +97,7 @@ class OptimizeHyperparametersRequest(BaseModel):
 # =====================================================================
 # Strategy Management Endpoints
 # =====================================================================
+
 
 @router.post("/strategies", status_code=201)
 async def create_strategy(
@@ -202,6 +190,7 @@ async def get_strategy(
 # Backtesting Endpoints
 # =====================================================================
 
+
 @router.post("/run", status_code=202)
 async def run_backtest(
     request: RunBacktestRequest,
@@ -210,7 +199,9 @@ async def run_backtest(
 ) -> Dict:
     """Run a backtest (async)"""
     # Get strategy
-    strategy_model = db.query(StrategyModel).filter(StrategyModel.id == request.strategy_id).first()
+    strategy_model = (
+        db.query(StrategyModel).filter(StrategyModel.id == request.strategy_id).first()
+    )
 
     if not strategy_model:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -223,7 +214,10 @@ async def run_backtest(
         end_date=request.end_date,
         initial_capital=request.initial_capital,
         universe=request.universe,
-        commission_model={"type": request.commission_type, "value": request.commission_value},
+        commission_model={
+            "type": request.commission_type,
+            "value": request.commission_value,
+        },
         slippage_model={"type": request.slippage_type, "value": request.slippage_value},
         market_impact_model={"enabled": request.enable_market_impact},
         allow_partial_fills=request.allow_partial_fills,
@@ -235,7 +229,9 @@ async def run_backtest(
     db.refresh(backtest_run)
 
     # Run backtest in background
-    background_tasks.add_task(_run_backtest_task, backtest_run.id, strategy_model, request)
+    background_tasks.add_task(
+        _run_backtest_task, backtest_run.id, strategy_model, request
+    )
 
     return {
         "backtest_id": backtest_run.id,
@@ -284,7 +280,9 @@ async def get_backtest_status(
         "win_rate": backtest.win_rate,
         "profit_factor": backtest.profit_factor,
         "created_at": backtest.created_at.isoformat() if backtest.created_at else None,
-        "completed_at": backtest.completed_at.isoformat() if backtest.completed_at else None,
+        "completed_at": (
+            backtest.completed_at.isoformat() if backtest.completed_at else None
+        ),
     }
 
 
@@ -327,6 +325,7 @@ async def get_backtest_trades(
 # Walk-Forward Optimization Endpoints
 # =====================================================================
 
+
 @router.post("/walk-forward", status_code=202)
 async def run_walk_forward_optimization(
     request: RunWalkForwardRequest,
@@ -335,7 +334,9 @@ async def run_walk_forward_optimization(
 ) -> Dict:
     """Run walk-forward optimization"""
     # Get strategy
-    strategy_model = db.query(StrategyModel).filter(StrategyModel.id == request.strategy_id).first()
+    strategy_model = (
+        db.query(StrategyModel).filter(StrategyModel.id == request.strategy_id).first()
+    )
 
     if not strategy_model:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -370,6 +371,7 @@ async def run_walk_forward_optimization(
 # Monte Carlo Endpoints
 # =====================================================================
 
+
 @router.post("/monte-carlo", status_code=202)
 async def run_monte_carlo(
     request: RunMonteCarloRequest,
@@ -378,7 +380,9 @@ async def run_monte_carlo(
 ) -> Dict:
     """Run Monte Carlo simulation"""
     # Get baseline backtest
-    baseline = db.query(BacktestRun).filter(BacktestRun.id == request.backtest_run_id).first()
+    baseline = (
+        db.query(BacktestRun).filter(BacktestRun.id == request.backtest_run_id).first()
+    )
 
     if not baseline:
         raise HTTPException(status_code=404, detail="Baseline backtest not found")
@@ -389,7 +393,10 @@ async def run_monte_carlo(
         name=request.name,
         n_simulations=request.n_simulations,
         simulation_types=request.simulation_types,
-        entry_delay_range={"min_days": request.entry_delay_min_days, "max_days": request.entry_delay_max_days},
+        entry_delay_range={
+            "min_days": request.entry_delay_min_days,
+            "max_days": request.entry_delay_max_days,
+        },
         position_size_variation_pct=request.position_size_variation_pct,
         include_regime_changes=request.include_regime_changes,
         status="pending",
@@ -409,6 +416,7 @@ async def run_monte_carlo(
 # =====================================================================
 # Template Library Endpoints
 # =====================================================================
+
 
 @router.get("/templates")
 async def list_strategy_templates(
@@ -447,7 +455,9 @@ async def get_strategy_template(
     db: Session = Depends(get_db),
 ) -> Dict:
     """Get strategy template details"""
-    template = db.query(StrategyTemplate).filter(StrategyTemplate.id == template_id).first()
+    template = (
+        db.query(StrategyTemplate).filter(StrategyTemplate.id == template_id).first()
+    )
 
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -473,7 +483,9 @@ async def instantiate_template(
     db: Session = Depends(get_db),
 ) -> Dict:
     """Create a strategy from a template"""
-    template = db.query(StrategyTemplate).filter(StrategyTemplate.id == template_id).first()
+    template = (
+        db.query(StrategyTemplate).filter(StrategyTemplate.id == template_id).first()
+    )
 
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -490,9 +502,15 @@ async def instantiate_template(
         strategy_type=template.strategy_type,
         template_id=template_id,
         parameters=final_params,
-        yaml_config=template.template_config.get("yaml") if template.template_config else None,
-        python_code=template.template_config.get("python") if template.template_config else None,
-        visual_config=template.template_config.get("visual") if template.template_config else None,
+        yaml_config=(
+            template.template_config.get("yaml") if template.template_config else None
+        ),
+        python_code=(
+            template.template_config.get("python") if template.template_config else None
+        ),
+        visual_config=(
+            template.template_config.get("visual") if template.template_config else None
+        ),
     )
 
     db.add(strategy)
@@ -509,6 +527,7 @@ async def instantiate_template(
 # =====================================================================
 # Utility Endpoints
 # =====================================================================
+
 
 @router.get("/runs")
 async def list_backtest_runs(

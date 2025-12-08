@@ -3,14 +3,17 @@ Database models for Legend AI
 Phase 1.5: Database Integration
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey, BigInteger, JSON
+from sqlalchemy import (JSON, BigInteger, Boolean, Column, DateTime, Float,
+                        ForeignKey, Integer, String, Text)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+
 class Ticker(Base):
     """Stock ticker information"""
+
     __tablename__ = "tickers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -22,8 +25,10 @@ class Ticker(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+
 class PatternScan(Base):
     """Pattern scanning results"""
+
     __tablename__ = "pattern_scans"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -43,32 +48,49 @@ class PatternScan(Base):
     rs_rating = Column(Float, nullable=True)  # Relative strength rating
     scanned_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
+
 class RSHistory(Base):
     """Relative Strength rating history for tracking changes over time"""
+
     __tablename__ = "rs_history"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    ticker_id = Column(Integer, ForeignKey("tickers.id", ondelete="CASCADE"), index=True, nullable=False)
+    ticker_id = Column(
+        Integer,
+        ForeignKey("tickers.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
     rs_rating = Column(Integer, nullable=False, index=True)  # 0-99 percentile rank
     raw_score = Column(Float, nullable=True)  # Weighted performance score
     q1_performance = Column(Float, nullable=True)  # Quarter 1 performance %
     q2_performance = Column(Float, nullable=True)  # Quarter 2 performance %
     q3_performance = Column(Float, nullable=True)  # Quarter 3 performance %
-    q4_performance = Column(Float, nullable=True)  # Quarter 4 (most recent) performance %
+    q4_performance = Column(
+        Float, nullable=True
+    )  # Quarter 4 (most recent) performance %
     one_year_performance = Column(Float, nullable=True)  # Total 1-year performance %
     percentile = Column(Float, nullable=True)  # Exact percentile (0-100)
     universe_rank = Column(Integer, nullable=True)  # Rank within universe
     universe_size = Column(Integer, nullable=True)  # Total stocks in universe
-    calculated_at = Column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
+    calculated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
+    )
+
 
 class Watchlist(Base):
     """User watchlist with status tracking and alerts"""
+
     __tablename__ = "watchlists"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(100), index=True, default="default")  # Telegram user ID or "default"
+    user_id = Column(
+        String(100), index=True, default="default"
+    )  # Telegram user ID or "default"
     ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
-    status = Column(String(50), default="Watching", index=True)  # "Watching", "Breaking Out", "Triggered", "Completed", "Skipped"
+    status = Column(
+        String(50), default="Watching", index=True
+    )  # "Watching", "Breaking Out", "Triggered", "Completed", "Skipped"
     target_entry = Column(Float, nullable=True)  # Expected entry price
     target_stop = Column(Float, nullable=True)  # Expected stop price
     target_price = Column(Float, nullable=True)  # Target price for take-profit
@@ -77,11 +99,15 @@ class Watchlist(Base):
     alerts_enabled = Column(Boolean, default=True)  # Enable/disable price alerts
     alert_threshold = Column(Float, nullable=True)  # Alert when price moves this %
     added_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    triggered_at = Column(DateTime(timezone=True), nullable=True, index=True)  # When pattern triggered
+    triggered_at = Column(
+        DateTime(timezone=True), nullable=True, index=True
+    )  # When pattern triggered
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
 
 class ScanLog(Base):
     """Universe scanning logs"""
+
     __tablename__ = "scan_logs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -93,8 +119,10 @@ class ScanLog(Base):
     status = Column(String(20))  # completed, failed, partial
     error_message = Column(Text)
 
+
 class UniverseScan(Base):
     """Universe scanning results"""
+
     __tablename__ = "universe_scans"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -110,6 +138,7 @@ class UniverseScan(Base):
 
 class UniverseSymbol(Base):
     """Authorized universe ticker list (S&P 500 + NASDAQ 100)."""
+
     __tablename__ = "universe_symbols"
 
     symbol = Column(String(10), primary_key=True, index=True)
@@ -117,12 +146,16 @@ class UniverseSymbol(Base):
     sector = Column(String(100))
     industry = Column(String(100))
     market_cap = Column(BigInteger)
-    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_updated = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
 
 class Trade(Base):
     """Trade journal entries"""
+
     __tablename__ = "trades"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     ticker = Column(String(10), index=True, nullable=False)
     pattern = Column(String(50))
@@ -140,22 +173,30 @@ class Trade(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+
 class AlertLog(Base):
     """Alert trigger history"""
+
     __tablename__ = "alert_logs"
 
     id = Column(Integer, primary_key=True, index=True)
     ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
-    alert_type = Column(String(50), index=True)  # "price", "pattern", "breakout", "volume"
+    alert_type = Column(
+        String(50), index=True
+    )  # "price", "pattern", "breakout", "volume"
     trigger_price = Column(Float, nullable=True)
     trigger_value = Column(Float, nullable=True)
-    alert_sent_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    alert_sent_at = Column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     sent_via = Column(String(50))  # "telegram", "email", "push"
     user_id = Column(String(100), nullable=True, index=True)
     status = Column(String(20), default="sent")  # "sent", "failed", "acknowledged"
 
+
 class Portfolio(Base):
     """User portfolio container"""
+
     __tablename__ = "portfolios"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -167,8 +208,10 @@ class Portfolio(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+
 class Position(Base):
     """Individual portfolio position"""
+
     __tablename__ = "positions"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -195,8 +238,10 @@ class Position(Base):
 # Backtesting Models
 # =====================================================================
 
+
 class Strategy(Base):
     """Trading strategy definition"""
+
     __tablename__ = "strategies"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -219,6 +264,7 @@ class Strategy(Base):
 
 class BacktestRun(Base):
     """Backtest execution record"""
+
     __tablename__ = "backtest_runs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -232,7 +278,9 @@ class BacktestRun(Base):
     slippage_model = Column(JSON, nullable=True)
     market_impact_model = Column(JSON, nullable=True)
     allow_partial_fills = Column(Boolean, default=False)
-    status = Column(String(20), default="pending")  # pending, running, completed, failed
+    status = Column(
+        String(20), default="pending"
+    )  # pending, running, completed, failed
     progress = Column(Float, default=0.0)  # 0-100
     final_value = Column(Float, nullable=True)
     total_return = Column(Float, nullable=True)
@@ -248,10 +296,13 @@ class BacktestRun(Base):
 
 class BacktestTrade(Base):
     """Individual trade from backtest"""
+
     __tablename__ = "backtest_trades"
 
     id = Column(Integer, primary_key=True, index=True)
-    backtest_run_id = Column(Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), index=True)
+    backtest_run_id = Column(
+        Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), index=True
+    )
     ticker_id = Column(Integer, ForeignKey("tickers.id"), index=True)
     entry_date = Column(DateTime(timezone=True))
     exit_date = Column(DateTime(timezone=True), nullable=True)
@@ -273,10 +324,13 @@ class BacktestTrade(Base):
 
 class BacktestMetrics(Base):
     """Detailed metrics for backtest run"""
+
     __tablename__ = "backtest_metrics"
 
     id = Column(Integer, primary_key=True, index=True)
-    backtest_run_id = Column(Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), unique=True)
+    backtest_run_id = Column(
+        Integer, ForeignKey("backtest_runs.id", ondelete="CASCADE"), unique=True
+    )
     total_return = Column(Float)
     annualized_return = Column(Float)
     sharpe_ratio = Column(Float)
@@ -305,12 +359,15 @@ class BacktestMetrics(Base):
 
 class StrategyTemplate(Base):
     """Pre-built strategy templates"""
+
     __tablename__ = "strategy_templates"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text)
-    category = Column(String(50), index=True)  # momentum, mean-reversion, breakout, etc.
+    category = Column(
+        String(50), index=True
+    )  # momentum, mean-reversion, breakout, etc.
     strategy_type = Column(String(20))  # yaml, python, visual
     template_config = Column(JSON)  # Full strategy configuration
     parameters_schema = Column(JSON)  # JSON schema for parameters
@@ -325,6 +382,7 @@ class StrategyTemplate(Base):
 
 class WalkForwardRun(Base):
     """Walk-forward optimization run"""
+
     __tablename__ = "walk_forward_runs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -352,6 +410,7 @@ class WalkForwardRun(Base):
 
 class MonteCarloRun(Base):
     """Monte Carlo simulation run"""
+
     __tablename__ = "monte_carlo_runs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -379,10 +438,13 @@ class MonteCarloRun(Base):
 
 class HyperparameterOptimization(Base):
     """ML hyperparameter optimization run"""
+
     __tablename__ = "hyperparameter_optimizations"
 
     id = Column(Integer, primary_key=True, index=True)
-    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=True, index=True)
+    strategy_id = Column(
+        Integer, ForeignKey("strategies.id"), nullable=True, index=True
+    )
     model_type = Column(String(50))
     parameter_space = Column(JSON)
     optimization_type = Column(String(20))  # grid, random, bayesian, genetic

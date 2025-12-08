@@ -77,7 +77,9 @@ class PatternExporter:
 
         return tab_text
 
-    def batch_export(self, scan_results: Dict[str, List[Any]], output_dir: str) -> List[str]:
+    def batch_export(
+        self, scan_results: Dict[str, List[Any]], output_dir: str
+    ) -> List[str]:
         """Export aggregated scan results (multiple tickers) to CSV, JSON, and Excel."""
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         base = Path(output_dir)
@@ -96,7 +98,9 @@ class PatternExporter:
         ]
 
         try:
-            paths.append(self.to_excel(flattened, str(base / f"patterns_{timestamp}.xlsx")))
+            paths.append(
+                self.to_excel(flattened, str(base / f"patterns_{timestamp}.xlsx"))
+            )
         except ImportError:
             # Excel export is optional when openpyxl is unavailable.
             pass

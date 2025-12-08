@@ -1,15 +1,16 @@
 """Performance benchmark tests for critical operations."""
-import pytest
+
 import time
-import pandas as pd
-import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from app.core.detectors.vcp_detector import VCPDetector
+import numpy as np
+import pandas as pd
+import pytest
+
+from app.core.detector_registry import get_detector_registry
 from app.core.detectors.cup_handle_detector import CupHandleDetector
 from app.core.detectors.triangle_detector import TriangleDetector
-from app.core.detector_registry import get_detector_registry
-
+from app.core.detectors.vcp_detector import VCPDetector
 
 # Mark all tests in this module as benchmarks
 pytestmark = pytest.mark.benchmark
@@ -21,17 +22,20 @@ def create_benchmark_df(size: int = 252) -> pd.DataFrame:
     prices = np.linspace(100, 150, size) + np.random.randn(size) * 5
     volumes = np.random.randint(500_000, 2_000_000, size)
 
-    return pd.DataFrame({
-        "datetime": dates,
-        "open": prices - 0.5,
-        "high": prices + 1.0,
-        "low": prices - 1.0,
-        "close": prices,
-        "volume": volumes,
-    })
+    return pd.DataFrame(
+        {
+            "datetime": dates,
+            "open": prices - 0.5,
+            "high": prices + 1.0,
+            "low": prices - 1.0,
+            "close": prices,
+            "volume": volumes,
+        }
+    )
 
 
 # ==================== Individual Detector Benchmarks ====================
+
 
 def test_benchmark_vcp_detector():
     """Benchmark VCP detector performance."""
@@ -39,7 +43,7 @@ def test_benchmark_vcp_detector():
     df = create_benchmark_df(252)
 
     start_time = time.perf_counter()
-    results = detector.find(df, "1D", "BENCHMARK")
+    detector.find(df, "1D", "BENCHMARK")
     end_time = time.perf_counter()
 
     elapsed = end_time - start_time
@@ -55,7 +59,7 @@ def test_benchmark_cup_handle_detector():
     df = create_benchmark_df(252)
 
     start_time = time.perf_counter()
-    results = detector.find(df, "1D", "BENCHMARK")
+    detector.find(df, "1D", "BENCHMARK")
     end_time = time.perf_counter()
 
     elapsed = end_time - start_time
@@ -70,7 +74,7 @@ def test_benchmark_triangle_detector():
     df = create_benchmark_df(252)
 
     start_time = time.perf_counter()
-    results = detector.find(df, "1D", "BENCHMARK")
+    detector.find(df, "1D", "BENCHMARK")
     end_time = time.perf_counter()
 
     elapsed = end_time - start_time
@@ -82,8 +86,14 @@ def test_benchmark_triangle_detector():
 def test_benchmark_all_detectors():
     """Benchmark all detectors running sequentially."""
     detector_names = [
-        "vcp", "cup_handle", "triangle", "wedge",
-        "head_shoulders", "double_top_bottom", "channel", "sma50_pullback"
+        "vcp",
+        "cup_handle",
+        "triangle",
+        "wedge",
+        "head_shoulders",
+        "double_top_bottom",
+        "channel",
+        "sma50_pullback",
     ]
 
     df = create_benchmark_df(252)
@@ -93,7 +103,7 @@ def test_benchmark_all_detectors():
         detector = get_detector_registry().get_detector(name)
         if detector:
             start_time = time.perf_counter()
-            results = detector.find(df, "1D", "BENCHMARK")
+            detector.find(df, "1D", "BENCHMARK")
             end_time = time.perf_counter()
             timings[name] = end_time - start_time
 
@@ -109,6 +119,7 @@ def test_benchmark_all_detectors():
 
 # ==================== Scaling Benchmarks ====================
 
+
 @pytest.mark.parametrize("num_bars", [50, 100, 252, 500, 1000])
 def test_benchmark_vcp_scaling(num_bars):
     """Test VCP detector scaling with different data sizes."""
@@ -116,7 +127,7 @@ def test_benchmark_vcp_scaling(num_bars):
     df = create_benchmark_df(num_bars)
 
     start_time = time.perf_counter()
-    results = detector.find(df, "1D", "SCALING")
+    detector.find(df, "1D", "SCALING")
     end_time = time.perf_counter()
 
     elapsed = end_time - start_time
@@ -128,6 +139,7 @@ def test_benchmark_vcp_scaling(num_bars):
 
 
 # ==================== Concurrent Processing Benchmarks ====================
+
 
 def test_benchmark_parallel_ticker_processing():
     """Benchmark parallel processing of multiple tickers."""
@@ -183,6 +195,7 @@ def test_benchmark_parallel_ticker_processing():
 
 # ==================== Memory Benchmarks ====================
 
+
 def test_benchmark_memory_efficiency():
     """Benchmark memory efficiency with large datasets."""
     import sys
@@ -196,7 +209,7 @@ def test_benchmark_memory_efficiency():
     for _ in range(10):
         df = create_benchmark_df(1000)
         total_bars += len(df)
-        results = detector.find(df, "1D", "MEMORY")
+        detector.find(df, "1D", "MEMORY")
 
     end_memory = sys.getsizeof(detector)
     memory_growth = end_memory - start_memory
@@ -210,10 +223,13 @@ def test_benchmark_memory_efficiency():
 
 # ==================== API Response Time Benchmarks ====================
 
+
 def test_benchmark_api_pattern_detection():
     """Benchmark end-to-end API pattern detection (mocked)."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
     from fastapi.testclient import TestClient
-    from unittest.mock import patch, AsyncMock, MagicMock
+
     from app.main import app
 
     client = TestClient(app)
@@ -230,16 +246,11 @@ def test_benchmark_api_pattern_detection():
 
             mock_detector = VCPDetector()
 
-
             start_time = time.perf_counter()
 
             response = client.post(
                 "/api/patterns/detect",
-                json={
-                    "ticker": "AAPL",
-                    "timeframe": "1D",
-                    "pattern_types": ["VCP"]
-                }
+                json={"ticker": "AAPL", "timeframe": "1D", "pattern_types": ["VCP"]},
             )
 
             end_time = time.perf_counter()
@@ -253,9 +264,9 @@ def test_benchmark_api_pattern_detection():
 
 # ==================== Cache Performance Benchmarks ====================
 
+
 def test_benchmark_cache_hit_vs_miss():
     """Benchmark cache hit vs miss performance."""
-    from unittest.mock import MagicMock, AsyncMock
 
     # Simulate cache
     cache = {}
@@ -295,6 +306,7 @@ def test_benchmark_cache_hit_vs_miss():
 
 # ==================== Database Query Benchmarks ====================
 
+
 def test_benchmark_universe_scan_simulation():
     """Benchmark universe scanning simulation."""
     detector = VCPDetector()
@@ -318,11 +330,14 @@ def test_benchmark_universe_scan_simulation():
     print(f"Found {found_patterns} patterns")
 
     # Should process at reasonable rate
-    assert elapsed < 60.0, f"Universe scan too slow: {elapsed:.1f}s for {num_tickers} tickers"
-    assert num_tickers/elapsed > 1.0, "Throughput too low"
+    assert (
+        elapsed < 60.0
+    ), f"Universe scan too slow: {elapsed:.1f}s for {num_tickers} tickers"
+    assert num_tickers / elapsed > 1.0, "Throughput too low"
 
 
 # ==================== Regression Tests ====================
+
 
 def test_benchmark_performance_regression():
     """Test for performance regression against baseline."""
@@ -333,7 +348,7 @@ def test_benchmark_performance_regression():
     times = []
     for _ in range(5):
         start_time = time.perf_counter()
-        results = detector.find(df, "1D", "REGRESSION")
+        detector.find(df, "1D", "REGRESSION")
         end_time = time.perf_counter()
         times.append(end_time - start_time)
 
@@ -347,21 +362,26 @@ def test_benchmark_performance_regression():
 
     # Baseline: VCP should complete in under 500ms on average
     BASELINE_MS = 500
-    assert avg_time < BASELINE_MS/1000, f"Performance regression: {avg_time*1000:.2f}ms > {BASELINE_MS}ms"
+    assert (
+        avg_time < BASELINE_MS / 1000
+    ), f"Performance regression: {avg_time*1000:.2f}ms > {BASELINE_MS}ms"
 
     # Consistency: std dev should be low
-    assert std_dev < avg_time * 0.3, f"Performance unstable: std dev {std_dev*1000:.2f}ms"
+    assert (
+        std_dev < avg_time * 0.3
+    ), f"Performance unstable: std dev {std_dev*1000:.2f}ms"
 
 
 # ==================== Utility Functions ====================
 
+
 def print_benchmark_summary():
     """Print benchmark summary (called manually or by pytest plugin)."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("PERFORMANCE BENCHMARK SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print("All benchmarks passed!")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

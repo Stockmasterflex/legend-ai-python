@@ -2,13 +2,15 @@
 Simple Redis-based rate limiting middleware for FastAPI
 Protects public endpoints from abuse
 """
-import time
+
 import logging
-from typing import Optional, Callable
-from fastapi import Request, HTTPException
+import time
+from typing import Callable, Optional
+
+from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from redis.asyncio import Redis
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 
@@ -43,13 +45,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         try:
             is_allowed = await self._check_rate_limit(client_ip, request.url.path)
             if not is_allowed:
-                logger.warning(f"Rate limit exceeded for {client_ip} on {request.url.path}")
+                logger.warning(
+                    f"Rate limit exceeded for {client_ip} on {request.url.path}"
+                )
                 return JSONResponse(
                     status_code=429,
                     content={
                         "detail": "Rate limit exceeded. Please try again later.",
-                        "limit": f"{self.requests_per_minute} requests per minute"
-                    }
+                        "limit": f"{self.requests_per_minute} requests per minute",
+                    },
                 )
         except Exception as e:
             # If rate limiting fails, allow the request but log the error
