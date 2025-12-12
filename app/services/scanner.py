@@ -1,6 +1,7 @@
 """
 Universe scanner that evaluates VCP patterns across the daily universe.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -12,23 +13,16 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from app.core.classifiers import minervini_trend_template
-from app.core.detectors.vcp_detector import VCPDetector
 from app.core.detector_base import PatternResult as DetectorPatternResult
-from app.core.metrics import (
-    compute_atr,
-    last_valid,
-    percentage_distance,
-    relative_strength_metrics,
-)
+from app.core.detectors.vcp_detector import VCPDetector
+from app.core.metrics import (compute_atr, last_valid, percentage_distance,
+                              relative_strength_metrics)
 from app.services import universe_data
 from app.services.market_data import market_data_service
 from app.services.universe_store import universe_store
+from app.telemetry.metrics import (CACHE_HITS_TOTAL, CACHE_MISSES_TOTAL,
+                                   DETECTOR_RUNTIME_SECONDS)
 from app.utils.build_info import resolve_build_sha
-from app.telemetry.metrics import (
-    CACHE_HITS_TOTAL,
-    CACHE_MISSES_TOTAL,
-    DETECTOR_RUNTIME_SECONDS,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +65,19 @@ class ScannerService:
         universe_meta = await universe_store.get_all()
         if not universe_meta:
             fallback = universe_data.get_full_universe()
-            universe_meta = {symbol: {"symbol": symbol, "universe": "fallback"} for symbol in fallback}
+            universe_meta = {
+                symbol: {"symbol": symbol, "universe": "fallback"}
+                for symbol in fallback
+            }
 
         if sector:
             normalized = sector.strip().lower()
             universe_meta = {
                 sym: meta
                 for sym, meta in universe_meta.items()
-                if meta and meta.get("sector") and meta["sector"].strip().lower() == normalized
+                if meta
+                and meta.get("sector")
+                and meta["sector"].strip().lower() == normalized
             }
 
         if universe:
@@ -90,7 +89,9 @@ class ScannerService:
         if not symbols:
             return self._response(started, 0, [])
 
-        spy_series = await market_data_service.get_time_series("SPY", "1day", self.output_bars)
+        spy_series = await market_data_service.get_time_series(
+            "SPY", "1day", self.output_bars
+        )
         self._record_cache_metric(spy_series)
         spy_closes = spy_series.get("c", []) if _has_prices(spy_series) else []
 
@@ -124,7 +125,9 @@ class ScannerService:
             len(final_results),
             duration * 1000,
         )
-        return self._response(started, len(symbols), final_results, total_hits=total_hits)
+        return self._response(
+            started, len(symbols), final_results, total_hits=total_hits
+        )
 
     async def _scan_symbol(
         self,
@@ -148,7 +151,7 @@ class ScannerService:
                 return None
 
             df = self._to_dataframe(price_data)
-            
+
             # 1. Check Trend Template first (faster than VCP detection)
             trend_pass = False
             if minervini_trend:
@@ -179,17 +182,18 @@ class ScannerService:
                 # But if the user UNCHECKS VCP, they might just want Trend Template.
                 # Let's create a dummy detection if VCP is off but Trend is on.
                 if minervini_trend:
-                     # Create a dummy result for trend-only scan
-                     from app.core.detector_base import PatternResult
-                     detection = PatternResult(
-                         pattern_name="Trend Template",
-                         symbol=symbol,
-                         timeframe="1D",
-                         confidence=1.0, 
-                         window_start=df["datetime"].iloc[0],
-                         window_end=df["datetime"].iloc[-1],
-                         candles=df.to_dict("records")
-                     )
+                    # Create a dummy result for trend-only scan
+                    from app.core.detector_base import PatternResult
+
+                    detection = PatternResult(
+                        pattern_name="Trend Template",
+                        symbol=symbol,
+                        timeframe="1D",
+                        confidence=1.0,
+                        window_start=df["datetime"].iloc[0],
+                        window_end=df["datetime"].iloc[-1],
+                        candles=df.to_dict("records"),
+                    )
                 else:
                     return None
 
@@ -206,7 +210,7 @@ class ScannerService:
         closes = df["close"].tolist()
         highs = df["high"].tolist()
         lows = df["low"].tolist()
-        volumes = df["volume"].tolist()
+        df["volume"].tolist()
         last_close = closes[-1]
         ema21_series = df["close"].ewm(span=21, adjust=False).mean().tolist()
         sma50_series = df["close"].rolling(50).mean().tolist()
@@ -232,7 +236,11 @@ class ScannerService:
         score = self._legend_score(detection.confidence, rs_rank, trend_pass)
         grade = self._grade(score)
         reasons = self._reasons(detection, rs_rank, trend_pass)
-        contractions = len(detection.evidence.get("contraction_sequence", [])) if detection.evidence else None
+        contractions = (
+            len(detection.evidence.get("contraction_sequence", []))
+            if detection.evidence
+            else None
+        )
         max_pullback = self._max_pullback_pct(detection)
         base_days = self._base_days(detection)
         pivot = self._pivot_price(detection)
@@ -258,7 +266,9 @@ class ScannerService:
             "atr_plan": atr_plan,
             "chart_url": None,
             "sources": {
-                "price": price_data.get("source") if isinstance(price_data, dict) else None,
+                "price": (
+                    price_data.get("source") if isinstance(price_data, dict) else None
+                ),
                 "spy": "SPY",
                 "sector": metadata.get("sector") if metadata else None,
             },
@@ -268,7 +278,11 @@ class ScannerService:
     def _max_pullback_pct(detection: DetectorPatternResult) -> Optional[float]:
         evidence = detection.evidence or {}
         contractions = evidence.get("contraction_sequence") or []
-        declines = [c.get("decline_pct") for c in contractions if isinstance(c, dict) and c.get("decline_pct")]
+        declines = [
+            c.get("decline_pct")
+            for c in contractions
+            if isinstance(c, dict) and c.get("decline_pct")
+        ]
         if not declines:
             return None
         return round(max(declines) * 100, 2)
@@ -334,16 +348,24 @@ class ScannerService:
             CACHE_MISSES_TOTAL.labels(name="scan").inc()
 
     @staticmethod
-    def _atr_plan(pivot: Optional[float], atr_value: Optional[float]) -> Dict[str, Optional[float]]:
+    def _atr_plan(
+        pivot: Optional[float], atr_value: Optional[float]
+    ) -> Dict[str, Optional[float]]:
         if not pivot:
-            return {"atr": atr_value if atr_value else None, "stop": None, "risk_unit": None}
+            return {
+                "atr": atr_value if atr_value else None,
+                "stop": None,
+                "risk_unit": None,
+            }
         atr_val = round(atr_value, 2) if atr_value else None
         stop_price = None
         risk_unit = None
         if atr_value:
             stop_price = round(pivot - 1.5 * atr_value, 2)
             stop_price = max(0.01, stop_price)
-            risk_unit = round(((pivot - stop_price) / pivot) * 100, 2) if pivot else None
+            risk_unit = (
+                round(((pivot - stop_price) / pivot) * 100, 2) if pivot else None
+            )
         return {
             "atr": atr_val,
             "stop": stop_price,
@@ -357,7 +379,11 @@ class ScannerService:
         trend_pass: bool,
     ) -> List[str]:
         reasons = []
-        contractions = detection.evidence.get("contraction_sequence") if detection.evidence else None
+        contractions = (
+            detection.evidence.get("contraction_sequence")
+            if detection.evidence
+            else None
+        )
         if contractions:
             reasons.append(f"{len(contractions)} clean contractions")
         if rs_rank:
@@ -376,7 +402,9 @@ class ScannerService:
         return "C"
 
     @staticmethod
-    def _legend_score(confidence: float, rs_rank: Optional[int], trend_pass: bool) -> int:
+    def _legend_score(
+        confidence: float, rs_rank: Optional[int], trend_pass: bool
+    ) -> int:
         base = confidence * 70  # up to 70 points from detector confidence
         rs_bonus = (rs_rank or 50) * 0.2  # up to 20 points
         trend_bonus = 10 if trend_pass else -5
@@ -403,7 +431,9 @@ class ScannerService:
         if dates:
             df["datetime"] = pd.to_datetime(dates, errors="coerce")
         else:
-            df["datetime"] = pd.date_range(end=datetime.now(), periods=len(df), freq="B")
+            df["datetime"] = pd.date_range(
+                end=datetime.now(), periods=len(df), freq="B"
+            )
         return df.dropna(subset=["close"]).reset_index(drop=True)
 
     def _response(

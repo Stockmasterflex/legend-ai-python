@@ -2,16 +2,17 @@
 Enhanced Telegram Bot Service
 Handles all bot commands and natural language queries
 """
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-import httpx
+
 import logging
-import json
+from typing import Optional
+
+import httpx
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 from app.config import get_settings
-from app.services.market_data import market_data_service
 from app.core.pattern_detector import PatternDetector
+from app.services.market_data import market_data_service
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -21,6 +22,7 @@ router = APIRouter(tags=["telegram"])
 
 class TelegramUpdate(BaseModel):
     """Telegram webhook update"""
+
     update_id: int
     message: Optional[dict] = None
 
@@ -32,16 +34,14 @@ class TelegramService:
         self.client = httpx.AsyncClient(timeout=30.0)
         self.base_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}"
 
-    async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
+    async def send_message(
+        self, chat_id: str, text: str, parse_mode: str = "Markdown"
+    ) -> bool:
         """Send text message"""
         try:
             response = await self.client.post(
                 f"{self.base_url}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": parse_mode
-                }
+                json={"chat_id": chat_id, "text": text, "parse_mode": parse_mode},
             )
             response.raise_for_status()
             logger.info(f"✅ Sent message to {chat_id}")
@@ -59,8 +59,8 @@ class TelegramService:
                     "chat_id": chat_id,
                     "photo": photo_url,
                     "caption": caption,
-                    "parse_mode": "Markdown"
-                }
+                    "parse_mode": "Markdown",
+                },
             )
             response.raise_for_status()
             logger.info(f"✅ Sent photo to {chat_id}")
@@ -71,7 +71,7 @@ class TelegramService:
 
     async def handle_start(self, chat_id: str) -> str:
         """Handle /start command"""
-        return f"""🚀 *Welcome to Legend AI Trading Bot!*
+        return """🚀 *Welcome to Legend AI Trading Bot!*
 
 I'm your professional trading assistant powered by AI and multi-source market data.
 
@@ -122,12 +122,12 @@ You can also just ask me things like:
             # Send typing indicator
             await self.client.post(
                 f"{self.base_url}/sendChatAction",
-                json={"chat_id": chat_id, "action": "typing"}
+                json={"chat_id": chat_id, "action": "typing"},
             )
 
             # Get pattern data
-            from app.services.market_data import market_data_service
             from app.core.pattern_detector import PatternDetector
+            from app.services.market_data import market_data_service
 
             price_data = await market_data_service.get_time_series(ticker, "1day", 500)
 
@@ -143,7 +143,9 @@ You can also just ask me things like:
                 return f"❌ Could not analyze {ticker}"
 
             # Format response
-            score_emoji = "🔥" if result.score >= 8 else "⭐" if result.score >= 7 else "📊"
+            score_emoji = (
+                "🔥" if result.score >= 8 else "⭐" if result.score >= 7 else "📊"
+            )
 
             response = f"""{score_emoji} *{ticker} Pattern Analysis*
 
@@ -180,36 +182,44 @@ RS Rating: {result.rs_rating:.0f}
         try:
             await self.client.post(
                 f"{self.base_url}/sendChatAction",
-                json={"chat_id": chat_id, "action": "typing"}
+                json={"chat_id": chat_id, "action": "typing"},
             )
 
             # Quick scan of top stocks
-            from app.services.universe_data import get_quick_scan_universe
             from app.core.pattern_detector import PatternDetector
+            from app.services.universe_data import get_quick_scan_universe
 
             tickers = get_quick_scan_universe()
             detector = PatternDetector()
             results = []
 
-            await self.send_message(chat_id, f"🔍 Scanning {len(tickers)} stocks... (this may take 30-60s)")
+            await self.send_message(
+                chat_id, f"🔍 Scanning {len(tickers)} stocks... (this may take 30-60s)"
+            )
 
             for ticker in tickers[:30]:  # Limit to 30 for speed
                 try:
-                    price_data = await market_data_service.get_time_series(ticker, "1day", 500)
+                    price_data = await market_data_service.get_time_series(
+                        ticker, "1day", 500
+                    )
                     if not price_data:
                         continue
 
-                    spy_data = await market_data_service.get_time_series("SPY", "1day", 500)
+                    spy_data = await market_data_service.get_time_series(
+                        "SPY", "1day", 500
+                    )
                     result = await detector.analyze_ticker(ticker, price_data, spy_data)
 
                     if result and result.score >= 7.0:
-                        results.append({
-                            "ticker": ticker,
-                            "pattern": result.pattern,
-                            "score": result.score,
-                            "entry": result.entry,
-                            "rr": result.risk_reward
-                        })
+                        results.append(
+                            {
+                                "ticker": ticker,
+                                "pattern": result.pattern,
+                                "score": result.score,
+                                "entry": result.entry,
+                                "rr": result.risk_reward,
+                            }
+                        )
                 except Exception as e:
                     logger.debug(f"Scan error for {ticker}: {e}")
                     continue
@@ -227,7 +237,9 @@ RS Rating: {result.rs_rating:.0f}
                 response += f"{emoji} *{r['ticker']}* - {r['pattern']}\n"
                 response += f"   Score: {r['score']}/10 | Entry: ${r['entry']:.2f} | R:R: {r['rr']:.2f}:1\n\n"
 
-            response += f"\n_Scanned {len(tickers)} stocks. Use /pattern TICKER for details._"
+            response += (
+                f"\n_Scanned {len(tickers)} stocks. Use /pattern TICKER for details._"
+            )
 
             return response
 
@@ -238,7 +250,10 @@ RS Rating: {result.rs_rating:.0f}
     async def handle_chart(self, chat_id: str, ticker: str) -> tuple[str, str]:
         """Handle /chart command - returns (message, photo_url)"""
         if not ticker:
-            return ("❌ Please provide a ticker symbol.\n\n*Usage:* `/chart NVDA`", None)
+            return (
+                "❌ Please provide a ticker symbol.\n\n*Usage:* `/chart NVDA`",
+                None,
+            )
 
         ticker = ticker.upper().strip()
 
@@ -251,13 +266,15 @@ RS Rating: {result.rs_rating:.0f}
                 ticker=ticker,
                 interval="1D",
                 indicators=["SMA(50)", "SMA(150)", "SMA(200)", "Volume"],
-                timeframe="6M"
+                timeframe="6M",
             )
 
             if not chart_url:
                 return (f"❌ Could not generate chart for {ticker}", None)
 
-            caption = f"📊 *{ticker} Chart*\n\n_6-month daily chart with key moving averages_"
+            caption = (
+                f"📊 *{ticker} Chart*\n\n_6-month daily chart with key moving averages_"
+            )
             return (caption, chart_url)
 
         except Exception as e:
@@ -268,7 +285,9 @@ RS Rating: {result.rs_rating:.0f}
         """Handle /watchlist command"""
         try:
             # Get watchlist from API
-            response = await self.client.get(f"{settings.auto_webhook_url}/api/watchlist")
+            response = await self.client.get(
+                f"{settings.auto_webhook_url}/api/watchlist"
+            )
             data = response.json()
 
             if not data.get("success") or not data.get("items"):
@@ -299,14 +318,16 @@ RS Rating: {result.rs_rating:.0f}
         try:
             response = await self.client.post(
                 f"{settings.auto_webhook_url}/api/watchlist/add",
-                json={"ticker": ticker, "reason": reason or "Monitoring"}
+                json={"ticker": ticker, "reason": reason or "Monitoring"},
             )
             data = response.json()
 
             if data.get("success"):
                 return f"✅ Added *{ticker}* to watchlist!\n\n_Reason: {reason or 'Monitoring'}_"
             else:
-                return f"❌ Failed to add {ticker}: {data.get('detail', 'Unknown error')}"
+                return (
+                    f"❌ Failed to add {ticker}: {data.get('detail', 'Unknown error')}"
+                )
 
         except Exception as e:
             logger.error(f"Error in handle_add: {e}")
@@ -477,13 +498,28 @@ _Usage resets daily at midnight UTC_
 
         # Extract ticker symbols from text (3-5 uppercase letters)
         import re
-        ticker_pattern = r'\b[A-Z]{2,5}\b'
+
+        ticker_pattern = r"\b[A-Z]{2,5}\b"
         tickers = re.findall(ticker_pattern, text)
         ticker = tickers[0] if tickers else None
 
         # Intent detection based on keywords
-        scan_keywords = ["scan", "best setups", "top stocks", "find", "search", "what's good"]
-        pattern_keywords = ["analyze", "analysis", "pattern", "check", "look at", "review"]
+        scan_keywords = [
+            "scan",
+            "best setups",
+            "top stocks",
+            "find",
+            "search",
+            "what's good",
+        ]
+        pattern_keywords = [
+            "analyze",
+            "analysis",
+            "pattern",
+            "check",
+            "look at",
+            "review",
+        ]
         chart_keywords = ["chart", "graph", "show me"]
         market_keywords = ["market", "spy", "indices", "how is the market"]
         plan_keywords = ["trading plan", "position size", "how much", "trade"]

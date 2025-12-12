@@ -1,12 +1,14 @@
 """
 Automatic Fibonacci Retracement and Extension Levels
 """
+
+import logging
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
 from scipy.signal import argrelextrema
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,7 @@ FIBONACCI_EXTENSION_LEVELS = [1.272, 1.414, 1.618, 2.000, 2.618]
 @dataclass
 class FibonacciLevels:
     """Fibonacci levels for a swing"""
+
     swing_high: float
     swing_low: float
     swing_high_idx: int
@@ -43,12 +46,12 @@ class FibonacciLevels:
             },
             "current_price": float(self.current_price),
             "nearest_support": self._find_nearest_support(),
-            "nearest_resistance": self._find_nearest_resistance()
+            "nearest_resistance": self._find_nearest_resistance(),
         }
 
     def _find_nearest_support(self) -> Optional[Dict]:
         """Find nearest Fibonacci support level below current price"""
-        if self.direction == 'uptrend':
+        if self.direction == "uptrend":
             # In uptrend, retracements are support
             for ratio, level in sorted(self.retracement_levels.items(), reverse=True):
                 if level < self.current_price:
@@ -57,7 +60,7 @@ class FibonacciLevels:
 
     def _find_nearest_resistance(self) -> Optional[Dict]:
         """Find nearest Fibonacci resistance level above current price"""
-        if self.direction == 'uptrend':
+        if self.direction == "uptrend":
             # In uptrend, extensions are resistance
             for ratio, level in sorted(self.extension_levels.items()):
                 if level > self.current_price:
@@ -80,9 +83,7 @@ class FibonacciCalculator:
         self.extension_ratios = FIBONACCI_EXTENSION_LEVELS
 
     def calculate_auto_fibonacci(
-        self,
-        df: pd.DataFrame,
-        lookback: int = 100
+        self, df: pd.DataFrame, lookback: int = 100
     ) -> List[FibonacciLevels]:
         """
         Automatically identify significant swings and calculate Fibonacci levels
@@ -107,12 +108,12 @@ class FibonacciCalculator:
 
         for swing in swings:
             fib = self._calculate_fibonacci_for_swing(
-                swing['high'],
-                swing['low'],
-                swing['high_idx'],
-                swing['low_idx'],
-                swing['direction'],
-                df['close'].iloc[-1]
+                swing["high"],
+                swing["low"],
+                swing["high_idx"],
+                swing["low_idx"],
+                swing["direction"],
+                df["close"].iloc[-1],
             )
             fib_levels.append(fib)
 
@@ -124,8 +125,8 @@ class FibonacciCalculator:
         self,
         high: float,
         low: float,
-        direction: str = 'uptrend',
-        current_price: Optional[float] = None
+        direction: str = "uptrend",
+        current_price: Optional[float] = None,
     ) -> FibonacciLevels:
         """
         Calculate Fibonacci levels for manually specified swing points
@@ -145,17 +146,14 @@ class FibonacciCalculator:
             high, low, 0, 0, direction, current_price
         )
 
-    def _detect_significant_swings(
-        self,
-        df: pd.DataFrame
-    ) -> List[Dict]:
+    def _detect_significant_swings(self, df: pd.DataFrame) -> List[Dict]:
         """
         Detect significant price swings for Fibonacci analysis
 
         A swing is a major high followed by a major low (or vice versa)
         """
-        highs = df['high'].values
-        lows = df['low'].values
+        highs = df["high"].values
+        lows = df["low"].values
 
         # Find prominent peaks and troughs
         peaks_idx = argrelextrema(highs, np.greater_equal, order=10)[0]
@@ -182,13 +180,15 @@ class FibonacciCalculator:
 
                 # Significant swing should be > 5% move
                 if (last_peak - last_trough) / last_trough > 0.05:
-                    swings.append({
-                        'high': last_peak,
-                        'low': last_trough,
-                        'high_idx': last_peak_idx,
-                        'low_idx': last_trough_idx,
-                        'direction': 'uptrend'
-                    })
+                    swings.append(
+                        {
+                            "high": last_peak,
+                            "low": last_trough,
+                            "high_idx": last_peak_idx,
+                            "low_idx": last_trough_idx,
+                            "direction": "uptrend",
+                        }
+                    )
 
         # 2. Most recent downtrend (high to low)
         if len(peaks_idx) > 0 and len(troughs_idx) > 0:
@@ -202,24 +202,30 @@ class FibonacciCalculator:
                 last_trough = lows[last_trough_idx]
 
                 if (last_peak - last_trough) / last_peak > 0.05:
-                    swings.append({
-                        'high': last_peak,
-                        'low': last_trough,
-                        'high_idx': last_peak_idx,
-                        'low_idx': last_trough_idx,
-                        'direction': 'downtrend'
-                    })
+                    swings.append(
+                        {
+                            "high": last_peak,
+                            "low": last_trough,
+                            "high_idx": last_peak_idx,
+                            "low_idx": last_trough_idx,
+                            "direction": "downtrend",
+                        }
+                    )
 
         # 3. Look for larger historical swings
         if len(peaks_idx) >= 2 and len(troughs_idx) >= 2:
             # Previous major uptrend
             if len(troughs_idx) >= 2:
-                prev_trough_idx = troughs_idx[-2] if len(troughs_idx) >= 2 else troughs_idx[0]
+                prev_trough_idx = (
+                    troughs_idx[-2] if len(troughs_idx) >= 2 else troughs_idx[0]
+                )
                 prev_trough = lows[prev_trough_idx]
 
                 peaks_between = [
-                    p for p in peaks_idx
-                    if p > prev_trough_idx and p < (troughs_idx[-1] if len(troughs_idx) > 1 else len(df))
+                    p
+                    for p in peaks_idx
+                    if p > prev_trough_idx
+                    and p < (troughs_idx[-1] if len(troughs_idx) > 1 else len(df))
                 ]
 
                 if peaks_between:
@@ -227,13 +233,15 @@ class FibonacciCalculator:
                     prev_peak = highs[prev_peak_idx]
 
                     if (prev_peak - prev_trough) / prev_trough > 0.10:  # >10% swing
-                        swings.append({
-                            'high': prev_peak,
-                            'low': prev_trough,
-                            'high_idx': prev_peak_idx,
-                            'low_idx': prev_trough_idx,
-                            'direction': 'uptrend'
-                        })
+                        swings.append(
+                            {
+                                "high": prev_peak,
+                                "low": prev_trough,
+                                "high_idx": prev_peak_idx,
+                                "low_idx": prev_trough_idx,
+                                "direction": "uptrend",
+                            }
+                        )
 
         return swings
 
@@ -244,7 +252,7 @@ class FibonacciCalculator:
         high_idx: int,
         low_idx: int,
         direction: str,
-        current_price: float
+        current_price: float,
     ) -> FibonacciLevels:
         """
         Calculate Fibonacci retracement and extension levels for a swing
@@ -262,7 +270,7 @@ class FibonacciCalculator:
         retracement_levels = {}
         extension_levels = {}
 
-        if direction == 'uptrend':
+        if direction == "uptrend":
             # Retracements: high - (ratio * range)
             for ratio in self.retracement_ratios:
                 level = high - (ratio * swing_range)
@@ -294,14 +302,11 @@ class FibonacciCalculator:
             direction=direction,
             retracement_levels=retracement_levels,
             extension_levels=extension_levels,
-            current_price=current_price
+            current_price=current_price,
         )
 
 
-def calculate_fibonacci_time_zones(
-    df: pd.DataFrame,
-    start_idx: int
-) -> List[int]:
+def calculate_fibonacci_time_zones(df: pd.DataFrame, start_idx: int) -> List[int]:
     """
     Calculate Fibonacci time zones (vertical lines at Fibonacci intervals)
 
@@ -328,11 +333,7 @@ def calculate_fibonacci_time_zones(
 
 
 def calculate_fibonacci_arcs(
-    df: pd.DataFrame,
-    high: float,
-    low: float,
-    high_idx: int,
-    low_idx: int
+    df: pd.DataFrame, high: float, low: float, high_idx: int, low_idx: int
 ) -> List[Dict]:
     """
     Calculate Fibonacci arcs (curved support/resistance lines)
@@ -343,16 +344,16 @@ def calculate_fibonacci_arcs(
     # Fibonacci arcs are complex geometric curves
     # This is a simplified implementation
     swing_range = high - low
-    time_range = abs(high_idx - low_idx)
+    abs(high_idx - low_idx)
 
     arcs = []
 
     for ratio in FIBONACCI_RETRACEMENT_LEVELS:
         arc = {
-            'ratio': ratio,
-            'radius': ratio * swing_range,
-            'center_x': (high_idx + low_idx) / 2,
-            'center_y': (high + low) / 2
+            "ratio": ratio,
+            "radius": ratio * swing_range,
+            "center_x": (high_idx + low_idx) / 2,
+            "center_y": (high + low) / 2,
         }
         arcs.append(arc)
 
@@ -360,10 +361,7 @@ def calculate_fibonacci_arcs(
 
 
 def calculate_fibonacci_fans(
-    high: float,
-    low: float,
-    high_idx: int,
-    low_idx: int
+    high: float, low: float, high_idx: int, low_idx: int
 ) -> List[Dict]:
     """
     Calculate Fibonacci fan lines
@@ -385,12 +383,14 @@ def calculate_fibonacci_fans(
         # Fan line starts at swing low
         intercept = low - (fan_slope * low_idx)
 
-        fans.append({
-            'ratio': ratio,
-            'slope': fan_slope,
-            'intercept': intercept,
-            'start_idx': low_idx,
-            'start_price': low
-        })
+        fans.append(
+            {
+                "ratio": ratio,
+                "slope": fan_slope,
+                "intercept": intercept,
+                "start_idx": low_idx,
+                "start_price": low,
+            }
+        )
 
     return fans

@@ -5,9 +5,9 @@ Comprehensive performance analytics for backtest results
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 
 @dataclass
@@ -92,19 +92,34 @@ def calculate_metrics(
     total_return = ((equity_curve["total_value"].iloc[-1] / initial_capital) - 1) * 100
     days = len(equity_curve)
     years = days / 252  # Trading days
-    annualized_return = (((equity_curve["total_value"].iloc[-1] / initial_capital) ** (1 / years)) - 1) * 100 if years > 0 else 0
+    annualized_return = (
+        (((equity_curve["total_value"].iloc[-1] / initial_capital) ** (1 / years)) - 1)
+        * 100
+        if years > 0
+        else 0
+    )
 
     # Volatility
     volatility = returns.std() * np.sqrt(252) * 100  # Annualized
 
     # Sharpe Ratio
     excess_returns = returns - (risk_free_rate / 252)
-    sharpe_ratio = (excess_returns.mean() / excess_returns.std()) * np.sqrt(252) if excess_returns.std() > 0 else 0
+    sharpe_ratio = (
+        (excess_returns.mean() / excess_returns.std()) * np.sqrt(252)
+        if excess_returns.std() > 0
+        else 0
+    )
 
     # Sortino Ratio (using downside deviation)
     downside_returns = returns[returns < 0]
-    downside_deviation = downside_returns.std() * np.sqrt(252) if len(downside_returns) > 0 else 0.0001
-    sortino_ratio = (excess_returns.mean() / downside_returns.std()) * np.sqrt(252) if len(downside_returns) > 0 and downside_returns.std() > 0 else 0
+    downside_deviation = (
+        downside_returns.std() * np.sqrt(252) if len(downside_returns) > 0 else 0.0001
+    )
+    sortino_ratio = (
+        (excess_returns.mean() / downside_returns.std()) * np.sqrt(252)
+        if len(downside_returns) > 0 and downside_returns.std() > 0
+        else 0
+    )
 
     # Drawdown calculations
     cumulative = (1 + returns).cumprod()
@@ -130,7 +145,11 @@ def calculate_metrics(
     var_95 = np.percentile(returns, 5) * 100
 
     # Conditional VaR (CVaR) - expected loss beyond VaR
-    cvar_95 = returns[returns <= np.percentile(returns, 5)].mean() * 100 if len(returns[returns <= np.percentile(returns, 5)]) > 0 else 0
+    cvar_95 = (
+        returns[returns <= np.percentile(returns, 5)].mean() * 100
+        if len(returns[returns <= np.percentile(returns, 5)]) > 0
+        else 0
+    )
 
     # Trade statistics
     if len(trades) > 0:
@@ -154,11 +173,17 @@ def calculate_metrics(
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
 
         # Expectancy
-        expectancy = (win_rate / 100 * average_win) - ((100 - win_rate) / 100 * abs(average_loss))
+        expectancy = (win_rate / 100 * average_win) - (
+            (100 - win_rate) / 100 * abs(average_loss)
+        )
 
         # Position metrics
-        avg_bars_held = trades["bars_held"].mean() if "bars_held" in trades.columns else 0
-        avg_days_held = trades["days_held"].mean() if "days_held" in trades.columns else 0
+        avg_bars_held = (
+            trades["bars_held"].mean() if "bars_held" in trades.columns else 0
+        )
+        avg_days_held = (
+            trades["days_held"].mean() if "days_held" in trades.columns else 0
+        )
 
         # R-multiples
         r_multiples = trades["r_multiple"].dropna()
@@ -196,7 +221,9 @@ def calculate_metrics(
     beta = None
     if benchmark_returns is not None and len(benchmark_returns) > 0:
         # Align returns
-        aligned_returns = pd.DataFrame({"strategy": returns, "benchmark": benchmark_returns})
+        aligned_returns = pd.DataFrame(
+            {"strategy": returns, "benchmark": benchmark_returns}
+        )
         aligned_returns = aligned_returns.dropna()
 
         if len(aligned_returns) > 1:
@@ -209,16 +236,24 @@ def calculate_metrics(
             if beta is not None:
                 strategy_return = aligned_returns["strategy"].mean() * 252
                 benchmark_return = aligned_returns["benchmark"].mean() * 252
-                alpha = strategy_return - (risk_free_rate + beta * (benchmark_return - risk_free_rate))
+                alpha = strategy_return - (
+                    risk_free_rate + beta * (benchmark_return - risk_free_rate)
+                )
 
     # Recovery factor
     net_profit = equity_curve["total_value"].iloc[-1] - initial_capital
-    recovery_factor = net_profit / (initial_capital * (max_drawdown / 100)) if max_drawdown > 0 else None
+    recovery_factor = (
+        net_profit / (initial_capital * (max_drawdown / 100))
+        if max_drawdown > 0
+        else None
+    )
 
     return PerformanceMetrics(
         total_return=total_return,
         annualized_return=annualized_return,
-        cumulative_return=cumulative_returns.iloc[-1] * 100 if len(cumulative_returns) > 0 else 0,
+        cumulative_return=(
+            cumulative_returns.iloc[-1] * 100 if len(cumulative_returns) > 0 else 0
+        ),
         sharpe_ratio=sharpe_ratio,
         sortino_ratio=sortino_ratio,
         calmar_ratio=calmar_ratio,
@@ -276,11 +311,13 @@ def calculate_rolling_metrics(
     rolling_max = cumulative.rolling(window).max()
     rolling_drawdown = ((cumulative - rolling_max) / rolling_max * 100).abs()
 
-    rolling_metrics = pd.DataFrame({
-        "sharpe": rolling_sharpe,
-        "volatility": rolling_volatility,
-        "drawdown": rolling_drawdown,
-    })
+    rolling_metrics = pd.DataFrame(
+        {
+            "sharpe": rolling_sharpe,
+            "volatility": rolling_volatility,
+            "drawdown": rolling_drawdown,
+        }
+    )
 
     return rolling_metrics
 
@@ -357,8 +394,12 @@ def calculate_trade_analysis(trades: pd.DataFrame) -> Dict:
         winning_trades = trades[trades["net_pnl"] > 0]
         losing_trades = trades[trades["net_pnl"] < 0]
 
-        analysis["avg_hold_time_winners"] = winning_trades["days_held"].mean() if len(winning_trades) > 0 else 0
-        analysis["avg_hold_time_losers"] = losing_trades["days_held"].mean() if len(losing_trades) > 0 else 0
+        analysis["avg_hold_time_winners"] = (
+            winning_trades["days_held"].mean() if len(winning_trades) > 0 else 0
+        )
+        analysis["avg_hold_time_losers"] = (
+            losing_trades["days_held"].mean() if len(losing_trades) > 0 else 0
+        )
 
     # Exit reason analysis
     if "exit_reason" in trades.columns:
@@ -373,7 +414,11 @@ def calculate_trade_analysis(trades: pd.DataFrame) -> Dict:
                 pattern_trades = trades[trades["pattern_type"] == pattern]
                 pattern_performance[pattern] = {
                     "total_trades": len(pattern_trades),
-                    "win_rate": (len(pattern_trades[pattern_trades["net_pnl"] > 0]) / len(pattern_trades)) * 100,
+                    "win_rate": (
+                        len(pattern_trades[pattern_trades["net_pnl"] > 0])
+                        / len(pattern_trades)
+                    )
+                    * 100,
                     "avg_pnl": pattern_trades["net_pnl"].mean(),
                     "total_pnl": pattern_trades["net_pnl"].sum(),
                 }
@@ -416,15 +461,25 @@ def overfitting_score(
         Overfitting score (0-1, higher = more overfit)
     """
     # Sharpe degradation
-    sharpe_degradation = (in_sample_sharpe - out_sample_sharpe) / in_sample_sharpe if in_sample_sharpe > 0 else 1.0
+    sharpe_degradation = (
+        (in_sample_sharpe - out_sample_sharpe) / in_sample_sharpe
+        if in_sample_sharpe > 0
+        else 1.0
+    )
 
     # Return degradation
-    return_degradation = (in_sample_return - out_sample_return) / in_sample_return if in_sample_return > 0 else 1.0
+    return_degradation = (
+        (in_sample_return - out_sample_return) / in_sample_return
+        if in_sample_return > 0
+        else 1.0
+    )
 
     # Parameter penalty (more parameters = higher risk of overfitting)
     parameter_penalty = min(n_parameters / 10, 1.0)  # Cap at 1.0
 
     # Combined score
-    overfitting_score = (sharpe_degradation * 0.4 + return_degradation * 0.4 + parameter_penalty * 0.2)
+    overfitting_score = (
+        sharpe_degradation * 0.4 + return_degradation * 0.4 + parameter_penalty * 0.2
+    )
 
     return max(0.0, min(1.0, overfitting_score))  # Clamp to [0, 1]

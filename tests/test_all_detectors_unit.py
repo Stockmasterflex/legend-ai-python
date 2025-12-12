@@ -1,21 +1,22 @@
 """Comprehensive unit tests for all 8 pattern detectors."""
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import pytest
-from datetime import datetime, timedelta
 
 # Skip all tests in this module if sklearn is not installed
 pytest.importorskip("sklearn")
 
-from app.core.detectors.vcp_detector import VCPDetector
-from app.core.detectors.cup_handle_detector import CupHandleDetector
-from app.core.detectors.triangle_detector import TriangleDetector
-from app.core.detectors.wedge_detector import WedgeDetector
-from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
-from app.core.detectors.double_top_bottom_detector import DoubleTopBottomDetector
-from app.core.detectors.channel_detector import ChannelDetector
-from app.core.detectors.sma50_pullback_detector import SMA50PullbackDetector
 from app.core.detector_base import PatternType
+from app.core.detectors.channel_detector import ChannelDetector
+from app.core.detectors.cup_handle_detector import CupHandleDetector
+from app.core.detectors.double_top_bottom_detector import \
+    DoubleTopBottomDetector
+from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
+from app.core.detectors.sma50_pullback_detector import SMA50PullbackDetector
+from app.core.detectors.triangle_detector import TriangleDetector
+from app.core.detectors.vcp_detector import VCPDetector
+from app.core.detectors.wedge_detector import WedgeDetector
 
 
 def create_base_df(prices: list[float], start_date: str = "2024-01-01") -> pd.DataFrame:
@@ -23,17 +24,20 @@ def create_base_df(prices: list[float], start_date: str = "2024-01-01") -> pd.Da
     dates = pd.date_range(start_date, periods=len(prices), freq="B")
     volumes = np.linspace(1_000_000, 500_000, len(prices))
 
-    return pd.DataFrame({
-        "datetime": dates,
-        "open": [p - 0.3 for p in prices],
-        "high": [p + 0.6 for p in prices],
-        "low": [p - 0.6 for p in prices],
-        "close": prices,
-        "volume": volumes,
-    })
+    return pd.DataFrame(
+        {
+            "datetime": dates,
+            "open": [p - 0.3 for p in prices],
+            "high": [p + 0.6 for p in prices],
+            "low": [p - 0.6 for p in prices],
+            "close": prices,
+            "volume": volumes,
+        }
+    )
 
 
 # ==================== VCP Detector Tests ====================
+
 
 def test_vcp_detector_runs_without_error():
     """Test VCP detector runs without errors on valid data."""
@@ -68,9 +72,9 @@ def test_vcp_detector_runs_without_error():
     # Validate structure
     assert isinstance(results, list)
     for result in results:
-        assert hasattr(result, 'pattern_type')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'lines')
+        assert hasattr(result, "pattern_type")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "lines")
         assert result.pattern_type == PatternType.VCP
         assert 0 <= result.confidence <= 1
 
@@ -110,6 +114,7 @@ def test_vcp_detector_requires_volume_contraction():
 
 # ==================== Cup & Handle Detector Tests ====================
 
+
 def test_cup_handle_detector_runs_without_error():
     """Test Cup & Handle detector runs without errors on valid data."""
     detector = CupHandleDetector()
@@ -143,7 +148,7 @@ def test_cup_handle_detector_validates_symmetry():
     # Asymmetric cup (should fail or have low confidence)
     prices = []
     prices.extend(np.linspace(100, 85, 10).tolist())  # Fast drop
-    prices.extend(np.linspace(85, 99, 50).tolist())   # Slow recovery
+    prices.extend(np.linspace(85, 99, 50).tolist())  # Slow recovery
 
     df = create_base_df(prices)
     results = detector.find(df, "1D", "ASYMMETRIC")
@@ -154,6 +159,7 @@ def test_cup_handle_detector_validates_symmetry():
 
 
 # ==================== Triangle Detector Tests ====================
+
 
 def test_triangle_detector_identifies_ascending():
     """Test Triangle detector identifies ascending triangles."""
@@ -220,6 +226,7 @@ def test_triangle_detector_identifies_symmetrical():
 
 # ==================== Wedge Detector Tests ====================
 
+
 def test_wedge_detector_identifies_rising():
     """Test Wedge detector identifies rising wedges."""
     detector = WedgeDetector()
@@ -272,6 +279,7 @@ def test_wedge_detector_identifies_falling():
 
 # ==================== Head & Shoulders Detector Tests ====================
 
+
 def test_head_shoulders_detector_identifies_pattern():
     """Test Head & Shoulders detector identifies classic pattern."""
     detector = HeadShouldersDetector()
@@ -280,9 +288,27 @@ def test_head_shoulders_detector_identifies_pattern():
 
     # Insert head and shoulders pattern
     pattern = [
-        104, 106, 108, 109, 108, 106, 104,  # Left shoulder
-        107, 110, 114, 116, 114, 110, 107,  # Head (higher)
-        105, 107, 109, 110, 108, 106, 104   # Right shoulder
+        104,
+        106,
+        108,
+        109,
+        108,
+        106,
+        104,  # Left shoulder
+        107,
+        110,
+        114,
+        116,
+        114,
+        110,
+        107,  # Head (higher)
+        105,
+        107,
+        109,
+        110,
+        108,
+        106,
+        104,  # Right shoulder
     ]
 
     start = 70
@@ -306,9 +332,27 @@ def test_head_shoulders_detector_identifies_inverse():
 
     # Insert inverse pattern
     pattern = [
-        96, 94, 93, 94, 96, 97, 98,        # Left shoulder (low)
-        95, 92, 90, 89, 90, 92, 95,        # Head (lower)
-        96, 97, 98, 99, 98, 97, 96         # Right shoulder
+        96,
+        94,
+        93,
+        94,
+        96,
+        97,
+        98,  # Left shoulder (low)
+        95,
+        92,
+        90,
+        89,
+        90,
+        92,
+        95,  # Head (lower)
+        96,
+        97,
+        98,
+        99,
+        98,
+        97,
+        96,  # Right shoulder
     ]
 
     start = 60
@@ -325,6 +369,7 @@ def test_head_shoulders_detector_identifies_inverse():
 
 
 # ==================== Double Top/Bottom Detector Tests ====================
+
 
 def test_double_top_detector_identifies_pattern():
     """Test Double Top detector identifies two peaks at similar levels."""
@@ -369,6 +414,7 @@ def test_double_bottom_detector_identifies_pattern():
 
 
 # ==================== Channel Detector Tests ====================
+
 
 def test_channel_detector_identifies_ascending():
     """Test Channel detector identifies ascending channels."""
@@ -435,6 +481,7 @@ def test_channel_detector_identifies_horizontal():
 
 # ==================== SMA50 Pullback Detector Tests ====================
 
+
 def test_sma50_pullback_detector_identifies_pattern():
     """Test SMA50 Pullback detector identifies pullback to 50-day SMA."""
     detector = SMA50PullbackDetector()
@@ -472,6 +519,7 @@ def test_sma50_pullback_requires_uptrend():
 
 
 # ==================== Edge Cases and Validation Tests ====================
+
 
 def test_detectors_handle_insufficient_data():
     """Test all detectors gracefully handle insufficient data."""
@@ -540,8 +588,8 @@ def test_detectors_return_valid_pattern_results():
         results = detector.find(df, "1D", "VALIDATION")
         for result in results:
             # Validate structure
-            assert hasattr(result, 'pattern_type')
-            assert hasattr(result, 'confidence')
-            assert hasattr(result, 'lines')
+            assert hasattr(result, "pattern_type")
+            assert hasattr(result, "confidence")
+            assert hasattr(result, "lines")
             assert 0 <= result.confidence <= 1
             assert isinstance(result.lines, dict)

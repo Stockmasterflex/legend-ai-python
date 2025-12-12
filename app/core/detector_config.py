@@ -2,7 +2,8 @@
 Configuration and threshold constants for pattern detectors.
 All thresholds are tunable via environment variables or CLI flags.
 """
-from typing import Dict, Any
+
+from typing import Any, Dict
 
 # ============================================================================
 # PRICE & TIME TOLERANCE
@@ -19,11 +20,13 @@ MIN_PATTERN_LENGTH = 20  # Minimum bars to form a valid pattern
 MEDIUM_PATTERN_LENGTH = 40  # Medium timeframe for patterns
 LONG_PATTERN_LENGTH = 120  # Maximum pattern length
 
+
 # ============================================================================
 # HORIZONTAL SUPPORT / RESISTANCE
 # ============================================================================
 class HorizontalSRConfig:
     """Horizontal S/R level detection"""
+
     MIN_TOUCHES = 3  # Minimum touches to form valid level
     MIN_SPAN_BARS = 20  # Minimum bar span for level to be valid
     DBSCAN_EPS_ATR = 0.5  # DBSCAN epsilon = eps_atr * ATR
@@ -33,11 +36,13 @@ class HorizontalSRConfig:
     RECENCY_WEIGHT = 0.35
     REACTION_VOLUME_WEIGHT = 0.30
 
+
 # ============================================================================
 # TRENDLINE SUPPORT / RESISTANCE
 # ============================================================================
 class TrendlineConfig:
     """Trendline (RANSAC-based) S/R detection"""
+
     MIN_TOUCHES = 3  # Minimum touches for valid trendline
     MIN_R_SQUARED = 0.85  # Minimum R² fit score
     MAX_DEVIATION_ATR = 0.5  # Max mean deviation = k * ATR
@@ -50,11 +55,13 @@ class TrendlineConfig:
     FIT_WEIGHT = 0.40
     RECENCY_WEIGHT = 0.20
 
+
 # ============================================================================
 # TRIANGLES (Ascending / Descending / Symmetrical)
 # ============================================================================
 class TriangleConfig:
     """Triangle pattern detection"""
+
     MIN_LENGTH = 30  # Minimum bars
     MAX_LENGTH = 120  # Maximum bars
     MIN_TOUCHES_PER_SIDE = 3  # Min touches on each side
@@ -71,11 +78,13 @@ class TriangleConfig:
     STRUCTURE_WEIGHT = 0.25
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # CHANNELS (Up / Down / Any)
 # ============================================================================
 class ChannelConfig:
     """Channel pattern detection"""
+
     MIN_LENGTH = 30  # Minimum bars
     MIN_TOUCHES_PER_SIDE = 3
     WIDTH_STABILITY_THRESHOLD = 0.15  # std(width) / mean(width) ≤ this
@@ -91,11 +100,13 @@ class ChannelConfig:
     STABILITY_WEIGHT = 0.25
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # WEDGES (Rising / Falling)
 # ============================================================================
 class WedgeConfig:
     """Wedge pattern detection"""
+
     MIN_LENGTH = 40  # Minimum bars
     CONVERGENCE_THRESHOLD = 0.30  # 30% convergence
     MIN_TOUCHES_PER_SIDE = 3
@@ -113,11 +124,13 @@ class WedgeConfig:
     VOLUME_WEIGHT = 0.30
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # DOUBLE TOP / DOUBLE BOTTOM
 # ============================================================================
 class DoubleTopBottomConfig:
     """Double Top/Bottom pattern detection"""
+
     MIN_TIME_SEPARATION = 5  # Bars between peaks/troughs
     MAX_TIME_SEPARATION = 60
     PEAK_PRICE_TOLERANCE = 0.01  # Within 1% or 0.6*ATR
@@ -133,11 +146,13 @@ class DoubleTopBottomConfig:
     VOLUME_WEIGHT = 0.20
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # MULTIPLE TOP / MULTIPLE BOTTOM
 # ============================================================================
 class MultipleTopBottomConfig:
     """Multiple Top/Bottom pattern detection"""
+
     MIN_TOUCHES = 3  # Minimum 3 alternating pivots
     PRICE_TOLERANCE_ATR = 0.5
 
@@ -151,11 +166,13 @@ class MultipleTopBottomConfig:
     VOLUME_WEIGHT = 0.20
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # HEAD & SHOULDERS / INVERSE
 # ============================================================================
 class HeadShouldersConfig:
     """Head & Shoulders pattern detection"""
+
     MIN_LENGTH = 40  # Minimum bars
     LEFT_SHOULDER_MIN = 1.0  # LS height as baseline
     HEAD_MIN_RATIO = 1.2  # Head ≥ 1.2 * LS height
@@ -173,6 +190,7 @@ class HeadShouldersConfig:
     VOLUME_WEIGHT = 0.25
     RECENCY_WEIGHT = 0.15
 
+
 # ============================================================================
 # VCP (VOLATILITY CONTRACTION PATTERN)
 # ============================================================================
@@ -181,6 +199,7 @@ class VCPConfig:
     VCP (Volatility Contraction Pattern) detection.
     Minervini-style: N≥3 contractions where percent declines shrink.
     """
+
     MIN_CONTRACTIONS = 3  # Minimum number of contractions
     MIN_CONTRACTION_DECLINE = 0.06  # Minimum 6% decline per contraction
     SHRINK_RATIO_THRESHOLD = 0.75  # d_{i+1}/d_i ≤ 0.75
@@ -205,6 +224,7 @@ class VCPConfig:
     STRUCTURE_WEIGHT = 0.25
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # CUP & HANDLE (CAN SLIM-STYLE)
 # ============================================================================
@@ -213,6 +233,7 @@ class CupHandleConfig:
     Cup & Handle pattern detection (CAN SLIM rules).
     Ref: Minervini, O'Neil
     """
+
     # Cup parameters
     CUP_DEPTH_MIN = 0.08  # 8% minimum
     CUP_DEPTH_TYPICAL = (0.12, 0.50)  # Typical 12-50%
@@ -243,11 +264,13 @@ class CupHandleConfig:
     VOLUME_WEIGHT = 0.20
     RECENCY_WEIGHT = 0.10
 
+
 # ============================================================================
 # UNIVERSAL SCORING
 # ============================================================================
 class ScoringConfig:
     """Unified scoring system for all detectors"""
+
     # Weights sum to 1.0
     TOUCHES_WEIGHT = 0.30
     FIT_WEIGHT = 0.25
@@ -265,45 +288,56 @@ class ScoringConfig:
     STRONG = (0.75, 0.90)
     VERY_STRONG = (0.90, 1.0)
 
+
 # ============================================================================
 # GENERAL VOLUME & ATR CONFIG
 # ============================================================================
 class VolumeConfig:
     """Volume analysis configuration"""
+
     VOLUME_Z_SCORE_THRESHOLD = 2.0  # Breakout volume ≥ 2 std devs
     VOLUME_ROLLING_WINDOW = 20  # Bars for median/z-score calculation
 
+
 class ATRConfig:
     """ATR (Average True Range) configuration"""
+
     ATR_PERIOD = 14  # Standard ATR period
     ATR_SMOOTHING = "SMA"  # "SMA" or "EMA"
+
 
 # ============================================================================
 # PIVOT DETECTION (ZIGZAG)
 # ============================================================================
 class PivotConfig:
     """Pivot detection via ZigZag"""
+
     # Adaptive percentage: max(1.5*ATR/close, 0.5%), clamped to [0.5%, 8%]
     MIN_PERCENT = 0.005  # 0.5%
     MAX_PERCENT = 0.08  # 8%
     ATR_FACTOR = 1.5  # Multiplier for ATR-based pivot threshold
+
 
 # ============================================================================
 # BREAKOUT DETECTION
 # ============================================================================
 class BreakoutConfig:
     """Breakout criteria"""
+
     VOLUME_Z_THRESHOLD = 2.0  # Volume surge ≥ 2 std devs
     PRICE_CONFIRMATION_BARS = 1  # Breakout must close outside boundary
     NEAR_BREAKOUT_RANGE_ATR = 1.0  # "Near breakout" if within this * ATR
+
 
 # ============================================================================
 # RESULT DEDUPLICATION
 # ============================================================================
 class DeduplicationConfig:
     """Remove overlapping results by window IoU"""
+
     IOU_THRESHOLD = 0.50  # Keep patterns with IoU < this, drop > this
     KEEP_STRATEGY = "highest_confidence"  # Keep pattern with highest confidence
+
 
 # ============================================================================
 # DEFAULT DETECTOR ACTIVATION
@@ -318,8 +352,9 @@ ACTIVE_DETECTORS = [
     "multiple_top_bottom",
     "head_shoulders",
     "vcp",
-    "cup_handle"
+    "cup_handle",
 ]
+
 
 # ============================================================================
 # HELPER: Get config for a detector

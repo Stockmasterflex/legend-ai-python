@@ -1,6 +1,7 @@
 """
 Rectangle consolidation pattern detection (bullish and bearish breakouts).
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -43,7 +44,12 @@ def _build_pattern(
         "width": width,
         "height": round(height, 2),
         "current_price": round(current_price, 2) if current_price is not None else None,
-        "confirmed": bool(current_price and ((current_price >= entry) if "Bull" in name else (current_price <= entry))),
+        "confirmed": bool(
+            current_price
+            and (
+                (current_price >= entry) if "Bull" in name else (current_price <= entry)
+            )
+        ),
         "metadata": metadata,
         "start_idx": int(start_idx),
         "end_idx": int(end_idx),

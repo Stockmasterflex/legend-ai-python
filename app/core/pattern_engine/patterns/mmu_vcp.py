@@ -5,6 +5,7 @@ These implementations are pragmatic ports of the Patternz logic with
 Legend AI heuristics added to keep runtime light while preserving the
 key structure/metadata expected by downstream consumers.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
@@ -51,7 +52,11 @@ def _build_pattern(
     highs: np.ndarray,
     metadata: Dict[str, Any],
 ) -> Dict[str, Any]:
-    height = float(highs[mid_idx] - lows[start_idx]) if start_idx is not None and mid_idx is not None else None
+    height = (
+        float(highs[mid_idx] - lows[start_idx])
+        if start_idx is not None and mid_idx is not None
+        else None
+    )
     current_price = float(highs[end_idx]) if end_idx is not None else None
     return {
         "pattern": name,
@@ -62,7 +67,11 @@ def _build_pattern(
         "stop": round(stop, 2) if stop is not None else None,
         "target": round(target, 2) if target is not None else None,
         "risk_reward": _risk_reward(entry, stop, target),
-        "width": int(end_idx - start_idx) if start_idx is not None and end_idx is not None else None,
+        "width": (
+            int(end_idx - start_idx)
+            if start_idx is not None and end_idx is not None
+            else None
+        ),
         "height": round(height, 2) if height is not None else None,
         "current_price": round(current_price, 2) if current_price is not None else None,
         "confirmed": bool(current_price and entry and current_price >= entry),
@@ -78,7 +87,9 @@ def _build_pattern(
 # --------------------------------------------------------------------------- #
 
 
-def _contraction_sequence(highs: np.ndarray, lows: np.ndarray, bottoms: np.ndarray, tops: np.ndarray) -> Tuple[int, int, int, int]:
+def _contraction_sequence(
+    highs: np.ndarray, lows: np.ndarray, bottoms: np.ndarray, tops: np.ndarray
+) -> Tuple[int, int, int, int]:
     """
     Find a simple contraction sequence Bottom1 -> Top -> Bottom2.
     Returns (b1, top, b2, breakout_idx) or (None, None, None, None).

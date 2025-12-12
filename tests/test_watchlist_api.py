@@ -28,7 +28,12 @@ def _build_test_client(tmp_path, monkeypatch) -> TestClient:
 def test_watchlist_file_fallback_flow(tmp_path, monkeypatch):
     client = _build_test_client(tmp_path, monkeypatch)
 
-    payload = {"ticker": "nvda", "reason": "Breakout", "status": "Watching", "tags": ["VCP", "Momentum"]}
+    payload = {
+        "ticker": "nvda",
+        "reason": "Breakout",
+        "status": "Watching",
+        "tags": ["VCP", "Momentum"],
+    }
     res = client.post("/api/watchlist/add", json=payload)
     assert res.status_code == 200
     assert res.json()["ticker"] == "NVDA"

@@ -3,17 +3,17 @@ Backtesting Engine
 Event-driven backtesting engine with comprehensive features
 """
 
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable
-import asyncio
-import pandas as pd
 import logging
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Callable, Dict, List, Optional
 
-from .strategy import Strategy, Signal, SignalType
-from .portfolio import Portfolio, Position
+import pandas as pd
+
 from .execution import ExecutionSimulator
-from .metrics import calculate_metrics, PerformanceMetrics
+from .metrics import PerformanceMetrics, calculate_metrics
+from .portfolio import Portfolio
+from .strategy import Signal, SignalType, Strategy
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BacktestConfig:
     """Backtest configuration"""
+
     strategy: Strategy
     start_date: datetime
     end_date: datetime
@@ -86,7 +87,9 @@ class BacktestEngine:
         Returns:
             Dictionary with backtest results
         """
-        logger.info(f"Starting backtest: {self.config.start_date} to {self.config.end_date}")
+        logger.info(
+            f"Starting backtest: {self.config.start_date} to {self.config.end_date}"
+        )
         self.is_running = True
 
         try:
@@ -97,7 +100,9 @@ class BacktestEngine:
             trading_dates = self._get_trading_dates()
             total_days = len(trading_dates)
 
-            logger.info(f"Backtesting {len(self.config.universe)} tickers over {total_days} days")
+            logger.info(
+                f"Backtesting {len(self.config.universe)} tickers over {total_days} days"
+            )
 
             # Event loop: iterate through each trading day
             for i, date in enumerate(trading_dates):
@@ -125,7 +130,9 @@ class BacktestEngine:
                 initial_capital=self.config.initial_capital,
             )
 
-            logger.info(f"Backtest completed. Total return: {self.performance.total_return:.2f}%")
+            logger.info(
+                f"Backtest completed. Total return: {self.performance.total_return:.2f}%"
+            )
 
             return self._get_results()
 
@@ -169,7 +176,9 @@ class BacktestEngine:
         for ticker, data in self.historical_data.items():
             if "timestamp" in data.columns:
                 dates = pd.to_datetime(data["timestamp"])
-            elif data.index.name == "timestamp" or isinstance(data.index, pd.DatetimeIndex):
+            elif data.index.name == "timestamp" or isinstance(
+                data.index, pd.DatetimeIndex
+            ):
                 dates = data.index
             else:
                 continue
@@ -177,10 +186,13 @@ class BacktestEngine:
             all_dates.update(dates.tolist())
 
         # Sort and filter by date range
-        trading_dates = sorted([
-            d for d in all_dates
-            if self.config.start_date <= d <= self.config.end_date
-        ])
+        trading_dates = sorted(
+            [
+                d
+                for d in all_dates
+                if self.config.start_date <= d <= self.config.end_date
+            ]
+        )
 
         return trading_dates
 
@@ -249,7 +261,9 @@ class BacktestEngine:
             if len(data_at_date) > 0:
                 self.current_prices[ticker] = data_at_date.iloc[0]["close"]
 
-    def _get_data_up_to_date(self, ticker: str, date: datetime) -> Optional[pd.DataFrame]:
+    def _get_data_up_to_date(
+        self, ticker: str, date: datetime
+    ) -> Optional[pd.DataFrame]:
         """Get historical data up to a specific date"""
         if ticker not in self.historical_data:
             return None
@@ -279,7 +293,9 @@ class BacktestEngine:
         # Close positions
         for ticker, reason in positions_to_close:
             if ticker in self.current_prices:
-                await self._close_position(ticker, self.current_prices[ticker], date, reason)
+                await self._close_position(
+                    ticker, self.current_prices[ticker], date, reason
+                )
 
     async def _process_signal(self, signal: Signal, date: datetime):
         """
@@ -323,7 +339,11 @@ class BacktestEngine:
 
             # Get volume for execution simulation
             ticker_data = self._get_data_up_to_date(ticker, date)
-            volume = ticker_data.iloc[-1]["volume"] if ticker_data is not None and "volume" in ticker_data.columns else None
+            volume = (
+                ticker_data.iloc[-1]["volume"]
+                if ticker_data is not None and "volume" in ticker_data.columns
+                else None
+            )
 
             # Execute order
             execution_result = self.execution.execute_order(
@@ -360,7 +380,9 @@ class BacktestEngine:
                 if self.config.on_order_filled:
                     await self.config.on_order_filled(position, execution_result)
 
-                logger.debug(f"Opened position: {ticker} x {quantity} @ {execution_result['final_price']:.2f}")
+                logger.debug(
+                    f"Opened position: {ticker} x {quantity} @ {execution_result['final_price']:.2f}"
+                )
 
         except Exception as e:
             logger.error(f"Error processing buy signal for {ticker}: {e}")
@@ -392,7 +414,11 @@ class BacktestEngine:
 
         # Get volume for execution simulation
         ticker_data = self._get_data_up_to_date(ticker, date)
-        volume = ticker_data.iloc[-1]["volume"] if ticker_data is not None and "volume" in ticker_data.columns else None
+        volume = (
+            ticker_data.iloc[-1]["volume"]
+            if ticker_data is not None and "volume" in ticker_data.columns
+            else None
+        )
 
         # Execute order
         execution_result = self.execution.execute_order(
@@ -417,7 +443,9 @@ class BacktestEngine:
             if self.config.on_trade_closed:
                 await self.config.on_trade_closed(trade)
 
-            logger.debug(f"Closed position: {ticker} - P&L: {trade['net_pnl']:.2f} ({trade['pnl_pct']:.2f}%)")
+            logger.debug(
+                f"Closed position: {ticker} - P&L: {trade['net_pnl']:.2f} ({trade['pnl_pct']:.2f}%)"
+            )
 
     async def _close_all_positions(self, date: datetime):
         """Close all remaining positions at the end"""
@@ -425,7 +453,9 @@ class BacktestEngine:
 
         for ticker in tickers_to_close:
             if ticker in self.current_prices:
-                await self._close_position(ticker, self.current_prices[ticker], date, "end_of_backtest")
+                await self._close_position(
+                    ticker, self.current_prices[ticker], date, "end_of_backtest"
+                )
 
     def _get_results(self) -> Dict:
         """Get backtest results"""
@@ -438,19 +468,23 @@ class BacktestEngine:
                 "universe": self.config.universe,
             },
             "portfolio": self.portfolio.get_summary(),
-            "performance": {
-                "total_return": self.performance.total_return,
-                "annualized_return": self.performance.annualized_return,
-                "sharpe_ratio": self.performance.sharpe_ratio,
-                "sortino_ratio": self.performance.sortino_ratio,
-                "calmar_ratio": self.performance.calmar_ratio,
-                "max_drawdown": self.performance.max_drawdown,
-                "volatility": self.performance.volatility,
-                "win_rate": self.performance.win_rate,
-                "profit_factor": self.performance.profit_factor,
-                "total_trades": self.performance.total_trades,
-                "expectancy": self.performance.expectancy,
-            } if self.performance else {},
+            "performance": (
+                {
+                    "total_return": self.performance.total_return,
+                    "annualized_return": self.performance.annualized_return,
+                    "sharpe_ratio": self.performance.sharpe_ratio,
+                    "sortino_ratio": self.performance.sortino_ratio,
+                    "calmar_ratio": self.performance.calmar_ratio,
+                    "max_drawdown": self.performance.max_drawdown,
+                    "volatility": self.performance.volatility,
+                    "win_rate": self.performance.win_rate,
+                    "profit_factor": self.performance.profit_factor,
+                    "total_trades": self.performance.total_trades,
+                    "expectancy": self.performance.expectancy,
+                }
+                if self.performance
+                else {}
+            ),
             "equity_curve": self.portfolio.get_equity_curve().to_dict(orient="records"),
             "trades": self.portfolio.get_trades().to_dict(orient="records"),
         }

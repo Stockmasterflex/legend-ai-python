@@ -4,18 +4,20 @@ Detector Registry - Central registry for all pattern detectors
 This module provides a central registry for all available pattern detectors,
 making it easy to discover, instantiate, and use detectors throughout the application.
 """
-from typing import Dict, List, Type, Optional
-import logging
 
-from app.core.detector_base import Detector, PatternResult
-from app.core.detectors.vcp_detector import VCPDetector
-from app.core.detectors.cup_handle_detector import CupHandleDetector
-from app.core.detectors.triangle_detector import TriangleDetector
-from app.core.detectors.wedge_detector import WedgeDetector
-from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
-from app.core.detectors.double_top_bottom_detector import DoubleTopBottomDetector
+import logging
+from typing import Dict, List, Optional, Type
+
+from app.core.detector_base import Detector
 from app.core.detectors.channel_detector import ChannelDetector
+from app.core.detectors.cup_handle_detector import CupHandleDetector
+from app.core.detectors.double_top_bottom_detector import \
+    DoubleTopBottomDetector
+from app.core.detectors.head_shoulders_detector import HeadShouldersDetector
 from app.core.detectors.sma50_pullback_detector import SMA50PullbackDetector
+from app.core.detectors.triangle_detector import TriangleDetector
+from app.core.detectors.vcp_detector import VCPDetector
+from app.core.detectors.wedge_detector import WedgeDetector
 
 logger = logging.getLogger(__name__)
 
@@ -39,35 +41,34 @@ class DetectorRegistry:
         """Register all available detectors"""
         # Register each detector
         self.register("vcp", VCPDetector, ["VCP", "Volatility Contraction Pattern"])
-        self.register("cup_handle", CupHandleDetector, ["Cup & Handle", "Cup with Handle"])
-        self.register("triangle", TriangleDetector, [
-            "Ascending Triangle",
-            "Descending Triangle",
-            "Symmetrical Triangle"
-        ])
+        self.register(
+            "cup_handle", CupHandleDetector, ["Cup & Handle", "Cup with Handle"]
+        )
+        self.register(
+            "triangle",
+            TriangleDetector,
+            ["Ascending Triangle", "Descending Triangle", "Symmetrical Triangle"],
+        )
         self.register("wedge", WedgeDetector, ["Rising Wedge", "Falling Wedge"])
-        self.register("head_shoulders", HeadShouldersDetector, [
-            "Head & Shoulders",
-            "Inverse Head & Shoulders"
-        ])
-        self.register("double_pattern", DoubleTopBottomDetector, [
-            "Double Top",
-            "Double Bottom"
-        ])
-        self.register("channel", ChannelDetector, [
-            "Channel Up",
-            "Channel Down",
-            "Sideways Channel"
-        ])
+        self.register(
+            "head_shoulders",
+            HeadShouldersDetector,
+            ["Head & Shoulders", "Inverse Head & Shoulders"],
+        )
+        self.register(
+            "double_pattern", DoubleTopBottomDetector, ["Double Top", "Double Bottom"]
+        )
+        self.register(
+            "channel",
+            ChannelDetector,
+            ["Channel Up", "Channel Down", "Sideways Channel"],
+        )
         self.register("sma50_pullback", SMA50PullbackDetector, ["50 SMA Pullback"])
 
         logger.info(f"✅ Registered {len(self._detectors)} pattern detectors")
 
     def register(
-        self,
-        detector_id: str,
-        detector_class: Type[Detector],
-        pattern_names: List[str]
+        self, detector_id: str, detector_class: Type[Detector], pattern_names: List[str]
     ) -> None:
         """
         Register a detector
@@ -105,7 +106,9 @@ class DetectorRegistry:
             logger.error(f"Failed to instantiate detector '{detector_id}': {e}")
             return None
 
-    def get_detector_for_pattern(self, pattern_name: str, **kwargs) -> Optional[Detector]:
+    def get_detector_for_pattern(
+        self, pattern_name: str, **kwargs
+    ) -> Optional[Detector]:
         """
         Get a detector that can detect the specified pattern
 

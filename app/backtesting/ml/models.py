@@ -3,14 +3,14 @@ ML Model Types and Configurations
 Defines available model types for ML-based trading strategies
 """
 
-from enum import Enum
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from enum import Enum
+from typing import Any, Dict, List
 
 
 class ModelType(str, Enum):
     """Available ML model types for trading"""
-    
+
     # Classification Models
     LOGISTIC_REGRESSION = "logistic_regression"
     RANDOM_FOREST = "random_forest"
@@ -18,7 +18,7 @@ class ModelType(str, Enum):
     XGB_CLASSIFIER = "xgb_classifier"
     LIGHTGBM_CLASSIFIER = "lightgbm_classifier"
     SVM = "svm"
-    
+
     # Regression Models
     LINEAR_REGRESSION = "linear_regression"
     RIDGE = "ridge"
@@ -26,17 +26,17 @@ class ModelType(str, Enum):
     ELASTIC_NET = "elastic_net"
     XGB_REGRESSOR = "xgb_regressor"
     LIGHTGBM_REGRESSOR = "lightgbm_regressor"
-    
+
     # Neural Networks
     MLP = "mlp"
     LSTM = "lstm"
     TRANSFORMER = "transformer"
-    
+
     # Ensemble Methods
     VOTING = "voting"
     STACKING = "stacking"
     BAGGING = "bagging"
-    
+
     # Specialized Trading Models
     REINFORCEMENT_LEARNING = "reinforcement_learning"
     SIGNAL_CLASSIFIER = "signal_classifier"
@@ -46,6 +46,7 @@ class ModelType(str, Enum):
 @dataclass
 class ModelConfig:
     """Configuration for ML models"""
+
     model_type: ModelType
     hyperparameters: Dict[str, Any] = field(default_factory=dict)
     feature_columns: List[str] = field(default_factory=list)
