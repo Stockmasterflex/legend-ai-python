@@ -21,27 +21,33 @@ async def scan_pattern(ticker, interval):
                 json={"ticker": ticker, "interval": interval}
             )
 
-            if r.status_code != 200:
-                return f"❌ API Error: {r.status_code}", ""
+            if r.status_code == 422:
+                return f"❌ Invalid input. Please check ticker symbol and interval.", ""
+            elif r.status_code != 200:
+                return f"❌ API Error: HTTP {r.status_code}\n\nCheck API health at {API_BASE}/health", ""
 
             data = r.json()
             if data.get("success"):
                 d = data["data"]
+                chart_url = data.get("chart_url") or d.get("chart_url", "")
                 return f"""# {ticker} Pattern Analysis
 
-**Pattern:** {d.get('pattern')}
-**Score:** {d.get('score')}/10
+**Pattern:** {d.get('pattern', 'No Pattern')}
+**Score:** {d.get('score', 0)}/10
 **Entry:** ${d.get('entry', 0):.2f}
 **Stop:** ${d.get('stop', 0):.2f}
 **Target:** ${d.get('target', 0):.2f}
 **Risk/Reward:** {d.get('risk_reward', 0):.2f}
 
 _Data Source: {d.get('source', 'Unknown')}_
-""", data.get("chart_url", "")
+_RS Rating: {d.get('rs_rating', 'N/A')}_
+""", chart_url
             else:
                 return f"❌ {data.get('detail', 'Could not analyze pattern')}", ""
     except asyncio.TimeoutError:
-        return "❌ Request timed out (60s)", ""
+        return "❌ Request timed out (60s). Try again or use a shorter interval.", ""
+    except httpx.RequestError as e:
+        return f"❌ Network error: {str(e)}\n\nCheck that the API is running at {API_BASE}", ""
     except Exception as e:
         return f"❌ Error: {str(e)}", ""
 
@@ -51,26 +57,34 @@ async def scan_universe(min_score):
         async with httpx.AsyncClient(timeout=120) as client:
             r = await client.post(
                 f"{API_BASE}/api/universe/scan",
-                json={"min_score": min_score, "limit": 20}
+                json={"min_score": min_score, "max_results": 20}  # Fixed: use 'max_results' not 'limit'
             )
 
             if r.status_code != 200:
-                return f"❌ Scan failed: {r.status_code}"
+                return f"❌ Scan failed: HTTP {r.status_code}\n\nPlease try again or check API health at {API_BASE}/health"
 
             data = r.json()
             if data.get("success"):
                 results = data.get("results", [])
-                if results:
-                    text = f"# Universe Scan Results ({len(results)} setups)\n\n"
+                cached = data.get("cached", False)
+                scan_time = data.get("scan_time", 0)
+
+                if results and len(results) > 0:
+                    cache_note = " (cached)" if cached else f" (scan took {scan_time}s)"
+                    text = f"# Universe Scan Results{cache_note}\n\n"
+                    text += f"**Found {len(results)} setups** with score >= {min_score}\n\n"
                     for item in results[:15]:
                         emoji = "🔥" if item['score'] >= 8 else "⭐"
                         text += f"{emoji} **{item['ticker']}** - {item['pattern']} ({item['score']}/10)\n"
                         text += f"   Entry: ${item['entry']:.2f} | Stop: ${item['stop']:.2f} | R:R: {item['risk_reward']:.1f}:1\n\n"
                     return text
-                return "📊 No results found"
+                else:
+                    return f"📊 No setups found with score >= {min_score}\n\nTry lowering the minimum score or check back later."
             return f"❌ {data.get('detail', 'Scan failed')}"
     except asyncio.TimeoutError:
         return "❌ Scan timed out (120s) - too many stocks or slow APIs"
+    except httpx.RequestError as e:
+        return f"❌ Network error: {str(e)}\n\nCheck that the API is running at {API_BASE}"
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
@@ -81,28 +95,35 @@ async def get_watchlist():
             r = await client.get(f"{API_BASE}/api/watchlist")
 
             if r.status_code != 200:
-                return f"❌ Error: {r.status_code}"
+                return f"❌ Error: HTTP {r.status_code}\n\nCheck API health at {API_BASE}/health"
 
             data = r.json()
             if data.get("success"):
                 items = data.get("items", [])
-                if items:
+                if items and len(items) > 0:
                     text = f"# Your Watchlist ({len(items)} stocks)\n\n"
                     for item in items:
-                        text += f"• **{item['ticker']}**\n"
-                        text += f"  Reason: {item.get('reason', 'N/A')}\n"
-                        text += f"  Added: {item.get('added_date', 'Unknown')[:10]}\n\n"
+                        ticker = item.get('ticker', 'UNKNOWN')
+                        reason = item.get('reason', 'N/A')
+                        added = item.get('added_date', 'Unknown')
+                        if isinstance(added, str) and len(added) >= 10:
+                            added = added[:10]
+                        text += f"• **{ticker}**\n"
+                        text += f"  Reason: {reason}\n"
+                        text += f"  Added: {added}\n\n"
                     return text
-                return "📝 Watchlist is empty"
+                return "📝 Watchlist is empty\n\nAdd stocks using the form above."
             return "❌ Could not fetch watchlist"
+    except httpx.RequestError as e:
+        return f"❌ Network error: {str(e)}\n\nCheck that the API is running at {API_BASE}"
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
 async def add_watchlist(ticker, reason):
     """Add to watchlist with error handling"""
     try:
-        if not ticker:
-            return "❌ Please enter a ticker"
+        if not ticker or ticker.strip() == "":
+            return "❌ Please enter a ticker symbol"
 
         ticker = ticker.upper().strip()
 
@@ -112,14 +133,20 @@ async def add_watchlist(ticker, reason):
                 json={"ticker": ticker, "reason": reason or "Monitoring"}
             )
 
-            if r.status_code != 200:
-                return f"❌ Error: {r.status_code}"
+            if r.status_code == 422:
+                return f"❌ Invalid ticker symbol: {ticker}"
+            elif r.status_code == 409:
+                return f"⚠️ **{ticker}** is already in your watchlist"
+            elif r.status_code != 200:
+                return f"❌ Error: HTTP {r.status_code}\n\nCheck API health at {API_BASE}/health"
 
             data = r.json()
             if data.get("success"):
                 return f"✅ Added **{ticker}** to watchlist!\n\n_Reason: {reason or 'Monitoring'}_"
             else:
                 return f"❌ {data.get('detail', 'Could not add to watchlist')}"
+    except httpx.RequestError as e:
+        return f"❌ Network error: {str(e)}\n\nCheck that the API is running at {API_BASE}"
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
