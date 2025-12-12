@@ -36,31 +36,45 @@ class TestAPIUsageLimits:
             store[key] = value
             return True
 
-        market_data_service.cache.get = AsyncMock(side_effect=mock_get)
-        market_data_service.cache.set = AsyncMock(side_effect=mock_set)
+        original_cache_get = market_data_service.cache.get
+        original_cache_set = market_data_service.cache.set
+        original_yahoo = market_data_service._get_from_yahoo
 
-        # Mock external API calls to avoid "Event loop is closed" or network errors
-        market_data_service._get_from_yahoo = AsyncMock(return_value={
-            "c": [100.0, 101.0], "o": [99.0, 100.0], "h": [102.0, 102.0],
-            "l": [98.0, 99.0], "v": [1000, 2000], "t": ["2024-01-01", "2024-01-02"]
-        })
+        try:
+            market_data_service.cache.get = AsyncMock(side_effect=mock_get)
+            market_data_service.cache.set = AsyncMock(side_effect=mock_set)
 
-        ticker = "AAPL"
-        interval = "1day"
+            # Mock external API calls to avoid "Event loop is closed" or network errors
+            quote_values = [100.0 + i for i in range(120)]
+            market_data_service._get_from_yahoo = AsyncMock(return_value={
+                "c": quote_values,
+                "o": [v - 0.5 for v in quote_values],
+                "h": [v + 0.5 for v in quote_values],
+                "l": [v - 1.0 for v in quote_values],
+                "v": [1_000 + i for i in range(120)],
+                "t": [f"2024-01-{(i % 28) + 1:02d}" for i in range(120)],
+            })
 
-        # First call - should hit API (mocked) and set cache
-        data1 = await market_data_service.get_time_series(ticker, interval, 100)
+            ticker = "AAPL"
+            interval = "1day"
 
-        # Second call - should hit cache
-        data2 = await market_data_service.get_time_series(ticker, interval, 100)
+            # First call - should hit API (mocked) and set cache
+            data1 = await market_data_service.get_time_series(ticker, interval, 100)
 
-        # Data should be identical (either both from cache or both from API)
-        assert data1 is not None
-        assert data2 is not None
+            # Second call - should hit cache
+            data2 = await market_data_service.get_time_series(ticker, interval, 100)
 
-        # If both succeeded, they should have same structure
-        if data1 and data2:
-            assert set(data1.keys()) == set(data2.keys())
+            # Data should be identical (either both from cache or both from API)
+            assert data1 is not None
+            assert data2 is not None
+
+            # If both succeeded, they should have same structure
+            if data1 and data2:
+                assert set(data1.keys()) == set(data2.keys())
+        finally:
+            market_data_service.cache.get = original_cache_get
+            market_data_service.cache.set = original_cache_set
+            market_data_service._get_from_yahoo = original_yahoo
 
     @pytest.mark.asyncio
     async def test_dynamic_ttl_market_hours(self):
