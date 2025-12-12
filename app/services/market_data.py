@@ -149,7 +149,7 @@ class MarketDataService:
         # 1. Try cache first
         cache_key = f"timeseries:{ticker}:{interval}"
         cached_data = await self.cache.get(cache_key)
-        if cached_data and self._is_valid_series(cached_data):
+        if cached_data and self._is_valid_series(cached_data, outputsize):
             logger.info(f"⚡ Cache hit for {ticker}")
             cached_data["cached"] = True
             cached_data["source"] = DataSource.CACHE
@@ -162,7 +162,7 @@ class MarketDataService:
         if prefer_free or is_historical:
             # For historical data, try Yahoo first (free, unlimited)
             data = await self._get_from_yahoo(ticker, interval, outputsize)
-            if self._is_valid_series(data):
+            if self._is_valid_series(data, outputsize):
                 # Cache historical data for much longer
                 cache_ttl = 604800 if is_historical else 3600  # 7 days vs 1 hour
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -174,7 +174,7 @@ class MarketDataService:
         # 2. Try TwelveData (primary) only if API key configured
         if self.settings.twelvedata_api_key and await self._check_rate_limit(DataSource.TWELVE_DATA):
             data = await self._get_from_twelvedata(ticker, interval, outputsize)
-            if self._is_valid_series(data):
+            if self._is_valid_series(data, outputsize):
                 await self._increment_usage(DataSource.TWELVE_DATA)
                 cache_ttl = 604800 if is_historical else 900  # Smart TTL
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -185,7 +185,7 @@ class MarketDataService:
         # 3. Try Finnhub (fallback 1)
         if self.settings.finnhub_api_key and await self._check_rate_limit(DataSource.FINNHUB):
             data = await self._get_from_finnhub(ticker, interval, outputsize)
-            if self._is_valid_series(data):
+            if self._is_valid_series(data, outputsize):
                 await self._increment_usage(DataSource.FINNHUB)
                 cache_ttl = 604800 if is_historical else 900
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -196,7 +196,7 @@ class MarketDataService:
         # 4. Try Alpha Vantage (fallback 2)
         if self.settings.alpha_vantage_api_key and await self._check_rate_limit(DataSource.ALPHA_VANTAGE):
             data = await self._get_from_alpha_vantage(ticker, interval, outputsize)
-            if self._is_valid_series(data):
+            if self._is_valid_series(data, outputsize):
                 await self._increment_usage(DataSource.ALPHA_VANTAGE)
                 cache_ttl = 604800 if is_historical else 900
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
@@ -207,7 +207,7 @@ class MarketDataService:
         # 5. Try Yahoo Finance (last resort) if not already tried
         if not (prefer_free or is_historical):
             data = await self._get_from_yahoo(ticker, interval, outputsize)
-            if self._is_valid_series(data):
+            if self._is_valid_series(data, outputsize):
                 cache_ttl = 604800 if is_historical else 3600
                 await self.cache.set(cache_key, data, ttl=cache_ttl)
                 data["cached"] = False
@@ -569,14 +569,22 @@ class MarketDataService:
             return None
 
     @staticmethod
-    def _is_valid_series(data: Optional[Dict[str, Any]]) -> bool:
-        """Basic validation for OHLCV payloads before caching or returning."""
+    def _is_valid_series(data: Optional[Dict[str, Any]], expected_length: int = 50) -> bool:
+        """Basic validation for OHLCV payloads before caching or returning.
+
+        Args:
+            data: Payload containing OHLCV lists.
+            expected_length: Requested number of points. Validation allows short
+                requests (e.g., quote fallbacks) while still requiring
+                reasonable depth for larger historical pulls.
+        """
         if not data:
             return False
         required = {"c", "o", "h", "l", "v"}
         if not required.issubset(set(data.keys())):
             return False
-        return len(data.get("c", [])) >= 50
+        min_length = min(max(expected_length, 1), 50)
+        return len(data.get("c", [])) >= min_length
 
     async def get_quote(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Get current quote from best available source"""
