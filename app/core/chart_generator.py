@@ -109,41 +109,77 @@ class ChartGenerator:
             }
 
     def _build_studies(self, config: ChartConfig) -> List[Dict[str, Any]]:
-        """Build indicator studies for Chart-IMG API (simplified to avoid parameter limit)"""
+        """Build indicator studies for Chart-IMG API - matching Analysis page setup"""
         studies = []
 
-        # Just 2 key moving averages to stay under API limits
-        # EMA 50
-        studies.append({
-            "name": "Moving Average Exponential",
-            "input": {"length": 50}
-        })
+        # Volume (most important - shows market participation)
+        if config.show_volume:
+            studies.append({
+                "name": "Volume",
+                "input": {}
+            })
 
-        # EMA 200
-        studies.append({
-            "name": "Moving Average Exponential",
-            "input": {"length": 200}
-        })
+        # 21 EMA (key short-term trend indicator)
+        if config.show_ema21:
+            studies.append({
+                "name": "Moving Average Exponential",
+                "input": {"length": 21}
+            })
+
+        # 50 SMA (major support/resistance level)
+        if config.show_sma50:
+            studies.append({
+                "name": "Moving Average",
+                "input": {"length": 50}
+            })
 
         return studies
 
     def _build_drawings(self, config: ChartConfig) -> List[Dict[str, Any]]:
-        """Build entry/stop/target line drawings (max 2 to stay under limits)"""
+        """Build entry/stop/target line drawings with Long Position annotation"""
         drawings = []
-        
+
         if config.entry and config.stop:
+            # Long Position Entry (green line)
             drawings.append({
                 "name": "Horizontal Line",
-                "input": {"price": config.entry, "text": f"Entry ${config.entry:.2f}"},
-                "override": {"lineColor": "rgb(255,193,7)", "lineWidth": 2, "showPrice": True}
+                "input": {"price": config.entry, "text": f"LONG ${config.entry:.2f}"},
+                "override": {
+                    "lineColor": "rgb(16, 185, 129)",  # Emerald-500
+                    "lineWidth": 2,
+                    "showPrice": True,
+                    "textColor": "rgb(16, 185, 129)"
+                }
             })
+
+            # Stop Loss (red line)
             drawings.append({
-                "name": "Horizontal Line", 
-                "input": {"price": config.stop, "text": f"Stop ${config.stop:.2f}"},
-                "override": {"lineColor": "rgb(255,82,82)", "lineWidth": 2, "lineStyle": 2}
+                "name": "Horizontal Line",
+                "input": {"price": config.stop, "text": f"STOP ${config.stop:.2f}"},
+                "override": {
+                    "lineColor": "rgb(239, 68, 68)",  # Red-500
+                    "lineWidth": 2,
+                    "lineStyle": 2,  # Dashed
+                    "showPrice": True,
+                    "textColor": "rgb(239, 68, 68)"
+                }
             })
-        
-        return drawings[:2]
+
+        # Target line (if provided)
+        if config.target and len(drawings) < 5:
+            drawings.append({
+                "name": "Horizontal Line",
+                "input": {"price": config.target, "text": f"TARGET ${config.target:.2f}"},
+                "override": {
+                    "lineColor": "rgb(34, 197, 94)",  # Green-500
+                    "lineWidth": 2,
+                    "lineStyle": 2,  # Dashed
+                    "showPrice": True,
+                    "textColor": "rgb(34, 197, 94)"
+                }
+            })
+
+        return drawings
 
     def _normalize_symbol(self, ticker: str) -> str:
         """Normalize ticker symbol to Chart-IMG format (matches n8n logic)"""
