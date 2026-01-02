@@ -4,30 +4,46 @@
 
 Go to Railway Dashboard → Legend-Ai-Python project → legend-ai-python service → Variables tab
 
-## Required Variables (Copy-Paste Ready)
+## Required Variables
+
+⚠️ **SECURITY NOTE**: Real API keys have been removed from this public documentation. Retrieve your actual keys from your secure credential storage.
 
 ### CORS Configuration (CRITICAL for Vercel integration)
-```
+```bash
 CORS_ORIGINS=https://kyle-career-site.vercel.app
 ```
 
 ### Market Data APIs
-```
-TWELVEDATA_API_KEY=14b61f5898d1412681a8dfc878f857b4
-FINNHUB_API_KEY=cv9n4f1r01qpd9s87710cv9n4f1r01qpd9s877lg
-ALPHA_VANTAGE_API_KEY=3WOG24BQLRKC7KOO
+```bash
+TWELVEDATA_API_KEY=your-twelvedata-api-key-here
+FINNHUB_API_KEY=your-finnhub-api-key-here
+ALPHA_VANTAGE_API_KEY=your-alpha-vantage-api-key-here
 ```
 
 ### Chart Generation
-```
-CHART_IMG_API_KEY=tGvkXDWnfI5G8WX6VnsIJ3xLvnfLt56x6Q8UaNbU
+```bash
+CHART_IMG_API_KEY=your-chart-img-api-key-here
 ```
 
-### AI Services  
-```
-OPENROUTER_API_KEY=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
+### AI Services
+```bash
+OPENROUTER_API_KEY=your-openrouter-api-key-here
 AI_MODEL=anthropic/claude-3.5-sonnet
 ```
 
+### Redis Cache (if not using Railway Redis)
+```bash
+REDIS_URL=your-redis-connection-url-here
+```
+
 ## ✅ Verification
-After adding, test: `curl https://legend-ai-python-production.up.railway.app/health`
+After adding, test:
+```bash
+curl https://legend-ai-python-production.up.railway.app/health
+```
+
+## 🔒 Security Best Practices
+- Never commit real API keys to Git
+- Store credentials in Railway environment variables only
+- Rotate keys immediately if exposed
+- Use `.env` files locally (ensure they're in `.gitignore`)
