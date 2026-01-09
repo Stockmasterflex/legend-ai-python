@@ -364,9 +364,23 @@ async def _load_top_setups(min_score: float, limit: int) -> tuple[list[ScanResul
         except Exception as exc:
             logger.error(f"Quick scan fallback failed: {exc}")
 
-    normalized = [_coerce_scan_result(item) for item in results[:limit]]
-    logger.info(f"Returning {len(normalized)} normalized top setups (cached={cached})")
-    return normalized, cached
+    logger.info(f"Loaded {len(results)} raw results")
+    
+    # Normalize first
+    normalized = [_coerce_scan_result(item) for item in results]
+    
+    # Deduplicate: Keep highest score per ticker
+    unique_map = {}
+    for item in normalized:
+        ticker = item["ticker"]
+        if ticker not in unique_map or item["score"] > unique_map[ticker]["score"]:
+            unique_map[ticker] = item
+            
+    deduped = list(unique_map.values())
+    deduped.sort(key=lambda x: x["score"], reverse=True)
+    
+    logger.info(f"Returning {len(deduped[:limit])} normalized top setups (cached={cached})")
+    return deduped[:limit], cached
 
 
 def _normalize_quick_scan(results: list[dict]) -> list[dict]:
