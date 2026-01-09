@@ -668,6 +668,12 @@ async def scan_universe_patterns(
                 logger.warning(f"Chart generation failed for {ticker}: {e}")
                 result["chart_url"] = None
 
+    # Sanitize results: convert any datetime objects to ISO strings for JSON serialization
+    for result in results:
+        for key, value in list(result.items()):
+            if isinstance(value, datetime):
+                result[key] = value.isoformat()
+
     response_data = ScanTickersResponse(
         success=True,
         as_of=datetime.now(timezone.utc),
@@ -685,7 +691,7 @@ async def scan_universe_patterns(
 
     # Cache for 6 hours (longer cache for full universe scans)
     try:
-        await get_cache_service().set(cache_key, response_data.dict(), ttl=21600)
+        await get_cache_service().set(cache_key, response_data.model_dump(mode='json'), ttl=21600)
     except Exception as e:
         logger.debug(f"Cache storage failed: {e}")
 
@@ -777,6 +783,12 @@ async def scan_quick_patterns(
                 logger.warning(f"Chart generation failed for {ticker}: {e}")
                 result["chart_url"] = None
 
+    # Sanitize results: convert any datetime objects to ISO strings for JSON serialization
+    for result in results:
+        for key, value in list(result.items()):
+            if isinstance(value, datetime):
+                result[key] = value.isoformat()
+
     response_data = ScanTickersResponse(
         success=True,
         as_of=datetime.now(timezone.utc),
@@ -792,7 +804,7 @@ async def scan_quick_patterns(
 
     # Cache for 1 hour (quicker refresh for fast scans)
     try:
-        await get_cache_service().set(cache_key, response_data.dict(), ttl=3600)
+        await get_cache_service().set(cache_key, response_data.model_dump(mode='json'), ttl=3600)
     except Exception as e:
         logger.debug(f"Cache storage failed: {e}")
 
