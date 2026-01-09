@@ -668,11 +668,24 @@ async def scan_universe_patterns(
                 logger.warning(f"Chart generation failed for {ticker}: {e}")
                 result["chart_url"] = None
 
-    # Sanitize results: convert any datetime objects to ISO strings for JSON serialization
+    # Sanitize results: convert non-JSON-serializable objects to JSON-safe types
+    def sanitize_value(value):
+        """Recursively convert non-JSON-serializable types to JSON-safe types."""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        elif hasattr(value, 'item'):  # numpy int/float types
+            return value.item()
+        elif hasattr(value, 'tolist'):  # numpy arrays
+            return value.tolist()
+        elif isinstance(value, dict):
+            return {k: sanitize_value(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple)):
+            return [sanitize_value(item) for item in value]
+        return value
+
     for result in results:
         for key, value in list(result.items()):
-            if isinstance(value, datetime):
-                result[key] = value.isoformat()
+            result[key] = sanitize_value(value)
 
     response_data = ScanTickersResponse(
         success=True,
@@ -783,11 +796,24 @@ async def scan_quick_patterns(
                 logger.warning(f"Chart generation failed for {ticker}: {e}")
                 result["chart_url"] = None
 
-    # Sanitize results: convert any datetime objects to ISO strings for JSON serialization
+    # Sanitize results: convert non-JSON-serializable objects to JSON-safe types
+    def sanitize_value(value):
+        """Recursively convert non-JSON-serializable types to JSON-safe types."""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        elif hasattr(value, 'item'):  # numpy int/float types
+            return value.item()
+        elif hasattr(value, 'tolist'):  # numpy arrays
+            return value.tolist()
+        elif isinstance(value, dict):
+            return {k: sanitize_value(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple)):
+            return [sanitize_value(item) for item in value]
+        return value
+
     for result in results:
         for key, value in list(result.items()):
-            if isinstance(value, datetime):
-                result[key] = value.isoformat()
+            result[key] = sanitize_value(value)
 
     response_data = ScanTickersResponse(
         success=True,
