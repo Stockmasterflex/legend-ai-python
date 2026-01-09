@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from pathlib import Path
@@ -15,8 +15,10 @@ from app.services.market_data import market_data_service
 from app.services.cache import get_cache_service
 from app.services.charting import get_charting_service
 from app.services.pattern_scanner import pattern_scanner_service
+from app.services.universe_store import universe_store
 
 logger = logging.getLogger(__name__)
+charting_service = get_charting_service()
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 _pattern_filter = PatternFilter()
@@ -568,6 +570,97 @@ async def scan_tickers(
         count=len(results),
         meta=payload.get("meta"),
     )
+
+
+@router.post("/scan-universe", response_model=ScanTickersResponse)
+async def scan_universe_patterns(
+    min_score: float = Query(6.0, ge=0.0, le=10.0, description="Minimum pattern score"),
+    limit: int = Query(20, ge=1, le=50, description="Max results to return"),
+) -> ScanTickersResponse:
+    """
+    Scan full universe (518+ cached symbols) for top patterns.
+
+    - Excludes Outside Day pattern
+    - Prioritizes VCP, Cup & Handle, Flags, Pennants, Triangles, Wedges
+    - Returns top 10-20 results ranked by score
+    - Includes Chart-IMG URLs for inline display
+    """
+
+    # Check cache first
+    cache_key = f"universe_scan:v2:min{min_score}:limit{limit}"
+    try:
+        cached = await get_cache_service().get(cache_key)
+        if cached:
+            logger.info("Returning cached universe scan results")
+            return ScanTickersResponse(**cached)
+    except Exception as e:
+        logger.debug(f"Cache retrieval failed: {e}")
+
+    # Get universe symbols
+    try:
+        await universe_store.seed()
+        universe = universe_store.get_all()
+        tickers = list(universe.keys())
+        logger.info(f"Scanning {len(tickers)} symbols from universe")
+    except Exception as e:
+        logger.error(f"Failed to load universe: {e}")
+        # Fallback to small set
+        tickers = ["AAPL", "NVDA", "TSLA", "GOOGL", "META", "MSFT", "AMZN"]
+
+    # Scan with pattern engine
+    try:
+        payload = await pattern_scanner_service.scan_with_pattern_engine(
+            tickers=tickers,
+            interval="1day",
+            apply_filters=True,
+            min_score=min_score,
+            filter_config={"exclude_patterns": ["Outside Day"]},
+        )
+    except Exception as exc:
+        logger.exception("Universe scan failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Universe scan failed") from exc
+
+    # Get top results and generate charts
+    results = payload.get("results", [])
+    results = sorted(results, key=lambda x: x.get("score", 0), reverse=True)[:limit]
+
+    # Generate chart URLs for top results (rate-limited to avoid hitting daily quota)
+    for result in results:
+        ticker = result.get("ticker")
+        if not result.get("chart_url"):
+            try:
+                chart_url = await charting_service.generate_chart(
+                    ticker=ticker,
+                    interval="1day",
+                    entry=result.get("entry"),
+                    stop=result.get("stop"),
+                    target=result.get("target"),
+                )
+                result["chart_url"] = chart_url
+            except Exception as e:
+                logger.debug(f"Chart generation failed for {ticker}: {e}")
+                result["chart_url"] = None
+
+    response_data = ScanTickersResponse(
+        success=True,
+        as_of=_parse_as_of(payload.get("as_of")),
+        results=results,
+        errors=payload.get("errors", {}),
+        count=len(results),
+        meta={
+            "universe_size": len(tickers),
+            "duration_ms": payload.get("meta", {}).get("duration_ms"),
+            "cached": False,
+        }
+    )
+
+    # Cache for 1 hour
+    try:
+        await get_cache_service().set(cache_key, response_data.dict(), ttl=3600)
+    except Exception as e:
+        logger.debug(f"Cache storage failed: {e}")
+
+    return response_data
 
 
 @router.post("/filter", response_model=FilterResponse)

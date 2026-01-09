@@ -53,6 +53,14 @@ class PatternScorer:
     Each component is normalized to 0-1, yielding a 0-10 total.
     """
 
+    # Priority patterns for portfolio scanner (get 1.5-point boost)
+    PRIORITY_PATTERNS = {
+        "VCP", "MMU", "Cup & Handle", "Cup",
+        "Bull Flag", "Flag", "Pennant",
+        "Triangle Ascending", "Ascending Triangle",
+        "Falling Wedge", "Wedge Falling"
+    }
+
     def score_pattern(self, pattern: Dict[str, Any]) -> Tuple[ScoreComponents, float]:
         """Score a single pattern using heuristic criteria."""
         metadata = pattern.get("metadata") or {}
@@ -71,11 +79,29 @@ class PatternScorer:
 
         return components, components.total_score()
 
+    def apply_priority_boost(self, pattern_name: str, base_score: float) -> float:
+        """
+        Apply 1.5-point boost to priority patterns for portfolio scanner.
+
+        Priority patterns: VCP, Cup & Handle, Flags, Pennants,
+        Ascending Triangles, and Falling Wedges.
+        """
+        for priority in self.PRIORITY_PATTERNS:
+            if priority.lower() in pattern_name.lower():
+                boosted = base_score + 1.5
+                return min(10.0, boosted)  # Cap at 10.0
+        return base_score
+
     def score_patterns(self, patterns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Score multiple patterns and return them sorted by score."""
         scored: List[Dict[str, Any]] = []
         for pattern in patterns:
             components, total = self.score_pattern(pattern)
+
+            # Apply priority boost for portfolio scanner
+            pattern_name = pattern.get("pattern", "")
+            total = self.apply_priority_boost(pattern_name, total)
+
             enriched = dict(pattern)
             enriched["score"] = total
             enriched["score_components"] = components.to_dict()

@@ -27,7 +27,7 @@ def find_single_day_patterns(
     """Run all single-day detectors in one pass."""
     patterns: List[Dict[str, Any]] = []
     patterns.extend(find_inside_day(data, helpers))
-    patterns.extend(find_outside_day(data, helpers))
+    # patterns.extend(find_outside_day(data, helpers))  # Disabled for portfolio scanner
     patterns.extend(find_nr4(data, helpers))
     patterns.extend(find_nr7(data, helpers))
     patterns.extend(find_wide_range_up(data, helpers))
