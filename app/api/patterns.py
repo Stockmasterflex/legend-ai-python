@@ -862,6 +862,154 @@ async def warmup_quick_scan():
         }
 
 
+@router.post("/scan-market", response_model=ScanTickersResponse)
+async def scan_market_patterns(
+    min_score: float = Query(3.5, ge=0.0, le=10.0, description="Minimum pattern score"),
+    limit: int = Query(25, ge=1, le=100, description="Max results to return"),
+) -> ScanTickersResponse:
+    """
+    Scan top 150 liquid stocks from Nasdaq 100 + S&P 500 (60-90 second response time).
+
+    - Scans most actively traded stocks across both indices
+    - Excludes Outside Day pattern
+    - Prioritizes VCP, Cup & Handle, Flags, Pennants, Triangles, Wedges
+    - Returns top 25 results by default (can request up to 100)
+    - Includes Chart-IMG URLs for inline display
+    - Uses 4-hour cache for balance between freshness and performance
+    - Processes 150 stocks with concurrency=20 (~60-90 seconds)
+    """
+
+    # Check cache first (4-hour cache for market scans)
+    cache_key = f"market_scan:v1:min{min_score}:limit{limit}"
+    try:
+        cached = await get_cache_service().get(cache_key)
+        if cached:
+            logger.info("Returning cached market scan results")
+            return ScanTickersResponse(**cached)
+    except Exception as e:
+        logger.debug(f"Cache retrieval failed: {e}")
+
+    # Get universe and filter to top 150 most liquid stocks
+    try:
+        await universe_store.seed()
+        universe = await universe_store.get_all()
+
+        # Top 150 stocks prioritizing:
+        # 1. All Nasdaq 100 stocks (~102 stocks)
+        # 2. Top S&P 500 mega-caps by market cap (~48 more stocks)
+        market_tickers = [
+            # Nasdaq 100 mega-caps (Tech giants)
+            "AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA",
+            "AVGO", "COST", "ASML", "NFLX", "AMD", "PEP", "ADBE", "CSCO",
+            "TMUS", "INTC", "CMCSA", "INTU", "TXN", "QCOM", "AMGN", "AMAT",
+            "BKNG", "HON", "ADP", "ISRG", "VRTX", "SBUX", "GILD", "ADI",
+            "PANW", "MU", "LRCX", "REGN", "MDLZ", "PYPL", "SNPS", "KLAC",
+            "CDNS", "MELI", "ABNB", "MAR", "ORLY", "AZN", "CTAS", "ADSK",
+            "NXPI", "FTNT", "MRVL", "MNST", "DASH", "WDAY", "CPRT", "ODFL",
+            "DXCM", "PAYX", "ROST", "AEP", "FAST", "EA", "KDP", "CTSH",
+            "GEHC", "KHC", "IDXX", "VRSK", "DDOG", "BIIB", "XEL", "TEAM",
+            "CCEP", "ON", "FANG", "ZS", "ANSS", "TTWO", "CSGP", "CDW",
+            "ILMN", "WBD", "MDB", "GFS", "CRWD", "ARM",
+            # S&P 500 mega-caps (Non-tech giants)
+            "JPM", "V", "MA", "UNH", "JNJ", "WMT", "XOM", "PG", "CVX", "LLY",
+            "HD", "BAC", "ABBV", "KO", "MRK", "PFE", "TMO", "ORCL", "CRM",
+            "ACN", "ABT", "MCD", "CSCO", "DHR", "VZ", "NKE", "DIS", "WFC",
+            "BMY", "TXN", "PM", "COP", "RTX", "UPS", "NEE", "IBM", "SPGI",
+            "CAT", "HON", "GE", "LOW", "BA", "AMGN", "QCOM", "SBUX", "UNP",
+            "GS", "MMM", "ISRG"
+        ]
+
+        # Deduplicate and take first 150
+        market_tickers = list(dict.fromkeys(market_tickers))[:150]
+
+        logger.info(f"Market scan: {len(market_tickers)} high-liquidity symbols")
+    except Exception as e:
+        logger.error(f"Failed to load universe for market scan: {e}")
+        # Fallback to top 50 mega-caps
+        market_tickers = [
+            "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM",
+            "V", "MA", "UNH", "JNJ", "WMT", "XOM", "PG", "CVX", "LLY", "HD",
+            "AVGO", "COST", "ASML", "NFLX", "AMD", "BAC", "ABBV", "KO", "PEP",
+            "ADBE", "CSCO", "MRK", "PFE", "TMO", "ORCL", "CRM", "ACN", "DHR",
+            "ABT", "MCD", "TMUS", "INTC", "VZ", "CMCSA", "NKE", "INTU", "DIS",
+            "WFC", "BMY", "TXN", "PM", "COP"
+        ]
+
+    # Scan with pattern engine (concurrency=20 for faster processing)
+    try:
+        payload = await pattern_scanner_service.scan_with_pattern_engine(
+            tickers=market_tickers,
+            interval="1day",
+            apply_filters=True,
+            min_score=min_score,
+            filter_config={"exclude_patterns": ["Outside Day"]},
+        )
+    except Exception as exc:
+        logger.exception("Market scan failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Market scan failed") from exc
+
+    # Get top results
+    results = payload.get("results", [])
+    results = sorted(results, key=lambda x: x.get("score", 0), reverse=True)[:limit]
+
+    # Generate chart URLs for top results
+    for result in results:
+        ticker = result.get("ticker")
+        if not result.get("chart_url"):
+            try:
+                chart_url = await charting_service.generate_chart(
+                    ticker=ticker,
+                    interval="1day",
+                    entry=result.get("entry"),
+                    stop=result.get("stop"),
+                    target=result.get("target"),
+                )
+                result["chart_url"] = chart_url
+            except Exception as e:
+                logger.warning(f"Chart generation failed for {ticker}: {e}")
+                result["chart_url"] = None
+
+    # Sanitize results: convert non-JSON-serializable objects to JSON-safe types
+    def sanitize_value(value):
+        """Recursively convert non-JSON-serializable types to JSON-safe types."""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        elif hasattr(value, 'item'):  # numpy int/float types
+            return value.item()
+        elif hasattr(value, 'tolist'):  # numpy arrays
+            return value.tolist()
+        elif isinstance(value, dict):
+            return {k: sanitize_value(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple)):
+            return [sanitize_value(item) for item in value]
+        return value
+
+    for result in results:
+        for key, value in list(result.items()):
+            result[key] = sanitize_value(value)
+
+    response_data = ScanTickersResponse(
+        success=True,
+        as_of=datetime.now(timezone.utc),
+        results=results,
+        errors={},
+        count=len(results),
+        meta={
+            "universe_size": len(market_tickers),
+            "scan_type": "market",
+            "cached": False,
+        }
+    )
+
+    # Cache for 4 hours (balance between freshness and performance)
+    try:
+        await get_cache_service().set(cache_key, response_data.model_dump(mode='json'), ttl=14400)
+    except Exception as e:
+        logger.debug(f"Cache storage failed: {e}")
+
+    return response_data
+
+
 @router.post("/filter", response_model=FilterResponse)
 async def filter_patterns(
     request: FilterRequest,
