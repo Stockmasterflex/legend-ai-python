@@ -8,7 +8,7 @@ All functions ported from Thomas Bulkowski's Patternz software (C#/.NET)
 with algorithms from his Encyclopedia of Chart Patterns.
 """
 import numpy as np
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -502,6 +502,187 @@ class PatternHelpers:
                 direction = -1
         
         return direction
+
+
+    def calculate_atr(self, high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+        """
+        Calculate Average True Range (ATR).
+        """
+        tr = np.maximum(high - low, np.abs(high - np.roll(close, 1)))
+        tr[0] = high[0] - low[0]
+        
+        atr = np.zeros_like(tr)
+        atr[0] = tr[0]
+        
+        # Simple Moving Average for first value? Or recursive?
+        # Wilder's smoothing: ATR[i] = (ATR[i-1] * (n-1) + TR[i]) / n
+        # For efficiency, we can use pandas ewm if available, but staying numpy here
+        for i in range(1, len(tr)):
+            atr[i] = (atr[i-1] * (period - 1) + tr[i]) / period
+            
+        return atr
+
+    def find_pivots_zigzag(
+        self,
+        highs: np.ndarray,
+        lows: np.ndarray,
+        atr: np.ndarray,
+        threshold_factor: float = 1.5,
+        min_bars_between_pivots: int = 3
+    ) -> List[Dict[str, Any]]:
+        """
+        Find pivots using ATR-based ZigZag method.
+        
+        Args:
+            highs: High price array
+            lows: Low price array
+            atr: ATR array (same length)
+            threshold_factor: Multiplier for ATR to trigger a pivot (e.g. 1.5 * ATR)
+            min_bars_between_pivots: Minimum bars to confirm a new pivot
+            
+        Returns:
+            List of dicts: {'idx': int, 'price': float, 'type': 'high'|'low'}
+        """
+        pivots = []
+        if len(highs) < 10:
+            return pivots
+
+        # Initial direction
+        trend = 0 # 1=up, -1=down
+        last_pivot_idx = 0
+        last_pivot_price = highs[0] # temporary
+        
+        # Initialize first pivot
+        # Simple logic: look for first move > threshold
+        for i in range(1, len(highs)):
+            threshold = atr[i] * threshold_factor
+            
+            if trend == 0:
+                if highs[i] > lows[0] + threshold:
+                    trend = 1
+                    last_pivot_idx = 0
+                    last_pivot_price = lows[0]
+                    pivots.append({'idx': 0, 'price': lows[0], 'type': 'low'})
+                    last_pivot_idx = i
+                    last_pivot_price = highs[i]
+                elif lows[i] < highs[0] - threshold:
+                    trend = -1
+                    last_pivot_idx = 0
+                    last_pivot_price = highs[0]
+                    pivots.append({'idx': 0, 'price': highs[0], 'type': 'high'})
+                    last_pivot_idx = i
+                    last_pivot_price = lows[i]
+                continue
+
+            if trend == 1: # Upward trend, looking for highest high
+                if highs[i] > last_pivot_price:
+                    last_pivot_idx = i
+                    last_pivot_price = highs[i]
+                elif lows[i] < last_pivot_price - (atr[i] * threshold_factor):
+                    # Reversal detected: Confirm previous high pivot
+                    if i - last_pivot_idx >= min_bars_between_pivots:
+                         pivots.append({'idx': last_pivot_idx, 'price': last_pivot_price, 'type': 'high'})
+                         trend = -1
+                         last_pivot_idx = i
+                         last_pivot_price = lows[i]
+            
+            elif trend == -1: # Downward trend, looking for lowest low
+                if lows[i] < last_pivot_price:
+                    last_pivot_idx = i
+                    last_pivot_price = lows[i]
+                elif highs[i] > last_pivot_price + (atr[i] * threshold_factor):
+                    # Reversal: Confirm previous low pivot
+                     if i - last_pivot_idx >= min_bars_between_pivots:
+                         pivots.append({'idx': last_pivot_idx, 'price': last_pivot_price, 'type': 'low'})
+                         trend = 1
+                         last_pivot_idx = i
+                         last_pivot_price = highs[i]
+                         
+        # Add final pending pivot? Usually yes to capture valid current state
+        if trend == 1:
+             pivots.append({'idx': last_pivot_idx, 'price': last_pivot_price, 'type': 'high'})
+        elif trend == -1:
+             pivots.append({'idx': last_pivot_idx, 'price': last_pivot_price, 'type': 'low'})
+             
+        return pivots
+
+    def is_volatility_contraction(self, pivots: List[Dict[str, Any]]) -> Tuple[bool, List[float]]:
+        """
+        Check if pivots show volatility contraction (VCP characteristics).
+        
+        Logic: Calculate depth of each swing (high to low). Check if successive depths decrease.
+        Returns: (True/False, list of contraction %s)
+        """
+        if len(pivots) < 4:
+            return False, []
+            
+        # Extract swings: High->Low sequences
+        contractions = []
+        
+        # Iterate backwards? 
+        # Pattern needs High -> Low -> Lower High -> Higher Low -> ...
+        # VCP is about the depth of the pullback: High to subsequent Low
+        
+        # Simply find pairs of High->Low
+        # Check last 3 High->Low pairs
+        
+        # We need a strict sequence? H L LH LL? No, VCP is usually H L H L H L where H-L ranges shrink.
+        
+        # Filter to just alternating pivots
+        # Assuming pivots are alternating High/Low
+        
+        depths = []
+        
+        for i in range(len(pivots)-1):
+            curr = pivots[i]
+            next_p = pivots[i+1]
+            
+            if curr['type'] == 'high' and next_p['type'] == 'low':
+                # Calculate depth %
+                depth = (curr['price'] - next_p['price']) / curr['price']
+                if depth > 0:
+                    depths.append(depth)
+                    
+        if len(depths) < 2:
+            return False, depths
+            
+        # Check for contraction (allow one anomaly? or strict?)
+        # Strict: each subsequent depth is smaller (or at least not significantly larger)
+        is_contracting = True
+        last_depth = depths[0]
+        
+        # We want to see the sequence shrinking: e.g. 20%, 10%, 5%
+        # So we check from earliest to latest
+        
+        for i in range(1, len(depths)):
+            if depths[i] > last_depth * 1.1: # Allow 10% tolerance
+                is_contracting = False
+            last_depth = depths[i]
+            
+        return is_contracting, depths
+
+    def measure_tightness(self, highs: np.ndarray, lows: np.ndarray, window: int = 10) -> float:
+        """
+        Measure price tightness as average daily range % over window.
+        """
+        if len(highs) < window:
+            return 100.0 # Not tight
+            
+        ranges = (highs[-window:] - lows[-window:]) / lows[-window:]
+        return float(np.mean(ranges))
+
+    def check_volume_dryup(self, volumes: np.ndarray, window: int = 10, compare_window: int = 50) -> bool:
+        """
+        Check if recent volume is lower than historical average.
+        """
+        if len(volumes) < compare_window:
+            return False
+            
+        recent_avg = np.mean(volumes[-window:])
+        hist_avg = np.mean(volumes[-compare_window:])
+        
+        return recent_avg < (hist_avg * 0.7) # 30% drop
+
 
 
 class PatternData:

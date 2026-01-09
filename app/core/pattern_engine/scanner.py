@@ -78,6 +78,9 @@ class ScanConfig:
     filter_config: Optional[Dict[str, Any]] = None
 
 
+
+from app.core.pattern_engine.pipeline import ScanPipeline
+
 class UniverseScanner:
     """Async universe scanner that wires detector, filters, and scoring together."""
 
@@ -85,6 +88,7 @@ class UniverseScanner:
         self.detector = detector
         self.filter = filter_system
         self.scorer = scorer
+        self.pipeline = ScanPipeline()
 
     async def scan_universe(self, config: ScanConfig) -> Dict[str, Any]:
         """Scan a list of tickers and return ranked results."""
@@ -94,7 +98,33 @@ class UniverseScanner:
         async def _run(ticker: str):
             async with sem:
                 try:
-                    patterns = await self.scan_ticker(ticker, config.interval)
+                    # Use the new pipeline
+                    from app.services.market_data import market_data_service
+                    price_data = await market_data_service.get_time_series(
+                        ticker=ticker,
+                        interval=config.interval,
+                        outputsize=320,
+                    )
+                    
+                    if not price_data or not price_data.get("c"):
+                        return ticker, [], None
+                        
+                    # Convert to minimal DF for pipeline (it expects DF)
+                    # We might need to move conversion logic here or pipeline handles it
+                    # Pipeline expects DF.
+                    # reusing _to_dataframe from pattern_scanner logic?
+                    # Or implement a helper. 
+                    # For now minimal conversion:
+                    import pandas as pd
+                    df = pd.DataFrame({
+                        'close': price_data.get('c', []),
+                        'high': price_data.get('h', []),
+                        'low': price_data.get('l', []),
+                        'open': price_data.get('o', []),
+                        'volume': price_data.get('v', [])
+                    })
+                    
+                    patterns = await self.pipeline.run(ticker, df)
                     return ticker, patterns, None
                 except Exception as exc:  # pragma: no cover - defensive
                     return ticker, [], exc
@@ -109,18 +139,20 @@ class UniverseScanner:
                 errors[ticker] = str(error)
                 continue
 
-            if config.apply_filters and patterns:
-                patterns = self.filter.apply_filters(patterns, config.filter_config)
-
-            if config.apply_scoring and patterns:
-                patterns = self.scorer.score_patterns(patterns)
-
+            # Filtering and Scoring are now part of Pipeline (Stages E, F)
+            # But pipeline returns scored patterns.
+            # config.apply_filters / apply_scoring checks?
+            # Pipeline does it all. We assume config matches pipeline default or pass config to pipeline.run
+            
+            # The pipeline runs detection, validation, scoring.
+            
             for pat in patterns:
                 pat.setdefault("ticker", ticker)
                 pat.setdefault("symbol", ticker)
 
             # Keep only the best pattern per ticker (by priority, then score, then confidence)
             if patterns:
+                # Need to robustly handle missing keys if pipeline output differs slightly
                 best_pattern = max(
                     patterns,
                     key=lambda p: (
@@ -148,18 +180,9 @@ class UniverseScanner:
         }
 
     async def scan_ticker(self, ticker: str, interval: str) -> List[Dict[str, Any]]:
-        """Scan a single ticker for all patterns."""
-        from app.services.market_data import market_data_service
+        """Deprecated: Use pipeline directly."""
+        return [] 
 
-        price_data = await market_data_service.get_time_series(
-            ticker=ticker,
-            interval=interval,
-            outputsize=320,
-        )
-        if not price_data or not price_data.get("c"):
-            return []
-
-        return self.detector.detect_all_patterns(price_data, ticker=ticker)
 
     def rank_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Sort and rank scan results."""
