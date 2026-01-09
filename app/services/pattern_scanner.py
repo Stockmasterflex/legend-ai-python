@@ -23,6 +23,31 @@ from app.utils.build_info import resolve_build_sha
 
 logger = logging.getLogger(__name__)
 
+# Pattern priority for deduplication (higher = takes precedence when multiple patterns detected)
+PATTERN_PRIORITY = {
+    "cup & handle": 100,
+    "vcp": 95,
+    "volatility contraction pattern": 95,
+    "50 sma pullback": 80,
+    "double bottom": 75,
+    "inverse head & shoulders": 70,
+    "channel up": 65,
+    "ascending triangle": 60,
+    "symmetrical triangle": 55,
+    "descending triangle": 50,
+    "rising wedge": 45,
+    "falling wedge": 45,
+    "head & shoulders": 40,
+    "double top": 40,
+    "channel down": 35,
+    "sideways channel": 30,
+}
+
+
+def _get_pattern_priority(pattern_name: str) -> int:
+    """Get priority score for a pattern name (case-insensitive)"""
+    return PATTERN_PRIORITY.get(pattern_name.lower(), 50)
+
 
 class PatternScannerService:
     """
@@ -72,7 +97,7 @@ class PatternScannerService:
             pattern_filter: Optional list of pattern names to filter by
 
         Returns:
-            List of detected patterns with metadata
+            List of detected patterns with metadata (deduplicated to best pattern per symbol)
         """
         try:
             # Fetch price data
@@ -128,6 +153,20 @@ class PatternScannerService:
                     if p.pattern_type.value.lower() in pattern_filter_lower
                 ]
                 logger.debug(f"After pattern filter {pattern_filter}: {len(confident_patterns)} patterns")
+
+            # =====================================================
+            # FIX: Deduplicate patterns for this symbol
+            # Keep only the best pattern (highest priority, then highest confidence)
+            # =====================================================
+            if confident_patterns:
+                # Sort by priority (desc), then confidence (desc)
+                confident_patterns.sort(
+                    key=lambda p: (_get_pattern_priority(p.pattern_type.value), p.confidence),
+                    reverse=True
+                )
+                # Keep only the top pattern
+                confident_patterns = [confident_patterns[0]]
+                logger.debug(f"After deduplication: keeping {confident_patterns[0].pattern_type.value} for {symbol}")
 
             # Convert to dict format
             results = []
@@ -190,7 +229,7 @@ class PatternScannerService:
         tasks = [scan_with_semaphore(symbol) for symbol in symbols]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Flatten results (each symbol can have multiple patterns)
+        # Flatten results (each symbol now returns at most 1 pattern due to deduplication in scan_symbol)
         all_patterns = []
         success_count = 0
         error_count = 0
@@ -207,6 +246,23 @@ class PatternScannerService:
 
         # Sort by score
         all_patterns.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+        # =====================================================
+        # FIX: Additional safety deduplication by ticker
+        # (In case scan_symbol deduplication was bypassed somehow)
+        # =====================================================
+        seen_tickers = set()
+        deduplicated_patterns = []
+        for p in all_patterns:
+            symbol = p.get("symbol")
+            if symbol not in seen_tickers:
+                seen_tickers.add(symbol)
+                deduplicated_patterns.append(p)
+        
+        if len(all_patterns) != len(deduplicated_patterns):
+            logger.info(f"Removed {len(all_patterns) - len(deduplicated_patterns)} duplicate ticker entries")
+        
+        all_patterns = deduplicated_patterns
 
         # Filter by minimum score
         filtered_patterns = [
