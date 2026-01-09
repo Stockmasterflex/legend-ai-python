@@ -698,18 +698,19 @@ async def scan_quick_patterns(
     limit: int = Query(20, ge=1, le=50, description="Max results to return"),
 ) -> ScanTickersResponse:
     """
-    Quick scan of top 100 most liquid stocks (15-30 second response time).
+    Quick scan of top 35 mega-cap stocks (15-30 second response time).
 
-    - Scans BOTH universe (S&P 500 + NASDAQ 100 overlap) + mega-caps
+    - Scans most liquid, highest volume stocks (AAPL, MSFT, NVDA, etc.)
     - Excludes Outside Day pattern
     - Prioritizes VCP, Cup & Handle, Flags, Pennants, Triangles, Wedges
     - Returns top results ranked by score
     - Includes Chart-IMG URLs for inline display
     - Optimized for fast response time (~15-30 seconds)
+    - Uses 1-hour cache for instant subsequent requests
     """
 
     # Check cache first (1-hour cache for quick scans)
-    cache_key = f"quick_scan:v1:min{min_score}:limit{limit}"
+    cache_key = f"quick_scan:v2:min{min_score}:limit{limit}"  # v2 = 35 mega-caps
     try:
         cached = await get_cache_service().get(cache_key)
         if cached:
@@ -723,20 +724,12 @@ async def scan_quick_patterns(
         await universe_store.seed()
         universe = await universe_store.get_all()
 
-        # Prioritize BOTH (in both S&P 500 and NASDAQ 100) - most liquid
-        both_tickers = [s for s, d in universe.items() if d.get("universe") == "BOTH"]
-
-        # Add mega-cap tech/finance stocks (known high volume)
-        mega_caps = ["AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA",
-                     "JPM", "V", "MA", "AVGO", "LLY", "WMT", "XOM", "UNH", "JNJ", "BAC",
-                     "ORCL", "AMD", "COST", "HD", "PG", "NFLX", "CRM", "KO", "PEP",
-                     "ABBV", "MRK", "CVX", "TMO", "ADBE", "ACN", "MCD", "CSCO", "ABT"]
-
-        # Combine and deduplicate
-        quick_tickers = list(set(both_tickers + mega_caps))
-
-        # Limit to top 100
-        quick_tickers = quick_tickers[:100]
+        # Use only top 35 mega-cap stocks for fastest scan (15-30 seconds)
+        # These are the most liquid, highest volume stocks
+        quick_tickers = ["AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA",
+                        "JPM", "V", "MA", "AVGO", "LLY", "WMT", "XOM", "UNH", "JNJ", "BAC",
+                        "ORCL", "AMD", "COST", "HD", "PG", "NFLX", "CRM", "KO", "PEP",
+                        "ABBV", "MRK", "CVX", "TMO", "ADBE", "ACN", "MCD", "CSCO", "ABT"]
 
         logger.info(f"Quick scan: {len(quick_tickers)} high-liquidity symbols")
     except Exception as e:
