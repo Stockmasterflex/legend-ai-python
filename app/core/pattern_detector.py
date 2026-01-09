@@ -361,13 +361,13 @@ class PatternDetector:
         # Cup depth check
         cup_depth = ((left_rim - bottom) / left_rim) * 100
 
-        # Relaxed criteria for depth/length
-        if cup_depth < 12 or cup_depth > 45:
+        # Relaxed criteria for depth/length (10-50% depth range)
+        if cup_depth < 10 or cup_depth > 50:
             return {"hit": False, "score": 0, "info": f"Cup depth {cup_depth:.1f}% out of range"}
 
-        # 2. Left and right rims should be similar (within 12%)
+        # 2. Left and right rims should be similar (within 15%)
         rim_difference = abs(left_rim - right_rim) / left_rim * 100
-        if rim_difference > 12:
+        if rim_difference > 15:
             return {"hit": False, "score": 0, "info": f"Rims differ by {rim_difference:.1f}%"}
 
         # 3. Check handle formation (last 25 days)
@@ -568,17 +568,51 @@ class PatternDetector:
         range_ratio = second_half_range / first_half_range
 
         if kind == "ascending":
-            flat_resistance = abs(slope_high) < abs(slope_low) * 0.3 and abs(slope_high) < 0.05
+            # 1. Check for ACTUALLY FLAT resistance (std dev < 2%)
+            resistance_level = max(recent_highs)
+            resistance_touches = [h for h in recent_highs if h >= resistance_level * 0.98]
+
+            if len(resistance_touches) < 3:
+                return {"hit": False, "score": 0, "info": f"Only {len(resistance_touches)} resistance touches (need 3+)"}
+
+            try:
+                resistance_std_dev = statistics.stdev(resistance_touches) if len(resistance_touches) > 1 else 0
+                resistance_flatness_pct = (resistance_std_dev / resistance_level * 100) if resistance_level > 0 else 100
+            except (statistics.StatisticsError, ValueError, ZeroDivisionError):
+                resistance_flatness_pct = 100
+
+            if resistance_flatness_pct > 2.0:
+                return {"hit": False, "score": 0, "info": f"Resistance not flat (std dev {resistance_flatness_pct:.1f}% > 2%)"}
+
+            # 2. Check for clearly defined rising lows (minimum 3 higher lows)
+            local_lows = []
+            for i in range(5, len(recent_lows) - 5):
+                if recent_lows[i] == min(recent_lows[i-5:i+6]):
+                    local_lows.append(recent_lows[i])
+
+            higher_lows_count = 0
+            for i in range(1, len(local_lows)):
+                if local_lows[i] > local_lows[i-1] * 1.005:  # At least 0.5% higher
+                    higher_lows_count += 1
+
+            if higher_lows_count < 2:  # Need at least 2 higher lows (3 total low points)
+                return {"hit": False, "score": 0, "info": f"Only {higher_lows_count + 1} rising lows (need 3+)"}
+
+            # 3. Check basic slope requirements
+            flat_resistance = abs(slope_high) < 0.05
             rising_support = slope_low > 0.02
+
             if not (flat_resistance and rising_support):
                 return {"hit": False, "score": 0, "info": "No flat top + rising base"}
+
             if range_ratio > 0.9:
                 return {"hit": False, "score": 0, "info": "Range not contracting"}
+
             score = 6.2 + (0.9 - range_ratio) * 4
             return {
                 "hit": True,
                 "score": round(min(9.2, score), 1),
-                "info": f"slopeL {slope_low:.3f}",
+                "info": f"Flat resistance ({resistance_flatness_pct:.1f}%), {higher_lows_count + 1} rising lows",
                 "name": "Ascending Triangle"
             }
 

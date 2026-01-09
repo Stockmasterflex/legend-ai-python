@@ -63,6 +63,16 @@ class EODScanner:
                 errors.append(str(exc))
             await asyncio.sleep(2)
 
+        # Deduplicate: keep only the highest-scoring pattern per symbol
+        seen_symbols = {}
+        for item in results:
+            symbol = item.get("symbol")
+            score = item.get("score", 0)
+            if symbol not in seen_symbols or score > seen_symbols[symbol].get("score", 0):
+                seen_symbols[symbol] = item
+        results = list(seen_symbols.values())
+        logger.info("After deduplication: %s unique symbols", len(results))
+
         categorized = self._categorize(results)
         summary = self._build_summary(
             scan_date=scan_date,

@@ -10,6 +10,63 @@ from app.core.pattern_engine.filter import PatternFilter
 from app.core.pattern_engine.scoring import PatternScorer
 
 
+# Pattern priority values (higher = more important)
+# Used to resolve when multiple patterns match the same ticker
+PATTERN_PRIORITIES = {
+    # Premium patterns (100+)
+    "VCP": 120,
+    "MMU": 120,
+    "Cup & Handle": 100,
+    "Cup": 100,
+
+    # Strong continuation patterns (60-90)
+    "Bull Flag": 85,
+    "Flag": 85,
+    "High Tight Flag": 90,
+    "Pennant": 80,
+    "Falling Wedge": 75,
+    "Wedge Falling": 75,
+
+    # Triangle patterns (50-70)
+    "Ascending Triangle": 60,
+    "Triangle Ascending": 60,
+    "Symmetrical Triangle": 55,
+    "Triangle Symmetrical": 55,
+    "Descending Triangle": 50,
+    "Triangle Descending": 50,
+
+    # Reversal patterns (40-60)
+    "Double Bottom": 65,
+    "Triple Bottom": 60,
+    "Inverse Head & Shoulders": 70,
+    "Head & Shoulders Bottom": 70,
+
+    # Other patterns (30-50)
+    "Rectangle": 45,
+    "Channel": 40,
+    "Rising Wedge": 35,
+    "Wedge Rising": 35,
+
+    # Default for unknown patterns
+    "_default": 30
+}
+
+
+def get_pattern_priority(pattern_name: str) -> int:
+    """Get priority for a pattern by name."""
+    # Try exact match first
+    if pattern_name in PATTERN_PRIORITIES:
+        return PATTERN_PRIORITIES[pattern_name]
+
+    # Try case-insensitive partial matches
+    pattern_lower = pattern_name.lower()
+    for key, priority in PATTERN_PRIORITIES.items():
+        if key != "_default" and key.lower() in pattern_lower:
+            return priority
+
+    return PATTERN_PRIORITIES["_default"]
+
+
 @dataclass
 class ScanConfig:
     universe: List[str]  # Ticker list
@@ -60,7 +117,19 @@ class UniverseScanner:
 
             for pat in patterns:
                 pat.setdefault("ticker", ticker)
-            aggregated.extend(patterns)
+                pat.setdefault("symbol", ticker)
+
+            # Keep only the best pattern per ticker (by priority, then score, then confidence)
+            if patterns:
+                best_pattern = max(
+                    patterns,
+                    key=lambda p: (
+                        get_pattern_priority(p.get("pattern", "")),
+                        p.get("score", 0.0),
+                        p.get("confidence", 0.0)
+                    )
+                )
+                aggregated.append(best_pattern)
 
         ranked = self.rank_results(aggregated)
         if config.apply_scoring:
