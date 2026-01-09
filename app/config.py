@@ -37,13 +37,19 @@ class Settings(BaseSettings):
         """Get list of allowed CORS origins, auto-detecting Railway domain"""
         import os
 
-        # In production (Railway), restrict to the app's own domain
+        # In production (Railway), allow the app's own domain AND the Vercel portfolio site
         railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
         if railway_domain:
-            return [
+            # Allow both Railway domain and Vercel portfolio site
+            allowed = [
                 f"https://{railway_domain}",
                 f"http://{railway_domain}",
+                "https://kyle-career-site.vercel.app",  # Production portfolio site
             ]
+            # Also allow preview deployments if we can detect them
+            # Vercel preview URLs follow pattern: https://kyle-career-site-<hash>.vercel.app
+            # For now, we'll rely on setting CORS_ORIGINS env var for previews if needed
+            return allowed
 
         # If CORS_ORIGINS is explicitly set, use that
         if self.cors_origins != "*":
