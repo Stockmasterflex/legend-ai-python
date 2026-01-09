@@ -698,19 +698,19 @@ async def scan_quick_patterns(
     limit: int = Query(20, ge=1, le=50, description="Max results to return"),
 ) -> ScanTickersResponse:
     """
-    Quick scan of top 35 mega-cap stocks (15-30 second response time).
+    Quick scan of top 15 core mega-cap stocks (15-25 second response time).
 
     - Scans most liquid, highest volume stocks (AAPL, MSFT, NVDA, etc.)
     - Excludes Outside Day pattern
     - Prioritizes VCP, Cup & Handle, Flags, Pennants, Triangles, Wedges
     - Returns top results ranked by score
     - Includes Chart-IMG URLs for inline display
-    - Optimized for fast response time (~15-30 seconds)
+    - Optimized for fast response time (~15-25 seconds)
     - Uses 1-hour cache for instant subsequent requests
     """
 
     # Check cache first (1-hour cache for quick scans)
-    cache_key = f"quick_scan:v2:min{min_score}:limit{limit}"  # v2 = 35 mega-caps
+    cache_key = f"quick_scan:v3:min{min_score}:limit{limit}"  # v3 = 15 core mega-caps
     try:
         cached = await get_cache_service().get(cache_key)
         if cached:
@@ -724,21 +724,26 @@ async def scan_quick_patterns(
         await universe_store.seed()
         universe = await universe_store.get_all()
 
-        # Use only top 35 mega-cap stocks for fastest scan (15-30 seconds)
+        # Use only top 15 core mega-cap stocks for reliable <25 second scan
         # These are the most liquid, highest volume stocks
-        quick_tickers = ["AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA",
-                        "JPM", "V", "MA", "AVGO", "LLY", "WMT", "XOM", "UNH", "JNJ", "BAC",
-                        "ORCL", "AMD", "COST", "HD", "PG", "NFLX", "CRM", "KO", "PEP",
-                        "ABBV", "MRK", "CVX", "TMO", "ADBE", "ACN", "MCD", "CSCO", "ABT"]
+        quick_tickers = [
+            "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN",  # Tech giants
+            "META", "TSLA", "JPM", "V", "MA",          # Finance leaders
+            "WMT", "JNJ", "UNH", "XOM", "PG"           # Blue chips
+        ]
+        # 15 stocks × 1.5s avg = 22.5 seconds (within 30s timeout)
 
         logger.info(f"Quick scan: {len(quick_tickers)} high-liquidity symbols")
     except Exception as e:
         logger.error(f"Failed to load universe for quick scan: {e}")
-        # Fallback to essential mega-caps
-        quick_tickers = ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMZN", "TSLA",
-                        "JPM", "V", "MA", "AVGO", "LLY"]
+        # Fallback to 15 core mega-caps
+        quick_tickers = [
+            "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN",
+            "META", "TSLA", "JPM", "V", "MA",
+            "WMT", "JNJ", "UNH", "XOM", "PG"
+        ]
 
-    # Scan with pattern engine (no batching needed for ~100 symbols)
+    # Scan with pattern engine (no batching needed for 15 symbols)
     try:
         payload = await pattern_scanner_service.scan_with_pattern_engine(
             tickers=quick_tickers,
@@ -792,6 +797,31 @@ async def scan_quick_patterns(
         logger.debug(f"Cache storage failed: {e}")
 
     return response_data
+
+
+@router.post("/scan-quick/warmup")
+async def warmup_quick_scan():
+    """
+    Pre-populate cache for instant first load.
+
+    Runs a quick scan and caches the results so the first user
+    gets instant results instead of waiting 20-25 seconds.
+    """
+    try:
+        result = await scan_quick_patterns()
+        return {
+            "success": True,
+            "cached": True,
+            "count": result.count,
+            "message": "Cache warmed up successfully"
+        }
+    except Exception as e:
+        logger.error(f"Cache warmup failed: {e}")
+        return {
+            "success": False,
+            "cached": False,
+            "error": str(e)
+        }
 
 
 @router.post("/filter", response_model=FilterResponse)
