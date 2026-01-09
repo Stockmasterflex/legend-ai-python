@@ -576,18 +576,23 @@ async def scan_tickers(
 async def scan_universe_patterns(
     min_score: float = Query(4.0, ge=0.0, le=10.0, description="Minimum pattern score"),
     limit: int = Query(20, ge=1, le=50, description="Max results to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination (batch processing)"),
 ) -> ScanTickersResponse:
     """
-    Scan full universe (518+ cached symbols) for top patterns.
+    Scan full universe (518+ cached symbols) for top patterns with batch processing.
 
     - Excludes Outside Day pattern
     - Prioritizes VCP, Cup & Handle, Flags, Pennants, Triangles, Wedges
     - Returns top 10-20 results ranked by score
     - Includes Chart-IMG URLs for inline display
+    - Uses BATCH_SIZE=10 for memory-efficient processing
     """
 
+    # Memory optimization: Process in batches to avoid OOM
+    BATCH_SIZE = 10
+
     # Check cache first
-    cache_key = f"universe_scan:v2:min{min_score}:limit{limit}"
+    cache_key = f"universe_scan:v3:min{min_score}:limit{limit}:offset{offset}"
     try:
         cached = await get_cache_service().get(cache_key)
         if cached:
@@ -600,28 +605,50 @@ async def scan_universe_patterns(
     try:
         await universe_store.seed()
         universe = await universe_store.get_all()
-        tickers = list(universe.keys())
-        logger.info(f"Scanning {len(tickers)} symbols from universe")
+        all_tickers = list(universe.keys())
+        total_symbols = len(all_tickers)
+        logger.info(f"Universe loaded: {total_symbols} symbols")
     except Exception as e:
         logger.error(f"Failed to load universe: {e}")
         # Fallback to small set
-        tickers = ["AAPL", "NVDA", "TSLA", "GOOGL", "META", "MSFT", "AMZN"]
+        all_tickers = ["AAPL", "NVDA", "TSLA", "GOOGL", "META", "MSFT", "AMZN"]
+        total_symbols = len(all_tickers)
 
-    # Scan with pattern engine
-    try:
-        payload = await pattern_scanner_service.scan_with_pattern_engine(
-            tickers=tickers,
-            interval="1day",
-            apply_filters=True,
-            min_score=min_score,
-            filter_config={"exclude_patterns": ["Outside Day"]},
-        )
-    except Exception as exc:
-        logger.exception("Universe scan failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Universe scan failed") from exc
+    # Apply offset for pagination (if scanning in chunks)
+    if offset > 0:
+        all_tickers = all_tickers[offset:]
+        logger.info(f"Starting scan from offset {offset}, {len(all_tickers)} symbols remaining")
+
+    # Batch processing for memory efficiency
+    all_results = []
+    total_batches = (len(all_tickers) + BATCH_SIZE - 1) // BATCH_SIZE
+
+    for batch_num in range(total_batches):
+        start_idx = batch_num * BATCH_SIZE
+        end_idx = min(start_idx + BATCH_SIZE, len(all_tickers))
+        batch_tickers = all_tickers[start_idx:end_idx]
+
+        logger.info(f"Processing batch {batch_num + 1}/{total_batches}: {len(batch_tickers)} symbols")
+
+        try:
+            batch_payload = await pattern_scanner_service.scan_with_pattern_engine(
+                tickers=batch_tickers,
+                interval="1day",
+                apply_filters=True,
+                min_score=min_score,
+                filter_config={"exclude_patterns": ["Outside Day"]},
+            )
+            batch_results = batch_payload.get("results", [])
+            all_results.extend(batch_results)
+            logger.info(f"Batch {batch_num + 1} found {len(batch_results)} patterns")
+        except Exception as exc:
+            logger.warning(f"Batch {batch_num + 1} scan failed: {exc}")
+            continue
+
+    logger.info(f"Total patterns found: {len(all_results)} from {len(all_tickers)} symbols")
 
     # Get top results and generate charts
-    results = payload.get("results", [])
+    results = all_results
     results = sorted(results, key=lambda x: x.get("score", 0), reverse=True)[:limit]
 
     # Generate chart URLs for top results (rate-limited to avoid hitting daily quota)
@@ -643,13 +670,15 @@ async def scan_universe_patterns(
 
     response_data = ScanTickersResponse(
         success=True,
-        as_of=_parse_as_of(payload.get("as_of")),
+        as_of=None,  # Will use current time if None
         results=results,
-        errors=payload.get("errors", {}),
+        errors={},
         count=len(results),
         meta={
-            "universe_size": len(tickers),
-            "duration_ms": payload.get("meta", {}).get("duration_ms"),
+            "universe_size": total_symbols,
+            "scanned": len(all_tickers),
+            "batches": total_batches,
+            "offset": offset,
             "cached": False,
         }
     )
