@@ -104,6 +104,20 @@ class UniverseStore:
                     """
                 )
                 conn.execute(stmt, rows)
+
+                # Also sync to universe_symbols (used by EODScanner)
+                stmt_univ = text(
+                    """
+                    insert into universe_symbols (symbol, name, sector, industry)
+                    values (:symbol, :name, :sector, :industry)
+                    on conflict(symbol) do update
+                    set name=excluded.name,
+                        sector=excluded.sector,
+                        industry=excluded.industry,
+                        last_updated=now()
+                    """
+                )
+                conn.execute(stmt_univ, rows)
         except Exception as exc:
             logger.warning("Universe DB seed skipped: %s", exc)
 
