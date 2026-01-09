@@ -683,7 +683,116 @@ async def scan_universe_patterns(
         }
     )
 
-    # Cache for 1 hour
+    # Cache for 6 hours (longer cache for full universe scans)
+    try:
+        await get_cache_service().set(cache_key, response_data.dict(), ttl=21600)
+    except Exception as e:
+        logger.debug(f"Cache storage failed: {e}")
+
+    return response_data
+
+
+@router.post("/scan-quick", response_model=ScanTickersResponse)
+async def scan_quick_patterns(
+    min_score: float = Query(4.0, ge=0.0, le=10.0, description="Minimum pattern score"),
+    limit: int = Query(20, ge=1, le=50, description="Max results to return"),
+) -> ScanTickersResponse:
+    """
+    Quick scan of top 100 most liquid stocks (15-30 second response time).
+
+    - Scans BOTH universe (S&P 500 + NASDAQ 100 overlap) + mega-caps
+    - Excludes Outside Day pattern
+    - Prioritizes VCP, Cup & Handle, Flags, Pennants, Triangles, Wedges
+    - Returns top results ranked by score
+    - Includes Chart-IMG URLs for inline display
+    - Optimized for fast response time (~15-30 seconds)
+    """
+
+    # Check cache first (1-hour cache for quick scans)
+    cache_key = f"quick_scan:v1:min{min_score}:limit{limit}"
+    try:
+        cached = await get_cache_service().get(cache_key)
+        if cached:
+            logger.info("Returning cached quick scan results")
+            return ScanTickersResponse(**cached)
+    except Exception as e:
+        logger.debug(f"Cache retrieval failed: {e}")
+
+    # Get universe and filter to top 100 most liquid stocks
+    try:
+        await universe_store.seed()
+        universe = await universe_store.get_all()
+
+        # Prioritize BOTH (in both S&P 500 and NASDAQ 100) - most liquid
+        both_tickers = [s for s, d in universe.items() if d.get("universe") == "BOTH"]
+
+        # Add mega-cap tech/finance stocks (known high volume)
+        mega_caps = ["AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "TSLA",
+                     "JPM", "V", "MA", "AVGO", "LLY", "WMT", "XOM", "UNH", "JNJ", "BAC",
+                     "ORCL", "AMD", "COST", "HD", "PG", "NFLX", "CRM", "KO", "PEP",
+                     "ABBV", "MRK", "CVX", "TMO", "ADBE", "ACN", "MCD", "CSCO", "ABT"]
+
+        # Combine and deduplicate
+        quick_tickers = list(set(both_tickers + mega_caps))
+
+        # Limit to top 100
+        quick_tickers = quick_tickers[:100]
+
+        logger.info(f"Quick scan: {len(quick_tickers)} high-liquidity symbols")
+    except Exception as e:
+        logger.error(f"Failed to load universe for quick scan: {e}")
+        # Fallback to essential mega-caps
+        quick_tickers = ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMZN", "TSLA",
+                        "JPM", "V", "MA", "AVGO", "LLY"]
+
+    # Scan with pattern engine (no batching needed for ~100 symbols)
+    try:
+        payload = await pattern_scanner_service.scan_with_pattern_engine(
+            tickers=quick_tickers,
+            interval="1day",
+            apply_filters=True,
+            min_score=min_score,
+            filter_config={"exclude_patterns": ["Outside Day"]},
+        )
+    except Exception as exc:
+        logger.exception("Quick scan failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Quick scan failed") from exc
+
+    # Get top results
+    results = payload.get("results", [])
+    results = sorted(results, key=lambda x: x.get("score", 0), reverse=True)[:limit]
+
+    # Generate chart URLs for top results
+    for result in results:
+        ticker = result.get("ticker")
+        if not result.get("chart_url"):
+            try:
+                chart_url = await charting_service.generate_chart(
+                    ticker=ticker,
+                    interval="1day",
+                    entry=result.get("entry"),
+                    stop=result.get("stop"),
+                    target=result.get("target"),
+                )
+                result["chart_url"] = chart_url
+            except Exception as e:
+                logger.warning(f"Chart generation failed for {ticker}: {e}")
+                result["chart_url"] = None
+
+    response_data = ScanTickersResponse(
+        success=True,
+        as_of=None,
+        results=results,
+        errors={},
+        count=len(results),
+        meta={
+            "universe_size": len(quick_tickers),
+            "scan_type": "quick",
+            "cached": False,
+        }
+    )
+
+    # Cache for 1 hour (quicker refresh for fast scans)
     try:
         await get_cache_service().set(cache_key, response_data.dict(), ttl=3600)
     except Exception as e:
