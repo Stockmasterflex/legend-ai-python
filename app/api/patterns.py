@@ -574,7 +574,7 @@ async def scan_tickers(
 
 @router.post("/scan-universe", response_model=ScanTickersResponse)
 async def scan_universe_patterns(
-    min_score: float = Query(6.0, ge=0.0, le=10.0, description="Minimum pattern score"),
+    min_score: float = Query(4.0, ge=0.0, le=10.0, description="Minimum pattern score"),
     limit: int = Query(20, ge=1, le=50, description="Max results to return"),
 ) -> ScanTickersResponse:
     """
@@ -599,7 +599,7 @@ async def scan_universe_patterns(
     # Get universe symbols
     try:
         await universe_store.seed()
-        universe = universe_store.get_all()
+        universe = await universe_store.get_all()
         tickers = list(universe.keys())
         logger.info(f"Scanning {len(tickers)} symbols from universe")
     except Exception as e:
@@ -638,7 +638,7 @@ async def scan_universe_patterns(
                 )
                 result["chart_url"] = chart_url
             except Exception as e:
-                logger.debug(f"Chart generation failed for {ticker}: {e}")
+                logger.warning(f"Chart generation failed for {ticker}: {e}")
                 result["chart_url"] = None
 
     response_data = ScanTickersResponse(
