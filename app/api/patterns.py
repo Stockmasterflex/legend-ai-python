@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.core.detector_base import PatternType
@@ -670,7 +670,7 @@ async def scan_universe_patterns(
 
     response_data = ScanTickersResponse(
         success=True,
-        as_of=None,  # Will use current time if None
+        as_of=datetime.now(timezone.utc),
         results=results,
         errors={},
         count=len(results),
@@ -779,7 +779,7 @@ async def scan_quick_patterns(
 
     response_data = ScanTickersResponse(
         success=True,
-        as_of=None,
+        as_of=datetime.now(timezone.utc),
         results=results,
         errors={},
         count=len(results),
