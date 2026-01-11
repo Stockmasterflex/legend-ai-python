@@ -382,7 +382,7 @@ def calculate_trade_analysis(trades: pd.DataFrame) -> Dict:
     # Monthly/Quarterly analysis
     if "entry_date" in trades.columns:
         trades_with_date = trades.copy()
-        trades_with_date["entry_date"] = pd.to_datetime(trades_with_date["entry_date"])
+        trades_with_date["entry_date"] = pd.to_datetime(trades_with_date["entry_date"], errors="coerce")
         trades_with_date["month"] = trades_with_date["entry_date"].dt.to_period("M")
         trades_with_date["quarter"] = trades_with_date["entry_date"].dt.to_period("Q")
 
